@@ -555,12 +555,15 @@ body {
 .authmsg{font-size:12px;text-align:center;margin-top:12px;line-height:1.4;}
 .authmsg.err{color:#ff6b6b;}
 .authmsg.ok{color:var(--foil1);}
-.signoutbtn{
-  display:block;
-  margin:24px auto 0;
+.signoutbtn-row{
   max-width:920px;
-  width:100%;
-  text-align:right;
+  margin:24px auto 0;
+  display:flex;
+  justify-content:flex-end;
+}
+.signoutbtn{
+  display:inline-block;
+  width:auto;
   background:transparent;
   border:none;
   color:var(--foil1);
@@ -1792,7 +1795,7 @@ function render(){
       ${view==='open'?renderOpen():(view==='market'?renderMarket():(view==='shop'?renderShopBonus():renderDex()))}
       <div class="footer-actions"><button class="reset-link" data-reset>reset progress</button><button class="reset-link" data-devhex>[dev] +100,000 hex</button></div>
     </div>
-    <button class="signoutbtn" data-signout title="${authUser ? authUser.email : ''}">SIGN OUT</button>
+    <div class="signoutbtn-row"><button class="signoutbtn" data-signout title="${authUser ? authUser.email : ''}">SIGN OUT</button></div>
     ${opening?renderOpening():''}
   `;
   wire();
