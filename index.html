@@ -659,11 +659,12 @@ function cardMultiplier(hoursHeld, tNow){
 }
 
 const STORAGE_KEY = 'pokehex-state-v2';
-let state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[] };
+let state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
 let view = 'open';
 let opening = null;
 let wheelSpinning = false;
 let wheelResult = null;
+let vaultChartMode = 'live';
 
 async function loadState(){
   try{
@@ -693,6 +694,7 @@ async function loadState(){
   if(state.collectibles===undefined) state.collectibles = {};
   if(state.instances===undefined) state.instances = [];
   if(state.valueHistory===undefined) state.valueHistory = [];
+  if(state.longHistory===undefined) state.longHistory = [];
   
   recordVaultValue();
   render();
@@ -720,11 +722,22 @@ function recordVaultValue(){
   const now = Date.now();
   const currentVal = calculateCurrentVaultValue();
   if(!state.valueHistory) state.valueHistory = [];
-  
+  if(!state.longHistory) state.longHistory = [];
+
   const lastEntry = state.valueHistory[state.valueHistory.length - 1];
   if(!lastEntry || (now - lastEntry.time > 10000) || lastEntry.val !== currentVal){
     state.valueHistory.push({ time: now, val: currentVal });
     if(state.valueHistory.length > 30) state.valueHistory.shift();
+  }
+
+  // Sparser, long-running log for the "All Time" view - one point every
+  // few minutes is plenty to show the shape of a history spanning weeks
+  // without the save file growing forever.
+  const LONG_INTERVAL_MS = 5 * 60 * 1000;
+  const lastLong = state.longHistory[state.longHistory.length - 1];
+  if(!lastLong || (now - lastLong.time > LONG_INTERVAL_MS)){
+    state.longHistory.push({ time: now, val: currentVal });
+    if(state.longHistory.length > 5000) state.longHistory.shift();
   }
 }
 
@@ -902,10 +915,7 @@ function renderOpen(){
   `;
 }
 
-function renderVaultChart(){
-  const history = state.valueHistory && state.valueHistory.length > 0 ? state.valueHistory : [{time: Date.now(), val: calculateCurrentVaultValue()}];
-  const currentTotal = calculateCurrentVaultValue();
-
+function vaultChartInner(history){
   const width = 880;
   const height = 140;
   const padTop = 15;
@@ -926,7 +936,7 @@ function renderVaultChart(){
     return { x, y, val: h.val };
   });
 
-  const pathD = points.length === 1 
+  const pathD = points.length === 1
     ? `M ${points[0].x} ${points[0].y} L ${points[0].x} ${points[0].y}`
     : points.reduce((acc, p, i) => i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`, '');
 
@@ -934,36 +944,70 @@ function renderVaultChart(){
     ? `M ${padLeft} ${padTop + innerH} L ${points[0].x} ${points[0].y} L ${padLeft + innerW} ${padTop + innerH} Z`
     : `${pathD} L ${points[points.length - 1].x} ${padTop + innerH} L ${points[0].x} ${padTop + innerH} Z`;
 
+  // Skip individual point dots on the All Time view once there are a lot of
+  // samples - they just turn into visual noise at that density.
+  const showDots = points.length <= 60;
+
+  const svgInner = `
+    <defs>
+      <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--foil1)" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="var(--foil2)" stop-opacity="0.0"/>
+      </linearGradient>
+    </defs>
+    <line x1="${padLeft}" y1="${padTop}" x2="${width - padRight}" y2="${padTop}" stroke="var(--line)" stroke-dasharray="3,3" />
+    <line x1="${padLeft}" y1="${padTop + innerH / 2}" x2="${width - padRight}" y2="${padTop + innerH / 2}" stroke="var(--line)" stroke-dasharray="3,3" />
+    <line x1="${padLeft}" y1="${padTop + innerH}" x2="${width - padRight}" y2="${padTop + innerH}" stroke="var(--line)" />
+
+    <text x="${padLeft - 6}" y="${padTop + 4}" fill="var(--muted)" font-size="9" font-family="JetBrains Mono" text-anchor="end">${fmtHex(Math.round(maxVal))}</text>
+    <text x="${padLeft - 6}" y="${padTop + innerH + 4}" fill="var(--muted)" font-size="9" font-family="JetBrains Mono" text-anchor="end">0</text>
+
+    <path d="${areaD}" fill="url(#chartGrad)" />
+    <path d="${pathD}" fill="none" stroke="var(--foil1)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 4px rgba(57,255,20,0.5));" />
+
+    ${showDots ? points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="var(--foil2)" stroke="var(--foil1)" stroke-width="1.5" />`).join('') : ''}
+  `;
+
+  return { svgInner, width, height };
+}
+
+function vaultChartHistoryForMode(){
+  if(vaultChartMode === 'all'){
+    return (state.longHistory && state.longHistory.length > 0)
+      ? state.longHistory
+      : [{ time: Date.now(), val: calculateCurrentVaultValue() }];
+  }
+  return (state.valueHistory && state.valueHistory.length > 0)
+    ? state.valueHistory
+    : [{ time: Date.now(), val: calculateCurrentVaultValue() }];
+}
+
+function renderVaultChart(){
+  const history = vaultChartHistoryForMode();
+  const currentTotal = calculateCurrentVaultValue();
+  const { svgInner, width, height } = vaultChartInner(history);
+
+  const rangeLabel = vaultChartMode === 'all'
+    ? (state.longHistory && state.longHistory.length > 1
+        ? `since ${new Date(state.longHistory[0].time).toLocaleDateString(undefined,{month:'short',day:'numeric'})}`
+        : 'not enough history yet')
+    : 'last few minutes';
+
   return `
     <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:20px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
         <span style="font-family:'VT323',monospace; font-size:18px; color:var(--foil1); letter-spacing:0.04em;">Vault Valuation Live Feed</span>
         <span id="vaultTotalVal" class="mono" style="font-size:14px; color:var(--gold);"><i class="hex-icon"></i>${fmtHex(currentTotal)} HEX</span>
       </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+        <div style="display:flex; gap:6px;">
+          <button data-vaultmode="live" style="font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 10px; border-radius:6px; cursor:pointer; border:1px solid ${vaultChartMode==='live'?'var(--foil1)':'var(--line)'}; background:${vaultChartMode==='live'?'rgba(57,255,20,0.12)':'transparent'}; color:${vaultChartMode==='live'?'var(--foil1)':'var(--muted)'};">Live</button>
+          <button data-vaultmode="all" style="font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 10px; border-radius:6px; cursor:pointer; border:1px solid ${vaultChartMode==='all'?'var(--foil1)':'var(--line)'}; background:${vaultChartMode==='all'?'rgba(57,255,20,0.12)':'transparent'}; color:${vaultChartMode==='all'?'var(--foil1)':'var(--muted)'};">All Time</button>
+        </div>
+        <span id="vaultRangeLabel" style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;">${rangeLabel}</span>
+      </div>
       <div style="width:100%; overflow-x:auto;">
-        <svg id="vaultChartSvg" viewBox="0 0 ${width} ${height}" style="width:100%; height:120px; display:block;">
-          <defs>
-            <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="var(--foil1)" stop-opacity="0.35"/>
-              <stop offset="100%" stop-color="var(--foil2)" stop-opacity="0.0"/>
-            </linearGradient>
-          </defs>
-          <!-- Grid lines -->
-          <line x1="${padLeft}" y1="${padTop}" x2="${width - padRight}" y2="${padTop}" stroke="var(--line)" stroke-dasharray="3,3" />
-          <line x1="${padLeft}" y1="${padTop + innerH / 2}" x2="${width - padRight}" y2="${padTop + innerH / 2}" stroke="var(--line)" stroke-dasharray="3,3" />
-          <line x1="${padLeft}" y1="${padTop + innerH}" x2="${width - padRight}" y2="${padTop + innerH}" stroke="var(--line)" />
-
-          <!-- Axis Labels -->
-          <text x="${padLeft - 6}" y="${padTop + 4}" fill="var(--muted)" font-size="9" font-family="JetBrains Mono" text-anchor="end">${fmtHex(Math.round(maxVal))}</text>
-          <text x="${padLeft - 6}" y="${padTop + innerH + 4}" fill="var(--muted)" font-size="9" font-family="JetBrains Mono" text-anchor="end">0</text>
-
-          <!-- Area & Line -->
-          <path d="${areaD}" fill="url(#chartGrad)" />
-          <path d="${pathD}" fill="none" stroke="var(--foil1)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 4px rgba(57,255,20,0.5));" />
-
-          <!-- Data Points -->
-          ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="var(--foil2)" stroke="var(--foil1)" stroke-width="1.5" />`).join('')}
-        </svg>
+        <svg id="vaultChartSvg" viewBox="0 0 ${width} ${height}" style="width:100%; height:120px; display:block;">${svgInner}</svg>
       </div>
     </div>
   `;
@@ -971,7 +1015,7 @@ function renderVaultChart(){
 
 function updateVaultFeedLive() {
   if (view !== 'market') return;
-  
+
   const currentTotal = calculateCurrentVaultValue();
   const balanceValEl = document.querySelector('.balance .val');
   if (balanceValEl) {
@@ -980,57 +1024,12 @@ function updateVaultFeedLive() {
 
   const chartContainer = document.querySelector('.wrap');
   if (chartContainer && chartContainer.querySelector('#vaultChartSvg')) {
-    const history = state.valueHistory && state.valueHistory.length > 0 ? state.valueHistory : [{time: Date.now(), val: currentTotal}];
-    
-    const width = 880;
-    const height = 140;
-    const padTop = 15;
-    const padBottom = 20;
-    const padLeft = 45;
-    const padRight = 20;
-
-    const innerW = width - padLeft - padRight;
-    const innerH = height - padTop - padBottom;
-
-    const vals = history.map(h => h.val);
-    const minVal = 0;
-    const maxVal = Math.max(100, ...vals) * 1.15;
-
-    const points = history.map((h, i) => {
-      const x = padLeft + (history.length === 1 ? innerW / 2 : (i / (history.length - 1)) * innerW);
-      const y = padTop + innerH - ((h.val - minVal) / (maxVal - minVal)) * innerH;
-      return { x, y, val: h.val };
-    });
-
-    const pathD = points.length === 1 
-      ? `M ${points[0].x} ${points[0].y} L ${points[0].x} ${points[0].y}`
-      : points.reduce((acc, p, i) => i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`, '');
-
-    const areaD = points.length === 1
-      ? `M ${padLeft} ${padTop + innerH} L ${points[0].x} ${points[0].y} L ${padLeft + innerW} ${padTop + innerH} Z`
-      : `${pathD} L ${points[points.length - 1].x} ${padTop + innerH} L ${points[0].x} ${padTop + innerH} Z`;
+    const history = vaultChartHistoryForMode();
+    const { svgInner } = vaultChartInner(history);
 
     const svgElement = chartContainer.querySelector('#vaultChartSvg');
     if (svgElement) {
-      svgElement.innerHTML = `
-        <defs>
-          <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="var(--foil1)" stop-opacity="0.35"/>
-            <stop offset="100%" stop-color="var(--foil2)" stop-opacity="0.0"/>
-          </linearGradient>
-        </defs>
-        <line x1="${padLeft}" y1="${padTop}" x2="${width - padRight}" y2="${padTop}" stroke="var(--line)" stroke-dasharray="3,3" />
-        <line x1="${padLeft}" y1="${padTop + innerH / 2}" x2="${width - padRight}" y2="${padTop + innerH / 2}" stroke="var(--line)" stroke-dasharray="3,3" />
-        <line x1="${padLeft}" y1="${padTop + innerH}" x2="${width - padRight}" y2="${padTop + innerH}" stroke="var(--line)" />
-
-        <text x="${padLeft - 6}" y="${padTop + 4}" fill="var(--muted)" font-size="9" font-family="JetBrains Mono" text-anchor="end">${fmtHex(Math.round(maxVal))}</text>
-        <text x="${padLeft - 6}" y="${padTop + innerH + 4}" fill="var(--muted)" font-size="9" font-family="JetBrains Mono" text-anchor="end">0</text>
-
-        <path d="${areaD}" fill="url(#chartGrad)" />
-        <path d="${pathD}" fill="none" stroke="var(--foil1)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 4px rgba(57,255,20,0.5));" />
-
-        ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="var(--foil2)" stroke="var(--foil1)" stroke-width="1.5" />`).join('')}
-      `;
+      svgElement.innerHTML = svgInner;
     }
 
     const headerValLabel = chartContainer.querySelector('#vaultTotalVal');
@@ -1567,7 +1566,7 @@ function wire(){
   };
   const reset = document.querySelector('[data-reset]');
   if(reset) reset.onclick = ()=>{
-    state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[] };
+    state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
     saveState(); render();
   };
 
@@ -1579,6 +1578,13 @@ function wire(){
     toast(`[dev] +100,000 HEX added.`);
     render();
   };
+
+  document.querySelectorAll('[data-vaultmode]').forEach(btn=>{
+    btn.onclick = ()=>{
+      vaultChartMode = btn.dataset.vaultmode;
+      render();
+    };
+  });
 
   const wheelCollect = document.querySelector('[data-wheelcollect]');
   if(wheelCollect) wheelCollect.onclick = ()=>{
