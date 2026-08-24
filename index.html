@@ -94,17 +94,32 @@ body {
   gap:10px;
 }
 .brand{display:flex;align-items:center;gap:10px; justify-self:center; grid-column: 2; position:relative;}
-.brand-mark{
-  width:38px;height:34px;border-radius:4px;
-  background:linear-gradient(135deg,var(--foil1),var(--foil2));
-  display:flex;align-items:center;justify-content:center;
-  font-family:'VT323',monospace;font-weight:400;color:#07090a;font-size:17px;
-  box-shadow:0 0 14px rgba(57,255,20,0.35);
-  letter-spacing:0.02em;
+.brand-hexmark{
+  width:44px;height:50px;
+  position:relative;
   justify-self:start;
   grid-column: 1;
+  filter: drop-shadow(0 0 10px rgba(57,255,20,0.4));
 }
-.brand div:not(.brand-mark) { text-align: center; }
+.brand-hexmark::before{
+  content:'';
+  position:absolute;
+  top:0; left:9px;
+  width:26px; height:20px;
+  background:var(--foil1);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  z-index:2;
+}
+.brand-hexmark::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(135deg, var(--foil1), var(--foil2)),
+    #000000;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+.brand div:not(.brand-hexmark) { text-align: center; }
 
 /* Slime Title with Sparkles & Floating Dust Particles */
 .brand h1 {
@@ -170,6 +185,8 @@ body {
   border-radius:12px;padding:8px 16px;display:flex;align-items:center;gap:10px;
   justify-self:end;
   grid-column: 3;
+  white-space:nowrap;
+  flex-wrap:nowrap;
 }
 .balance .tick{color:var(--muted);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;}
 .balance .val{
@@ -534,10 +551,23 @@ body {
 .authmsg.err{color:#ff6b6b;}
 .authmsg.ok{color:var(--foil1);}
 .signoutbtn{
-  background:transparent;border:1px solid var(--line);color:var(--muted);
-  padding:6px 12px;border-radius:999px;font-size:11px;cursor:pointer;
+  position:fixed;
+  bottom:18px;
+  right:18px;
+  background:transparent;
+  border:none;
+  color:var(--foil1);
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;
+  font-size:12px;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  text-decoration:none;
+  cursor:pointer;
+  padding:4px;
+  z-index:50;
 }
-.signoutbtn:hover{color:var(--text);border-color:var(--foil1);}
+.signoutbtn:hover{text-shadow:0 0 8px rgba(57,255,20,0.6);}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -1736,16 +1766,14 @@ function render(){
   const app = document.getElementById('app');
   app.innerHTML = `
     <div class="topbar">
-      <div class="brand-mark disp">phx</div>
+      <div class="brand-hexmark"></div>
       <div class="brand">
         <div>
           <h1>POKéHEX</h1>
           <span>rip packs &middot; fill your dex &middot; risk fake currency &middot; v1.0 </span>
         </div>
       </div>
-      <div class="balance"><span class="tick">Balance</span><span class="val mono"><i class="hex-icon"></i>${fmtHex(state.hex)}</span>
-        <button class="signoutbtn" data-signout title="${authUser ? authUser.email : ''}">Sign out</button>
-      </div>
+      <div class="balance"><span class="tick">Balance</span><span class="val mono"><i class="hex-icon"></i>${fmtHex(state.hex)}</span></div>
     </div>
     <div class="navrow">
       <button class="navbtn ${view==='open'?'active':''}" data-nav="open">Packs</button>
@@ -1757,6 +1785,7 @@ function render(){
       ${view==='open'?renderOpen():(view==='market'?renderMarket():(view==='shop'?renderShopBonus():renderDex()))}
       <div class="footer-actions"><button class="reset-link" data-reset>reset progress</button><button class="reset-link" data-devhex>[dev] +100,000 hex</button></div>
     </div>
+    <button class="signoutbtn" data-signout title="${authUser ? authUser.email : ''}">SIGN OUT</button>
     ${opening?renderOpening():''}
   `;
   wire();
