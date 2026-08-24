@@ -197,6 +197,23 @@ body {
 .balance .val{
   font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;color:var(--gold);
 }
+.cta-account-row{
+  display:flex;justify-content:center;max-width:920px;margin:0 auto 24px;
+}
+.cta-account-link{
+  background:transparent;
+  border:none;
+  color:var(--foil2);
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;
+  font-size:12px;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  text-decoration:none;
+  cursor:pointer;
+  padding:4px;
+}
+.cta-account-link:hover{text-shadow:0 0 8px rgba(157,78,221,0.6);}
 
 .navrow{display:flex;justify-content:center;gap:8px;max-width:920px;margin:0 auto 24px;flex-wrap:wrap;}
 .navbtn{
@@ -622,6 +639,7 @@ function renderAuth(){
           ${authMode==='signin' ? "No account yet? Create one" : "Already have an account? Sign in"}
         </button>
         ${authMsg ? `<div class="authmsg ${authMsg.type}">${authMsg.text}</div>` : ''}
+        ${!authUser ? `<button class="authtoggle" id="authBackBtn" style="margin-top:4px;">&larr; Back to browsing</button>` : ''}
       </div>
     </div>
   `;
@@ -630,6 +648,8 @@ function renderAuth(){
     authMsg = null;
     renderAuth();
   };
+  const backBtn = document.getElementById('authBackBtn');
+  if(backBtn) backBtn.onclick = ()=>{ authMsg = null; render(); };
   document.getElementById('authform').onsubmit = async (e)=>{
     e.preventDefault();
     const email = document.getElementById('authEmail').value.trim();
@@ -661,7 +681,18 @@ function renderAuth(){
 
 async function signOut(){
   await sb.auth.signOut();
-  // onAuthStateChange handles returning to the auth screen
+  // onAuthStateChange handles returning to the guest browsing view
+}
+
+// Gate for any action that changes state - guests get sent to the signup screen instead.
+function requireAuth(){
+  if(!authUser){
+    authMode = 'signup';
+    authMsg = null;
+    renderAuth();
+    return false;
+  }
+  return true;
 }
 
 sb.auth.onAuthStateChange((event, session)=>{
@@ -670,11 +701,15 @@ sb.auth.onAuthStateChange((event, session)=>{
   authUser = user;
   if(user && !wasLoggedIn){
     authBusy = false; authMsg = null;
-    loadState(); // boots the game once we have a user
-  } else if(!user){
+    loadState(); // boots the real, saved game state now that we have a user
+  } else if(!user && wasLoggedIn){
+    // user just signed out - drop back to guest browsing of the Packs page, not the login screen
     authBusy = false;
-    renderAuth();
+    state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
+    view = 'open';
+    render();
   }
+  // if !user && !wasLoggedIn (e.g. no session on initial load), leave whatever's already on screen alone
 });
 
 const TYPE_COLORS = {
@@ -860,7 +895,7 @@ function cardMultiplier(hoursHeld, tNow){
 }
 
 const STORAGE_KEY = 'pokehex-state-v2';
-let state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
+let state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] }; // hex:0 until signed in - real balance loads after auth
 let view = 'open';
 let opening = null;
 let wheelSpinning = false;
@@ -978,6 +1013,7 @@ function randCard(tier){
   return pool[Math.floor(Math.random()*pool.length)];
 }
 function openPack(pack){
+  if(!requireAuth()) return;
   if(state.hex < pack.price) return toast("Not enough HEX for that pack.");
   state.hex -= pack.price;
   const cards = [];
@@ -1027,6 +1063,7 @@ function finalizeOpening(){
 }
 
 function buyCollectible(item){
+  if(!requireAuth()) return;
   if(state.collectibles[item.id]) return toast("You already own this badge!");
   if(state.hex < item.price) return toast("Not enough HEX! Keep grinding packs or spinning the wheel.");
   state.hex -= item.price;
@@ -1038,6 +1075,7 @@ function buyCollectible(item){
 }
 
 function sellCollectible(item){
+  if(!requireAuth()) return;
   if(!state.collectibles[item.id]) return toast("You don't own this badge!");
   const refund = Math.round(item.price * 0.6);
   delete state.collectibles[item.id];
@@ -1130,7 +1168,7 @@ function renderOpen(){
         </div>
         <div class="pack-price">
           <span class="price-tag mono"><i class="hex-icon"></i>${p.price}</span>
-          <button class="buybtn" data-buy="${p.id}" ${state.hex<p.price?'disabled':''}>Open</button>
+          <button class="buybtn" data-buy="${p.id}" ${(authUser && state.hex<p.price)?'disabled':''}>Open</button>
         </div>
       </div>
     `).join('')}
@@ -1635,7 +1673,7 @@ function renderShopBonus(){
           <span class="price-tag mono"><i class="hex-icon"></i>${fmtHex(item.price)}</span>
           ${owned ? 
             `<button class="sellbtn" data-sellcol="${item.id}">Sell (<i class="hex-icon" style="width:10px;height:12px;"></i>${fmtHex(refundAmt)})</button>` :
-            `<button class="buybtn" data-buycol="${item.id}" ${state.hex<item.price?'disabled':''}>Purchase</button>`
+            `<button class="buybtn" data-buycol="${item.id}" ${(authUser && state.hex<item.price)?'disabled':''}>Purchase</button>`
           }
         </div>
       </div>`;
@@ -1783,7 +1821,10 @@ function render(){
           <span>rip packs &middot; fill your dex &middot; risk fake currency &middot; v1.0 </span>
         </div>
       </div>
-      <div class="balance"><span class="tick">Balance</span><span class="val mono"><i class="hex-icon"></i>${fmtHex(state.hex)}</span></div>
+      ${authUser
+        ? `<div class="balance"><span class="tick">Balance</span><span class="val mono"><i class="hex-icon"></i>${fmtHex(state.hex)}</span></div>`
+        : ''
+      }
     </div>
     <div class="navrow">
       <button class="navbtn ${view==='open'?'active':''}" data-nav="open">Packs</button>
@@ -1791,11 +1832,12 @@ function render(){
       <button class="navbtn ${view==='shop'?'active':''}" data-nav="shop">Shop and Bonuses</button>
       <button class="navbtn ${view==='market'?'active':''}" data-nav="market">Market</button>
     </div>
+    ${!authUser ? `<div class="cta-account-row"><button class="cta-account-link" data-createaccount>CREATE AN ACCOUNT TO PLAY</button></div>` : ''}
     <div class="wrap">
       ${view==='open'?renderOpen():(view==='market'?renderMarket():(view==='shop'?renderShopBonus():renderDex()))}
       <div class="footer-actions"><button class="reset-link" data-reset>reset progress</button><button class="reset-link" data-devhex>[dev] +100,000 hex</button></div>
     </div>
-    <div class="signoutbtn-row"><button class="signoutbtn" data-signout title="${authUser ? authUser.email : ''}">SIGN OUT</button></div>
+    ${authUser ? `<div class="signoutbtn-row"><button class="signoutbtn" data-signout title="${authUser.email}">SIGN OUT</button></div>` : ''}
     ${opening?renderOpening():''}
   `;
   wire();
@@ -1804,6 +1846,8 @@ function render(){
 function wire(){
   const signoutBtn = document.querySelector('[data-signout]');
   if(signoutBtn) signoutBtn.onclick = ()=>{ signOut(); };
+  const createAccountBtn = document.querySelector('[data-createaccount]');
+  if(createAccountBtn) createAccountBtn.onclick = ()=>{ requireAuth(); };
   document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{ view=b.dataset.nav; render(); });
   document.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{
     const pack = PACKS.find(p=>p.id===b.dataset.buy);
@@ -1942,12 +1986,14 @@ function wire(){
   };
   const reset = document.querySelector('[data-reset]');
   if(reset) reset.onclick = ()=>{
+    if(!requireAuth()) return;
     state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
     saveState(); render();
   };
 
   const devHex = document.querySelector('[data-devhex]');
   if(devHex) devHex.onclick = ()=>{
+    if(!requireAuth()) return;
     state.hex += 100000;
     recordVaultValue();
     saveState();
@@ -1969,6 +2015,7 @@ function wire(){
 
   const wheelSpinBtn = document.getElementById('wheelSpinBtn');
   if(wheelSpinBtn) wheelSpinBtn.onclick = ()=>{
+    if(!requireAuth()) return;
     if(wheelSpinning || !canSpin()) return;
     const strip = document.getElementById('termStrip');
     if(!strip) return;
@@ -2016,7 +2063,7 @@ setInterval(()=>{
   }
 }, 1000);
 
-renderAuth(); // shown immediately; onAuthStateChange swaps to the game once Supabase resolves any existing session
+render(); // guest view of the Packs page shown immediately; onAuthStateChange loads the real saved state if a session is restored
 })();
 </script>
 </body>
