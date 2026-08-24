@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PokéHex</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains-Mono:wght@400;500;700&display=swap');
 
 :root{
   --bg:#07090a;
@@ -315,7 +315,16 @@ body {
   background-size:250% 250%;animation:sheenmove 3.2s linear infinite;
 }
 @keyframes sheenmove{0%{background-position:0% 0%;}100%{background-position:100% 100%;}}
-.pack-visual .mark{font-family:'VT323',monospace;font-weight:400;font-size:30px;color:var(--text);letter-spacing:0.05em;z-index:1;}
+.pack-visual .mark{
+  font-family:'VT323',monospace;
+  font-weight:400;
+  font-size:22px;
+  color:var(--text);
+  letter-spacing:0.05em;
+  z-index:1;
+  text-align:center;
+  padding:0 12px;
+}
 .pack-visual.ripping{animation:ripshake .35s ease;}
 @keyframes ripshake{
   0%,100%{transform:translateX(0) rotate(0);}
@@ -324,7 +333,7 @@ body {
   60%{transform:translateX(-4px) rotate(-1deg) scale(1.03);}
   80%{transform:translateX(4px) rotate(1deg) scale(1.06);}
 }
-.pack-hint{color:var(--muted);font-size:13px;letter-spacing:0.04em;}
+.pack-hint{color:var(--muted);font-size:13px;letter-spacing:0.04em;text-align:center;}
 
 .reveal-row{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;max-width:900px;}
 .card-slot-wrapper{display:flex;flex-direction:column;align-items:center;gap:4px;}
@@ -458,6 +467,35 @@ body {
 .spin-btn:disabled{background:var(--line);color:var(--muted);cursor:not-allowed;box-shadow:none;}
 .wheel-result{
   font-family:'JetBrains Mono',monospace;font-size:28px;color:var(--gold);
+}
+
+/* Slippage Warning Container and Items */
+.slippage-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.slippage-notice {
+  background: rgba(255, 170, 0, 0.08);
+  border: 1px dashed #ffaa00;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 11.5px;
+  color: #ffca66;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.slippage-notice div {
+  flex: 1;
+  line-height: 1.4;
+  white-space: normal;
+  word-wrap: break-word;
+}
+.slippage-icon {
+  font-size: 16px;
+  color: #ffaa00;
 }
 </style>
 </head>
@@ -619,16 +657,6 @@ const WHEEL_REWARDS = [
 ];
 const WHEEL_COOLDOWN = 60*60*1000; // 1 hour
 
-/* ---------- global market cycle ----------
-   A single deterministic index shared by every card (and every player/session,
-   since it's a pure function of wall-clock time from a fixed epoch). It's a
-   sum of three sine waves of different periods, which produces recognizable
-   bull/bear "cycles" rather than pure noise. Because it's deterministic, the
-   chart can show a short window into the near future too, so a patient
-   player really can learn to read a cycle instead of just watching a random
-   walk. A mild, capped time-held bonus sits underneath it so patience still
-   helps on average, but the index itself can push value below 1.0 - holding
-   is no longer a guaranteed profit. */
 const MARKET_EPOCH = Date.parse('2024-01-01T00:00:00Z');
 const MARKET_WAVES = [
   { periodMs: 5   * 60*60*1000, amp: 0.35, phase: 1.1 }, // long supercycle (~5h)
@@ -665,6 +693,7 @@ let opening = null;
 let wheelSpinning = false;
 let wheelResult = null;
 let vaultChartMode = 'live';
+let activeModal = null; // Confirmation modal state
 
 async function loadState(){
   try{
@@ -730,9 +759,6 @@ function recordVaultValue(){
     if(state.valueHistory.length > 30) state.valueHistory.shift();
   }
 
-  // Sparser, long-running log for the "All Time" view - one point every
-  // few minutes is plenty to show the shape of a history spanning weeks
-  // without the save file growing forever.
   const LONG_INTERVAL_MS = 5 * 60 * 1000;
   const lastLong = state.longHistory[state.longHistory.length - 1];
   if(!lastLong || (now - lastLong.time > LONG_INTERVAL_MS)){
@@ -944,8 +970,6 @@ function vaultChartInner(history){
     ? `M ${padLeft} ${padTop + innerH} L ${points[0].x} ${points[0].y} L ${padLeft + innerW} ${padTop + innerH} Z`
     : `${pathD} L ${points[points.length - 1].x} ${padTop + innerH} L ${points[0].x} ${padTop + innerH} Z`;
 
-  // Skip individual point dots on the All Time view once there are a lot of
-  // samples - they just turn into visual noise at that density.
   const showDots = points.length <= 60;
 
   const svgInner = `
@@ -1048,6 +1072,39 @@ function updateVaultFeedLive() {
     if(labelEl){ labelEl.textContent = phase.label; labelEl.style.color = phase.color; }
     if(valEl){ valEl.textContent = (idxNow*100).toFixed(0); valEl.style.color = phase.color; }
   }
+
+  // Update real-time liquidation price estimates live in the DOM
+  const now = Date.now();
+  (state.instances || []).forEach(inst => {
+    const el = document.getElementById(`price-inst-${inst.uid}`);
+    if (el) {
+      const p = POKEMON.find(x => x.id === inst.id);
+      if (p) {
+        const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
+        const multiplier = cardMultiplier(hoursHeld, now);
+        const payout = Math.max(1, Math.round(p.value * multiplier));
+        el.innerHTML = `<i class="hex-icon"></i>~${fmtHex(payout)}`;
+      }
+    }
+  });
+
+  ['secret', 'ultra', 'rare', 'uncommon', 'common'].forEach(tier => {
+    const el = document.getElementById(`price-tier-${tier}`);
+    if (el) {
+      let totalPayout = 0;
+      (state.instances || []).forEach(inst => {
+        if (inst.rarity === tier) {
+          const p = POKEMON.find(x => x.id === inst.id);
+          if (p) {
+            const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
+            const multiplier = cardMultiplier(hoursHeld, now);
+            totalPayout += Math.max(1, Math.round(p.value * multiplier));
+          }
+        }
+      });
+      el.innerHTML = `<i class="hex-icon"></i>~${fmtHex(totalPayout)}`;
+    }
+  });
 }
 
 function computeMarketIndexSeries(now){
@@ -1115,6 +1172,82 @@ function renderMarketIndexChart(){
   `;
 }
 
+function renderMarketModal() {
+  if (!activeModal) return '';
+  
+  if (activeModal.type === 'single') {
+    const inst = (state.instances || []).find(x => x.uid === activeModal.uid);
+    if (!inst) { activeModal = null; return ''; }
+    const p = POKEMON.find(x => x.id === inst.id);
+    const now = Date.now();
+    const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
+    const multiplier = cardMultiplier(hoursHeld, now);
+    const estPayout = Math.max(1, Math.round(p.value * multiplier));
+
+    return `
+    <div class="overlay">
+      <div class="summary-panel" style="max-width:440px;">
+        <div style="font-family:'VT323',monospace;font-size:22px;color:var(--gold);text-transform:uppercase;">Confirm Liquidation</div>
+        <div style="font-size:13px;text-align:center;">Liquidate <b>${esc(p.name)}</b>?</div>
+        
+        <div style="background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:12px;width:100%;text-align:center;">
+          <div style="font-size:11px;color:var(--muted);">Estimated Current Price:</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:20px;color:var(--gold);margin:4px 0;"><i class="hex-icon"></i>~${fmtHex(estPayout)} HEX</div>
+          <div style="font-size:10px;color:#ffaa00;margin-top:6px;line-height:1.3;">
+            ⚠️ <b>Real-Time Market Slippage Warning:</b> Prices adjust continuously. Final payout executes at exact real-time market value upon confirmation.
+          </div>
+        </div>
+
+        <div class="summary-actions" style="margin-top:8px;">
+          <button class="sbtn sell" data-modal-cancel>Cancel</button>
+          <button class="sbtn keep" style="background:#ff4444;box-shadow:0 0 10px rgba(255,68,68,0.4);" data-modal-confirm-single="${inst.uid}">Execute Sale</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  if (activeModal.type === 'tier') {
+    const targetTier = activeModal.tier;
+    const tierLabels = { secret: 'Secret Rare', ultra: 'Ultra Rare', rare: 'Rare', uncommon: 'Uncommon', common: 'Common' };
+    const now = Date.now();
+    let totalEstPayout = 0;
+    let count = 0;
+
+    (state.instances || []).forEach(inst => {
+      if (inst.rarity === targetTier) {
+        const p = POKEMON.find(x => x.id === inst.id);
+        const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
+        const multiplier = cardMultiplier(hoursHeld, now);
+        totalEstPayout += Math.max(1, Math.round(p.value * multiplier));
+        count++;
+      }
+    });
+
+    return `
+    <div class="overlay">
+      <div class="summary-panel" style="max-width:460px;">
+        <div style="font-family:'VT323',monospace;font-size:22px;color:#ff4444;text-transform:uppercase;">Confirm Bulk Liquidation</div>
+        <div style="font-size:13px;text-align:center;">Liquidate all <b>${count}</b> cards in <b>${tierLabels[targetTier]}</b> tier?</div>
+        
+        <div style="background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:12px;width:100%;text-align:center;">
+          <div style="font-size:11px;color:var(--muted);">Total Estimated Payout:</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:22px;color:var(--gold);margin:4px 0;"><i class="hex-icon"></i>~${fmtHex(totalEstPayout)} HEX</div>
+          <div style="font-size:10px;color:#ffaa00;margin-top:6px;line-height:1.3;">
+            ⚠️ <b>Real-Time Market Slippage Warning:</b> Market values fluctuate live. Payout for all ${count} cards will calculate individually at execution time.
+          </div>
+        </div>
+
+        <div class="summary-actions" style="margin-top:8px;">
+          <button class="sbtn sell" data-modal-cancel>Cancel</button>
+          <button class="sbtn keep" style="background:#ff4444;box-shadow:0 0 10px rgba(255,68,68,0.4);" data-modal-confirm-tier="${targetTier}">Liquidate Tier</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  return '';
+}
+
 function renderMarket(){
   const instances = state.instances || [];
   const now = Date.now();
@@ -1158,17 +1291,24 @@ function renderMarket(){
         <div class="dexcount mono">Individual card management &middot; Prices track the live market cycle</div>
       </div>
     </div>
-    
-    <div style="color:var(--muted);font-size:12.5px;margin-bottom:16px;line-height:1.5;background:var(--surface);border:1px solid var(--line);padding:14px;border-radius:12px;">
-      <b>Card prices move with the market.</b> Sell when it's up, hold off when it's down — waiting alone won't save you from a bad sale.
-    </div>
 
     ${renderMarketIndexChart()}
 
     ${renderVaultChart()}
 
-    <div style="color:var(--muted);font-size:11.5px;margin-bottom:16px;line-height:1.5;background:var(--surface);border:1px solid var(--line);padding:10px 14px;border-radius:10px;">
-      Holding cards a while adds a small bonus &mdash; up to <b>+30%</b>, earned at +1% per hour. It softens a dip, but it won't turn a bear market into a profit.
+    <div class="slippage-row">
+      <div class="slippage-notice">
+        <span class="slippage-icon">⚡</span>
+        <div>
+          <b>Real-Time Slippage Warning</b><br>Card prices move with the market. Sell when it's up, hold off when it's down. Waiting alone won't save you from a bad sale. Final value is computed at the exact millisecond of sale.
+        </div>
+      </div>
+      <div class="slippage-notice">
+        <span class="slippage-icon">⏳</span>
+        <div>
+          Holding cards a while adds a small bonus &mdash; up to <b>+30%</b>, earned at +1% per hour. It softens a dip, but it won't turn a bear market into a profit.
+        </div>
+      </div>
     </div>
 
     ${instances.length === 0 ? `
@@ -1179,10 +1319,21 @@ function renderMarket(){
         if(!items || items.length === 0) return '';
         const rc = RARITY[tier];
 
+        let tierTotalPayout = 0;
+        items.forEach(({ p, inst }) => {
+          const acquired = inst.acquiredAt || now;
+          const hoursHeld = Math.max(0, (now - acquired) / (1000 * 60 * 60));
+          const multiplier = cardMultiplier(hoursHeld, now);
+          tierTotalPayout += Math.max(1, Math.round(p.value * multiplier));
+        });
+
         return `
           <details style="margin-bottom:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px;">
-            <summary style="font-family:'VT323',monospace; font-size:20px; color:${rc.color}; cursor:pointer; text-transform:uppercase; letter-spacing:0.04em; outline:none;">
+            <summary style="font-family:'VT323',monospace; font-size:20px; color:${rc.color}; cursor:pointer; text-transform:uppercase; letter-spacing:0.04em; outline:none; display:flex; justify-content:space-between; align-items:center;">
               <span>${tierLabels[tier]} (${items.length})</span>
+              <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--gold);">
+                Tier Est: <span id="price-tier-${tier}"><i class="hex-icon"></i>~${fmtHex(tierTotalPayout)}</span>
+              </span>
             </summary>
             
             <div style="padding-top:12px;">
@@ -1211,9 +1362,9 @@ function renderMarket(){
                       </div>
                       <div>
                         <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gold);margin-bottom:8px;">
-                          <i class="hex-icon"></i>${fmtHex(payout)}
+                          <span id="price-inst-${inst.uid}"><i class="hex-icon"></i>~${fmtHex(payout)}</span>
                         </div>
-                        <button class="buybtn" style="width:100%;padding:6px;font-size:11px;" data-liquidate-uid="${inst.uid}">
+                        <button class="buybtn" style="width:100%;padding:6px;font-size:11px;" data-open-single-modal="${inst.uid}">
                           Liquidate
                         </button>
                       </div>
@@ -1222,9 +1373,10 @@ function renderMarket(){
                 }).join('')}
               </div>
 
-              <div style="margin-top:16px; display:flex; justify-content:flex-end;">
-                <button class="buybtn" style="background:#ff4444; color:#fff; padding:8px 16px; font-size:12px; box-shadow:0 0 8px rgba(255,68,68,0.4);" data-liquidate-tier="${tier}">
-                  Liquidate All ${tierLabels[tier]}
+              <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:10px; color:#ffaa00;">⚠️ Real-Time Liquidation Subject to Market Dynamics</span>
+                <button class="buybtn" style="background:#ff4444; color:#fff; padding:8px 16px; font-size:12px; box-shadow:0 0 8px rgba(255,68,68,0.4);" data-open-tier-modal="${tier}">
+                  Liquidate All ${tierLabels[tier]} (<span id="btn-tier-${tier}">~${fmtHex(tierTotalPayout)}</span>)
                 </button>
               </div>
             </div>
@@ -1232,6 +1384,7 @@ function renderMarket(){
         `;
       }).join('')}
     `}
+    ${renderMarketModal()}
   `;
 }
 
@@ -1465,45 +1618,67 @@ function wire(){
     sellCollectible(item);
   });
 
-  document.querySelectorAll('[data-liquidate-uid]').forEach(btn => {
+  // Modal Handlers
+  document.querySelectorAll('[data-open-single-modal]').forEach(btn => {
     btn.onclick = () => {
-      const uid = btn.dataset.liquidateUid;
-      const idx = (state.instances || []).findIndex(x => x.uid === uid);
-      if(idx === -1) return;
-
-      const inst = state.instances[idx];
-      const p = POKEMON.find(x => x.id === inst.id);
-      const now = Date.now();
-      const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
-      const multiplier = cardMultiplier(hoursHeld, now);
-      const payout = Math.max(1, Math.round(p.value * multiplier));
-
-      state.instances.splice(idx, 1);
-
-      const dexEntry = state.dex[p.id];
-      if(dexEntry){
-        dexEntry.count--;
-        if(dexEntry.count <= 0) delete state.dex[p.id];
-      }
-
-      state.hex += payout;
-      recordVaultValue();
-      saveState();
-      toast(`Liquidated ${p.name} for <i class="hex-icon"></i>${fmtHex(payout)} HEX!`);
+      activeModal = { type: 'single', uid: btn.dataset.openSingleModal };
       render();
     };
   });
 
-  document.querySelectorAll('[data-liquidate-tier]').forEach(btn => {
+  document.querySelectorAll('[data-open-tier-modal]').forEach(btn => {
     btn.onclick = () => {
-      const targetTier = btn.dataset.liquidateTier;
+      activeModal = { type: 'tier', tier: btn.dataset.openTierModal };
+      render();
+    };
+  });
+
+  const cancelBtn = document.querySelector('[data-modal-cancel]');
+  if (cancelBtn) {
+    cancelBtn.onclick = () => { activeModal = null; render(); };
+  }
+
+  const confirmSingleBtn = document.querySelector('[data-modal-confirm-single]');
+  if (confirmSingleBtn) {
+    confirmSingleBtn.onclick = () => {
+      const uid = confirmSingleBtn.dataset.modalConfirmSingle;
+      const idx = (state.instances || []).findIndex(x => x.uid === uid);
+      if (idx !== -1) {
+        const inst = state.instances[idx];
+        const p = POKEMON.find(x => x.id === inst.id);
+        const now = Date.now();
+        const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
+        const multiplier = cardMultiplier(hoursHeld, now);
+        const payout = Math.max(1, Math.round(p.value * multiplier));
+
+        state.instances.splice(idx, 1);
+        const dexEntry = state.dex[p.id];
+        if (dexEntry) {
+          dexEntry.count--;
+          if (dexEntry.count <= 0) delete state.dex[p.id];
+        }
+
+        state.hex += payout;
+        recordVaultValue();
+        saveState();
+        toast(`Liquidated ${p.name} for <i class="hex-icon"></i>${fmtHex(payout)} HEX!`);
+      }
+      activeModal = null;
+      render();
+    };
+  }
+
+  const confirmTierBtn = document.querySelector('[data-modal-confirm-tier]');
+  if (confirmTierBtn) {
+    confirmTierBtn.onclick = () => {
+      const targetTier = confirmTierBtn.dataset.modalConfirmTier;
       let totalPayout = 0;
       let countSold = 0;
       const now = Date.now();
 
       const remainingInstances = [];
       (state.instances || []).forEach(inst => {
-        if(inst.rarity === targetTier){
+        if (inst.rarity === targetTier) {
           const p = POKEMON.find(x => x.id === inst.id);
           const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
           const multiplier = cardMultiplier(hoursHeld, now);
@@ -1513,25 +1688,26 @@ function wire(){
           countSold++;
 
           const dexEntry = state.dex[inst.id];
-          if(dexEntry){
+          if (dexEntry) {
             dexEntry.count--;
-            if(dexEntry.count <= 0) delete state.dex[inst.id];
+            if (dexEntry.count <= 0) delete state.dex[inst.id];
           }
         } else {
           remainingInstances.push(inst);
         }
       });
 
-      if(countSold > 0) {
+      if (countSold > 0) {
         state.instances = remainingInstances;
         state.hex += totalPayout;
         recordVaultValue();
         saveState();
-        toast(`Liquidated all ${targetTier} cards for <i class="hex-icon"></i>${fmtHex(totalPayout)} HEX!`);
-        render();
+        toast(`Liquidated ${countSold} ${targetTier} cards for <i class="hex-icon"></i>${fmtHex(totalPayout)} HEX!`);
       }
+      activeModal = null;
+      render();
     };
-  });
+  }
 
   const rip = document.querySelector('[data-rip]');
   if(rip) rip.onclick = ()=>{
