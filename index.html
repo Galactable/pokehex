@@ -122,7 +122,8 @@ body {
 .brand div:not(.brand-hexmark) { text-align: center; }
 
 /* Slime Title with Sparkles & Floating Dust Particles */
-.brand h1 {
+.brand h1,
+.authcard h1 {
   font-size: 42px;
   margin: 0;
   font-family: 'VT323', monospace;
@@ -136,14 +137,17 @@ body {
 }
 
 .brand h1::before,
-.brand h1::after {
+.brand h1::after,
+.authcard h1::before,
+.authcard h1::after {
   content: '';
   position: absolute;
   pointer-events: none;
   border-radius: 50%;
 }
 
-.brand h1::before {
+.brand h1::before,
+.authcard h1::before {
   inset: -8px -12px;
   background: 
     radial-gradient(circle 3px at 15% 20%, var(--foil1) 0%, transparent 70%),
@@ -155,7 +159,8 @@ body {
   z-index: 2;
 }
 
-.brand h1::after {
+.brand h1::after,
+.authcard h1::after {
   inset: -14px -18px;
   background: 
     radial-gradient(circle 1.5px at 30% 30%, rgba(57, 255, 20, 0.9) 0%, transparent 100%),
@@ -525,12 +530,12 @@ body {
 }
 .authcard{
   width:100%;max-width:360px;background:var(--surface);border:1px solid var(--line);
-  border-radius:16px;padding:28px 24px;
+  border-radius:16px;padding:28px 24px;text-align:center;
 }
-.authcard h1{font-family:'VT323',monospace;color:var(--foil1);text-shadow:0 0 12px rgba(57,255,20,0.7);
-  font-size:36px;margin:0 0 4px;text-align:center;letter-spacing:0.04em;text-transform:uppercase;}
+.authcard h1{font-size:36px;margin:0 auto 4px;text-align:center;}
+.auth-hexmark{margin:0 auto 14px;}
 .authcard p.sub{color:var(--muted);font-size:12px;text-align:center;margin:0 0 20px;}
-.authfield{margin-bottom:12px;}
+.authfield{margin-bottom:12px;text-align:left;}
 .authfield label{display:block;font-size:11px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;}
 .authfield input{
   width:100%;background:var(--surface2);border:1px solid var(--line);color:var(--text);
@@ -551,9 +556,11 @@ body {
 .authmsg.err{color:#ff6b6b;}
 .authmsg.ok{color:var(--foil1);}
 .signoutbtn{
-  position:fixed;
-  bottom:18px;
-  right:18px;
+  display:block;
+  margin:24px auto 0;
+  max-width:920px;
+  width:100%;
+  text-align:right;
   background:transparent;
   border:none;
   color:var(--foil1);
@@ -564,8 +571,7 @@ body {
   text-transform:uppercase;
   text-decoration:none;
   cursor:pointer;
-  padding:4px;
-  z-index:50;
+  padding:4px 0;
 }
 .signoutbtn:hover{text-shadow:0 0 8px rgba(57,255,20,0.6);}
 </style>
@@ -593,6 +599,7 @@ function renderAuth(){
   el.innerHTML = `
     <div class="authwrap">
       <div class="authcard">
+        <div class="brand-hexmark auth-hexmark"></div>
         <h1>PokéHex</h1>
         <p class="sub">${authMode==='signin' ? 'Sign in to load your vault' : 'Create an account to save your progress'}</p>
         <form id="authform">
