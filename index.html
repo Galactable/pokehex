@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PokéHex</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root{
+  --bg:#07090a;
+  --surface:#0e130f;
+  --surface2:#141b16;
+  --line:#243026;
+  --text:#c8f5cc;
+  --muted:#5d7a63;
+  --foil1:#39ff14;
+  --foil2:#9d4edd;
+  --gold:#c77dff;
+  --common:#5d7a63;
+  --uncommon:#39ff14;
+  --rare:#9d4edd;
+  --ultra:#6bff5c;
+  --secret:#f0d9ff;
+  /* Kanto Badge Colors */
+  --boulder-col:#9e9e9e;
+  --cascade-col:#00bcd4;
+  --thunder-col:#ffeb3b;
+  --rainbow-col:#e91e63;
+  --soul-col:#9c27b0;
+  --marsh-col:#ff5722;
+  --volcano-col:#f44336;
+  --earth-col:#795548;
+}
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+}
+#app{
+  background:
+    repeating-linear-gradient(to bottom, rgba(57,255,20,0.025) 0px, rgba(57,255,20,0.025) 1px, transparent 1px, transparent 3px),
+    radial-gradient(circle at 50% -10%, #101a12 0%, var(--bg) 55%);
+  color:var(--text);
+  font-family:'JetBrains Mono',monospace;
+  min-height:100vh;
+  padding:20px 16px 60px;
+  box-sizing:border-box;
+  overflow-x:hidden;
+  position:relative;
+}
+*{box-sizing:border-box;}
+.mono{font-family:'JetBrains Mono',monospace;}
+.disp{font-family:'VT323',monospace;font-weight:400;letter-spacing:0.04em;text-transform:uppercase;color:var(--foil1);text-shadow:0 0 8px rgba(57,255,20,0.45);}
+
+/* ---------- currency cube icon ---------- */
+.hex-icon {
+  display: inline-block;
+  width: 14px;
+  height: 16px;
+  background: transparent;
+  position: relative;
+  vertical-align: middle;
+  margin-right: 3px;
+}
+.hex-icon::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 3px;
+  width: 8px;
+  height: 6px;
+  background: var(--foil1);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  z-index: 2;
+}
+.hex-icon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    linear-gradient(135deg, var(--foil1), var(--foil2)),
+    #000000;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+/* ---------- header ---------- */
+.topbar{
+  display:grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items:center;
+  max-width:920px;
+  margin:0 auto 22px;
+  gap:10px;
+}
+.brand{display:flex;align-items:center;gap:10px; justify-self:center; grid-column: 2; position:relative;}
+.brand-mark{
+  width:38px;height:34px;border-radius:4px;
+  background:linear-gradient(135deg,var(--foil1),var(--foil2));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'VT323',monospace;font-weight:400;color:#07090a;font-size:17px;
+  box-shadow:0 0 14px rgba(57,255,20,0.35);
+  letter-spacing:0.02em;
+  justify-self:start;
+  grid-column: 1;
+}
+.brand div:not(.brand-mark) { text-align: center; }
+
+/* Slime Title with Sparkles & Floating Dust Particles */
+.brand h1 {
+  font-size: 42px;
+  margin: 0;
+  font-family: 'VT323', monospace;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--foil1);
+  text-shadow: 0 0 12px rgba(57, 255, 20, 0.7), 0 0 25px rgba(57, 255, 20, 0.4);
+  text-transform: uppercase;
+  position: relative;
+  display: inline-block;
+}
+
+.brand h1::before,
+.brand h1::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+.brand h1::before {
+  inset: -8px -12px;
+  background: 
+    radial-gradient(circle 3px at 15% 20%, var(--foil1) 0%, transparent 70%),
+    radial-gradient(circle 2.5px at 85% 70%, var(--gold) 0%, transparent 70%),
+    radial-gradient(circle 2px at 45% 85%, var(--foil1) 0%, transparent 70%),
+    radial-gradient(circle 3.5px at 90% 15%, var(--gold) 0%, transparent 70%),
+    radial-gradient(circle 2px at 10% 80%, var(--foil1) 0%, transparent 70%);
+  animation: slimeSparkle 2.2s ease-in-out infinite alternate;
+  z-index: 2;
+}
+
+.brand h1::after {
+  inset: -14px -18px;
+  background: 
+    radial-gradient(circle 1.5px at 30% 30%, rgba(57, 255, 20, 0.9) 0%, transparent 100%),
+    radial-gradient(circle 1px at 70% 40%, rgba(199, 125, 255, 0.8) 0%, transparent 100%),
+    radial-gradient(circle 1.2px at 50% 10%, rgba(57, 255, 20, 0.9) 0%, transparent 100%),
+    radial-gradient(circle 1.5px at 20% 60%, rgba(199, 125, 255, 0.8) 0%, transparent 100%),
+    radial-gradient(circle 1px at 80% 80%, rgba(57, 255, 20, 0.9) 0%, transparent 100%);
+  animation: floatDust 3.5s linear infinite;
+  z-index: 2;
+}
+
+@keyframes slimeSparkle {
+  0% { opacity: 0.5; filter: drop-shadow(0 0 2px var(--foil1)); transform: scale(0.98); }
+  100% { opacity: 1; filter: drop-shadow(0 0 8px var(--gold)); transform: scale(1.02); }
+}
+
+@keyframes floatDust {
+  0% { transform: translateY(0px) translateX(0px); opacity: 0.3; }
+  50% { transform: translateY(-5px) translateX(3px); opacity: 0.9; }
+  100% { transform: translateY(-10px) translateX(-2px); opacity: 0.3; }
+}
+
+.brand span{color:var(--muted);font-size:11px;display:block;letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;}
+
+.balance{
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:12px;padding:8px 16px;display:flex;align-items:center;gap:10px;
+  justify-self:end;
+  grid-column: 3;
+}
+.balance .tick{color:var(--muted);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;}
+.balance .val{
+  font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;color:var(--gold);
+}
+
+.navrow{display:flex;justify-content:center;gap:8px;max-width:920px;margin:0 auto 24px;flex-wrap:wrap;}
+.navbtn{
+  background:transparent;border:1px solid var(--line);color:var(--muted);
+  padding:8px 16px;border-radius:999px;font-size:13px;cursor:pointer;font-weight:600;
+  transition:all .15s;
+}
+.navbtn.active{background:var(--surface2);color:var(--text);border-color:var(--foil1);}
+.navbtn:hover{color:var(--text);}
+
+.wrap{max-width:920px;margin:0 auto;}
+
+/* ---------- store ---------- */
+.section-label{font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin:26px 0 12px;}
+.packgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;}
+.packcard{
+  background:linear-gradient(160deg,var(--surface),var(--surface2));
+  border:1px solid var(--line);border-radius:16px;padding:20px;
+  position:relative;overflow:hidden;cursor:pointer;transition:transform .18s,border-color .18s;
+}
+.packcard:hover{transform:translateY(-3px);border-color:var(--foil1);}
+.packcard::after{
+  content:'';position:absolute;inset:0;opacity:0.08;pointer-events:none;
+  background:var(--pack-glow,linear-gradient(135deg,var(--foil1),var(--foil2)));
+}
+.pack-name{font-family:'VT323',monospace;font-weight:400;font-size:19px;margin:0 0 4px;}
+.pack-desc{color:var(--muted);font-size:12.5px;margin:0 0 14px;line-height:1.4;min-height:34px;}
+.pack-odds{font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.6;}
+.pack-odds b{color:var(--text);}
+.pack-price{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:8px;flex-wrap:wrap;
+}
+.price-tag{
+  font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--gold);font-size:16px;
+}
+.buybtn{
+  background:var(--foil2);color:#fff;border:none;border-radius:8px;
+  padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer;
+  box-shadow:0 0 10px rgba(157,78,221,0.4);
+}
+.buybtn:disabled{background:var(--line);color:var(--muted);cursor:not-allowed;box-shadow:none;}
+.sellbtn{
+  background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:8px;
+  padding:8px 12px;font-weight:700;font-size:12px;cursor:pointer;
+}
+.sellbtn:hover{background:rgba(199,125,255,0.1);}
+
+/* ---------- pack theme variants ---------- */
+:root{
+  --luxe-gold:#d4af37;
+  --luxe-gold2:#f5cf6b;
+}
+
+/* Basic Pack - black / slime green */
+.packcard.theme-basic{background:linear-gradient(160deg,#050605,#0b0f0a);border-color:var(--foil1);}
+.packcard.theme-basic:hover{border-color:var(--foil1);box-shadow:0 0 16px rgba(57,255,20,0.25);}
+.packcard.theme-basic .pack-name{color:var(--foil1);text-shadow:0 0 6px rgba(57,255,20,0.5);}
+.packcard.theme-basic::after{background:linear-gradient(135deg,var(--foil1),#0a0a0a);opacity:0.12;}
+
+.pack-visual.theme-basic{background:linear-gradient(160deg,#050605,#0b0f0a);border-color:var(--foil1);}
+.pack-visual.theme-basic .mark{color:var(--foil1);text-shadow:0 0 8px rgba(57,255,20,0.6);}
+
+.card-back.theme-basic{background:repeating-linear-gradient(45deg,#050505,#050505 8px,#150a24 8px,#150a24 16px);}
+.card-back.theme-basic span{color:var(--foil1);}
+
+/* Whale Vault - gold luxury */
+.packcard.theme-whale{background:linear-gradient(160deg,#1a1408,#0d0a04);border-color:var(--luxe-gold);}
+.packcard.theme-whale:hover{border-color:var(--luxe-gold2);box-shadow:0 0 18px rgba(212,175,55,0.35);}
+.packcard.theme-whale .pack-name{color:var(--luxe-gold2);text-shadow:0 0 8px rgba(212,175,55,0.6);}
+.packcard.theme-whale::after{background:linear-gradient(135deg,var(--luxe-gold),var(--luxe-gold2));opacity:0.14;}
+
+.pack-visual.theme-whale{background:linear-gradient(160deg,#1a1408,#0d0a04);border-color:var(--luxe-gold);}
+.pack-visual.theme-whale .mark{color:var(--luxe-gold2);text-shadow:0 0 10px rgba(212,175,55,0.7);}
+.pack-visual.theme-whale .sheen{background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,0.25) 35%,rgba(212,175,55,0.5) 45%,rgba(245,207,107,0.4) 55%,transparent 70%);}
+
+.card-back.theme-whale{background:repeating-linear-gradient(45deg,#1a1408,#1a1408 8px,#0d0a04 8px,#0d0a04 16px);}
+.card-back.theme-whale span{color:var(--luxe-gold2);text-shadow:0 0 6px rgba(212,175,55,0.6);}
+
+/* Diamond Pack - white/light-grey border instead of the default green */
+.packcard.theme-diamond:hover{border-color:#e6e6e6;box-shadow:0 0 16px rgba(230,230,230,0.25);}
+.pack-visual.theme-diamond{border-color:#e6e6e6;}
+
+/* ---------- dex ---------- */
+.dexhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px;}
+.dexhead-left{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;}
+.dexhead-left h2{font-family:'VT323',monospace;font-size:26px;margin:0;letter-spacing:0.03em;text-transform:uppercase;}
+.dexcount{color:var(--muted);font-size:13px;}
+
+/* Rarity Key Legend */
+.rarity-key{
+  display:flex;align-items:center;gap:10px;background:var(--surface);
+  border:1px solid var(--line);border-radius:8px;padding:6px 12px;
+}
+.key-item{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--muted);font-weight:500;}
+.key-dot{width:8px;height:8px;border-radius:50%;background:var(--dot-color, var(--muted));}
+
+.dexgrid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px;
+}
+.dexslot{
+  aspect-ratio:3/4;border-radius:10px;border:1px solid var(--line);
+  background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:10px;color:var(--muted);position:relative;padding:4px;text-align:center;
+}
+.dexslot.owned{border-color:var(--slot-color,var(--rare));background:var(--surface2);color:var(--text);}
+.dexslot .num{position:absolute;top:4px;left:6px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);}
+.dexslot .glyph{
+  width:60px;height:60px;border-radius:0;margin-bottom:3px;
+  background:transparent;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+.dexslot .glyph img{
+  width:56px;height:56px;object-fit:contain;image-rendering:pixelated;
+}
+.dexslot .nm{font-weight:600;font-size:10px;line-height:1.15;}
+.dexslot .cnt{font-size:9px;margin-top:2px;color:var(--muted);}
+
+/* ---------- opening overlay ---------- */
+.overlay{
+  position:fixed;inset:0;background:rgba(6,6,14,0.94);backdrop-filter:blur(6px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:50;padding:20px;
+}
+.pack-stage{display:flex;flex-direction:column;align-items:center;gap:22px;}
+.pack-visual{
+  width:170px;height:240px;border-radius:16px;position:relative;cursor:pointer;
+  background:linear-gradient(160deg,#1a1a36,#0d0d1e);
+  border:1px solid var(--line);
+  box-shadow:0 20px 60px rgba(0,0,0,0.6);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .4s cubic-bezier(.34,1.56,.64,1);
+  overflow:hidden;
+}
+.pack-visual .sheen{
+  position:absolute;inset:0;
+  background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,0.18) 35%,rgba(57,255,20,0.35) 45%,rgba(157,78,221,0.3) 55%,transparent 70%);
+  background-size:250% 250%;animation:sheenmove 3.2s linear infinite;
+}
+@keyframes sheenmove{0%{background-position:0% 0%;}100%{background-position:100% 100%;}}
+.pack-visual .mark{font-family:'VT323',monospace;font-weight:400;font-size:30px;color:var(--text);letter-spacing:0.05em;z-index:1;}
+.pack-visual.ripping{animation:ripshake .35s ease;}
+@keyframes ripshake{
+  0%,100%{transform:translateX(0) rotate(0);}
+  20%{transform:translateX(-6px) rotate(-2deg);}
+  40%{transform:translateX(6px) rotate(2deg);}
+  60%{transform:translateX(-4px) rotate(-1deg) scale(1.03);}
+  80%{transform:translateX(4px) rotate(1deg) scale(1.06);}
+}
+.pack-hint{color:var(--muted);font-size:13px;letter-spacing:0.04em;}
+
+.reveal-row{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;max-width:900px;}
+.card-slot-wrapper{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.already-owned-badge{
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--gold);
+  background:rgba(199,125,255,0.15);border:1px solid var(--gold);padding:2px 6px;border-radius:4px;
+  letter-spacing:0.05em;text-transform:uppercase;height:18px;display:flex;align-items:center;
+}
+.card-slot{perspective:900px;width:130px;height:180px;}
+.card-inner{
+  position:relative;width:100%;height:100%;transform-style:preserve-3d;
+  transition:transform .6s cubic-bezier(.3,.9,.4,1);cursor:pointer;
+}
+.card-slot.flipped .card-inner{transform:rotateY(180deg);}
+.card-face{
+  position:absolute;inset:0;backface-visibility:hidden;border-radius:12px;
+  display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--line);
+}
+.card-back{
+  background:repeating-linear-gradient(45deg,#161630,#161630 8px,#1c1c38 8px,#1c1c38 16px);
+  display:flex;align-items:center;justify-content:center;
+}
+.card-back span{font-family:'VT323',monospace;font-weight:400;color:var(--foil1);font-size:13px;letter-spacing:0.1em;opacity:0.8;}
+.card-front{
+  transform:rotateY(180deg);
+  background:linear-gradient(165deg,var(--surface2),var(--surface));
+  border-width:2px;border-style:solid;border-color:var(--card-color,var(--common));
+  padding:8px;justify-content:space-between;
+}
+.card-front.shine::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,0.35) 45%,rgba(57,255,20,0.4) 50%,rgba(157,78,221,0.35) 55%,transparent 70%);
+  background-size:220% 220%;animation:sheenmove 2.4s linear infinite;
+  mix-blend-mode:screen;
+}
+
+/* ---------- purple flame aura for ultra/secret tier cards ---------- */
+.flame-aura{
+  animation: flamePulse 1.6s ease-in-out infinite alternate;
+}
+@keyframes flamePulse{
+  0%{ box-shadow: 0 0 8px 2px rgba(157,78,221,0.5), 0 0 20px 6px rgba(157,78,221,0.28); }
+  100%{ box-shadow: 0 0 16px 5px rgba(199,125,255,0.85), 0 0 34px 12px rgba(157,78,221,0.55); }
+}
+.cf-top{display:flex;justify-content:space-between;align-items:center;font-size:9px;z-index:1;}
+.cf-num{font-family:'JetBrains Mono',monospace;color:var(--muted);}
+.cf-type{
+  padding:2px 6px;border-radius:6px;font-weight:700;font-size:8px;text-transform:uppercase;
+  color:#0b0b14;background:var(--type-color,#999);
+}
+.cf-glyph{
+  width:88px;height:88px;border-radius:0;margin:0 auto;
+  background:transparent;align-self:center;
+  box-shadow:none;
+  display:flex;align-items:center;justify-content:center;
+  z-index:1;overflow:hidden;
+}
+.cf-glyph img{
+  width:84px;height:84px;object-fit:contain;image-rendering:pixelated;
+}
+.cf-bottom{z-index:1;text-align:center;}
+.cf-name{font-family:'VT323',monospace;font-weight:400;font-size:13px;}
+.cf-rarity{font-size:8.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--card-color,var(--common));font-weight:700;}
+.cf-value{
+  font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--gold);margin-top:2px;
+}
+
+.summary-panel{
+  margin-top:24px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:18px 22px;display:flex;flex-direction:column;align-items:center;gap:14px;max-width:520px;
+}
+.summary-total{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--muted);}
+.summary-total b{
+  color:var(--gold);
+}
+.summary-actions{display:flex;gap:10px;}
+.sbtn{border:none;border-radius:8px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;}
+.sbtn.keep{background:var(--foil2);color:#fff;box-shadow:0 0 10px rgba(157,78,221,0.4);}
+.sbtn.sell{background:var(--surface2);color:var(--gold);border:1px solid var(--gold);}
+.closex{position:absolute;top:18px;right:22px;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;}
+
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--surface2);border:1px solid var(--line);border-radius:10px;
+  padding:10px 18px;font-size:13px;z-index:80;opacity:0;transition:opacity .25s;pointer-events:none;
+  color: var(--foil2);
+}
+.toast.show{opacity:1;}
+
+.confetti{position:fixed;top:-10px;width:8px;height:8px;z-index:60;pointer-events:none;border-radius:2px;}
+
+.footer-actions{display:flex;justify-content:center;gap:16px;margin-top:34px;}
+.reset-link{color:var(--muted);font-size:11px;background:none;border:none;cursor:pointer;text-decoration:underline;}
+
+/* ---------- vertical terminal wheel ---------- */
+.wheel-overlay-stage{display:flex;flex-direction:column;align-items:center;gap:18px;}
+.term-slot-frame{
+  position:relative;width:280px;height:140px;background:var(--surface);
+  border:2px solid var(--foil1);border-radius:12px;overflow:hidden;
+  box-shadow:0 0 24px rgba(57,255,20,0.25), inset 0 0 16px rgba(0,0,0,0.8);
+}
+.term-slot-frame::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:45px;
+  background:linear-gradient(to bottom, rgba(7,9,10,0.9), transparent);
+  pointer-events:none;z-index:3;
+}
+.term-slot-frame::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:45px;
+  background:linear-gradient(to top, rgba(7,9,10,0.9), transparent);
+  pointer-events:none;z-index:3;
+}
+.term-pointer-line{
+  position:absolute;top:50%;left:0;right:0;height:2px;margin-top:-1px;
+  background:var(--foil1);box-shadow:0 0 8px var(--foil1);z-index:4;pointer-events:none;
+}
+.term-strip{
+  position:absolute;top:0;left:0;width:100%;
+  display:flex;flex-direction:column;align-items:center;
+  will-change:transform;
+}
+.term-item{
+  height:46px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--gold);
+  letter-spacing:0.05em;border-bottom:1px dashed var(--line);
+}
+.spin-btn{
+  background:var(--foil2);color:#fff;border:none;border-radius:8px;
+  padding:12px 26px;font-weight:700;font-size:13px;cursor:pointer;font-family:'JetBrains Mono',monospace;
+  box-shadow:0 0 12px rgba(157,78,221,0.4);
+}
+.spin-btn:disabled{background:var(--line);color:var(--muted);cursor:not-allowed;box-shadow:none;}
+.wheel-result{
+  font-family:'JetBrains Mono',monospace;font-size:28px;color:var(--gold);
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function(){
+
+const TYPE_COLORS = {
+  normal:'#A8A878',fire:'#F08030',water:'#6890F0',electric:'#F0C020',grass:'#78C850',
+  ice:'#98D8D8',fighting:'#C03028',poison:'#A040A0',ground:'#E0C068',flying:'#A890F0',
+  psychic:'#F85888',bug:'#A8B820',rock:'#B8A038',ghost:'#705898',dragon:'#7038F8'
+};
+
+const RARITY = {
+  common:{label:'Common',color:'var(--common)',weight:55},
+  uncommon:{label:'Uncommon',color:'var(--uncommon)',weight:28},
+  rare:{label:'Rare',color:'var(--rare)',weight:14},
+  ultra:{label:'Ultra',color:'var(--ultra)',weight:2.2},
+  secret:{label:'Secret',color:'var(--secret)',weight:0.8}
+};
+
+const POKEMON = [
+[1,'Bulbasaur','grass','common'],[2,'Ivysaur','grass','uncommon'],[3,'Venusaur','grass','ultra'],
+[4,'Charmander','fire','common'],[5,'Charmeleon','fire','uncommon'],[6,'Charizard','fire','secret'],
+[7,'Squirtle','water','common'],[8,'Wartortle','water','uncommon'],[9,'Blastoise','water','ultra'],
+[10,'Caterpie','bug','common'],[11,'Metapod','bug','common'],[12,'Butterfree','bug','rare'],
+[13,'Weedle','bug','common'],[14,'Kakuna','bug','common'],[15,'Beedrill','bug','rare'],
+[16,'Pidgey','normal','common'],[17,'Pidgeotto','normal','uncommon'],[18,'Pidgeot','normal','rare'],
+[19,'Rattata','normal','common'],[20,'Raticate','normal','uncommon'],
+[21,'Spearow','normal','common'],[22,'Fearow','normal','uncommon'],
+[23,'Ekans','poison','common'],[24,'Arbok','poison','uncommon'],
+[25,'Pikachu','electric','rare'],[26,'Raichu','electric','rare'],
+[27,'Sandshrew','ground','common'],[28,'Sandslash','ground','uncommon'],
+[29,'Nidoran F','poison','common'],[30,'Nidorina','poison','uncommon'],[31,'Nidoqueen','poison','rare'],
+[32,'Nidoran M','poison','common'],[33,'Nidorino','poison','uncommon'],[34,'Nidoking','poison','rare'],
+[35,'Clefairy','normal','common'],[36,'Clefable','normal','rare'],
+[37,'Vulpix','fire','common'],[38,'Ninetales','fire','rare'],
+[39,'Jigglypuff','normal','common'],[40,'Wigglytuff','normal','uncommon'],
+[41,'Zubat','poison','common'],[42,'Golbat','poison','uncommon'],
+[43,'Oddish','grass','common'],[44,'Gloom','grass','uncommon'],[45,'Vileplume','grass','rare'],
+[46,'Paras','bug','common'],[47,'Parasect','bug','uncommon'],
+[48,'Venonat','bug','common'],[49,'Venomoth','bug','uncommon'],
+[50,'Diglett','ground','common'],[51,'Dugtrio','ground','uncommon'],
+[52,'Meowth','normal','common'],[53,'Persian','normal','uncommon'],
+[54,'Psyduck','water','common'],[55,'Golduck','water','uncommon'],
+[56,'Mankey','fighting','common'],[57,'Primeape','fighting','uncommon'],
+[58,'Growlithe','fire','common'],[59,'Arcanine','fire','rare'],
+[60,'Poliwag','water','common'],[61,'Poliwhirl','water','uncommon'],[62,'Poliwrath','water','rare'],
+[63,'Abra','psychic','common'],[64,'Kadabra','psychic','uncommon'],[65,'Alakazam','psychic','ultra'],
+[66,'Machop','fighting','common'],[67,'Machoke','fighting','uncommon'],[68,'Machamp','fighting','ultra'],
+[69,'Bellsprout','grass','common'],[70,'Weepinbell','grass','uncommon'],[71,'Victreebel','grass','rare'],
+[72,'Tentacool','water','common'],[73,'Tentacruel','water','uncommon'],
+[74,'Geodude','rock','common'],[75,'Graveler','rock','uncommon'],[76,'Golem','rock','rare'],
+[77,'Ponyta','fire','common'],[78,'Rapidash','fire','uncommon'],
+[79,'Slowpoke','water','common'],[80,'Slowbro','water','rare'],
+[81,'Magnemite','electric','common'],[82,'Magneton','electric','uncommon'],
+[83,'Farfetchd','normal','uncommon'],
+[84,'Doduo','normal','common'],[85,'Dodrio','normal','uncommon'],
+[86,'Seel','water','common'],[87,'Dewgong','water','uncommon'],
+[88,'Grimer','poison','common'],[89,'Muk','poison','uncommon'],
+[90,'Shellder','water','common'],[91,'Cloyster','water','rare'],
+[92,'Gastly','ghost','common'],[93,'Haunter','ghost','uncommon'],[94,'Gengar','ghost','ultra'],
+[95,'Onix','rock','rare'],
+[96,'Drowzee','psychic','common'],[97,'Hypno','psychic','uncommon'],
+[98,'Krabby','water','common'],[99,'Kingler','water','uncommon'],
+[100,'Voltorb','electric','common'],[101,'Electrode','electric','uncommon'],
+[102,'Exeggcute','grass','common'],[103,'Exeggutor','grass','rare'],
+[104,'Cubone','ground','common'],[105,'Marowak','ground','uncommon'],
+[106,'Hitmonlee','fighting','rare'],[107,'Hitmonchan','fighting','rare'],
+[108,'Lickitung','normal','uncommon'],
+[109,'Koffing','poison','common'],[110,'Weezing','poison','uncommon'],
+[111,'Rhyhorn','ground','common'],[112,'Rhydon','ground','rare'],
+[113,'Chansey','normal','rare'],
+[114,'Tangela','grass','uncommon'],
+[115,'Kangaskhan','normal','rare'],
+[116,'Horsea','water','common'],[117,'Seadra','water','uncommon'],
+[118,'Goldeen','water','common'],[119,'Seaking','water','uncommon'],
+[120,'Staryu','water','common'],[121,'Starmie','water','rare'],
+[122,'Mr. Mime','psychic','uncommon'],
+[123,'Scyther','bug','rare'],
+[124,'Jynx','ice','rare'],
+[125,'Electabuzz','electric','rare'],
+[126,'Magmar','fire','rare'],
+[127,'Pinsir','bug','rare'],
+[128,'Tauros','normal','rare'],
+[129,'Magikarp','water','common'],
+[130,'Gyarados','water','ultra'],
+[131,'Lapras','water','ultra'],
+[132,'Ditto','normal','ultra'],
+[133,'Eevee','normal','uncommon'],
+[134,'Vaporeon','water','ultra'],
+[135,'Jolteon','electric','ultra'],
+[136,'Flareon','fire','ultra'],
+[137,'Porygon','normal','rare'],
+[138,'Omanyte','rock','common'],[139,'Omastar','rock','rare'],
+[140,'Kabuto','rock','common'],[141,'Kabutops','rock','rare'],
+[142,'Aerodactyl','rock','ultra'],
+[143,'Snorlax','normal','ultra'],
+[144,'Articuno','ice','secret'],[145,'Zapdos','electric','secret'],[146,'Moltres','fire','secret'],
+[147,'Dratini','dragon','rare'],[148,'Dragonair','dragon','rare'],[149,'Dragonite','dragon','secret'],
+[150,'Mewtwo','psychic','secret'],[151,'Mew','psychic','secret']
+].map(p => {
+  const id = p[0];
+  const name = p[1];
+  const type = p[2];
+  const rarity = p[3];
+  
+  const baseValues = { common: 6, uncommon: 28, rare: 120, ultra: 950, secret: 4500 };
+  const tierBase = baseValues[rarity];
+  const uniqueOffset = ((id * 7) % 15) - 7; 
+  const value = Math.max(1, tierBase + uniqueOffset);
+
+  return {
+    id,
+    name,
+    type,
+    rarity,
+    value,
+    sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
+  };
+});
+
+const BY_TIER = {};
+POKEMON.forEach(p=>{ (BY_TIER[p.rarity]=BY_TIER[p.rarity]||[]).push(p); });
+
+const PACKS = [
+  {id:'basic',name:'Basic Pack',price:150,cards:5,
+    desc:'Standard issue. Reliable baseline pulls.',
+    weights:{common:65,uncommon:25,rare:8,ultra:1.8,secret:0.2}},
+  {id:'diamond',name:'Diamond Pack',price:1200,cards:5,
+    desc:'Upgraded tier with significantly better high-end odds.',
+    weights:{common:30,uncommon:40,rare:22,ultra:6.5,secret:1.5},guaranteeTier:'rare'},
+  {id:'whale',name:'Whale Vault',price:7500,cards:5,
+    desc:'Elite vault box with guaranteed heavy hitters and massive secret odds.',
+    weights:{common:5,uncommon:15,rare:45,ultra:27,secret:8},guaranteeTier:'ultra'}
+];
+
+const SHOP_COLLECTIBLES = [
+  {id:'boulder', name:'Boulder Badge', price:2500, tier:'Early Game', desc:'Rock-solid token from Pewter Gym. A manageable first major milestone.', colorVar:'var(--boulder-col)'},
+  {id:'cascade', name:'Cascade Badge', price:10000, tier:'Early Game', desc:'Gleaming token from Cerulean Gym. Flowing with early accumulation.', colorVar:'var(--cascade-col)'},
+  {id:'thunder', name:'Thunder Badge', price:35000, tier:'Mid Game', desc:'Shocking prize from Lt. Surge. Demands dedicated mid-tier collection loops.', colorVar:'var(--thunder-col)'},
+  {id:'rainbow', name:'Rainbow Badge', price:120000, tier:'Mid Game', desc:'Colorful token from Erika. Blooming with robust mid-game presence.', colorVar:'var(--rainbow-col)'},
+  {id:'soul',    name:'Soul Badge',    price:450000, tier:'Late Game', desc:'Toxically elusive badge from Koga. Reaching deep into your long-term reserves.', colorVar:'var(--soul-col)'},
+  {id:'marsh',   name:'Marsh Badge',   price:1500000, tier:'Late Game', desc:'Psychic milestone from Sabrina. Mind-bending cost for serious completionists.', colorVar:'var(--marsh-col)'},
+  {id:'volcano', name:'Volcano Badge', price:5000000, tier:'Endgame', desc:'Blazing hot emblem from Blaine. A massive wealth sink for veteran players.', colorVar:'var(--volcano-col)'},
+  {id:'earth',   name:'Earth Badge',   price:15000000, tier:'Endgame', desc:'The ultimate token from Giovanni. Ultimate status symbol of a master collector.', colorVar:'var(--earth-col)'}
+];
+
+const WHEEL_REWARDS = [
+  {amt:150,    weight:30},
+  {amt:400,    weight:24},
+  {amt:900,    weight:18},
+  {amt:2500,   weight:13},
+  {amt:7500,   weight:8},
+  {amt:25000,  weight:4.5},
+  {amt:90000,  weight:1.8},
+  {amt:369000, weight:0.7}
+];
+const WHEEL_COOLDOWN = 60*60*1000; // 1 hour
+
+/* ---------- global market cycle ----------
+   A single deterministic index shared by every card (and every player/session,
+   since it's a pure function of wall-clock time from a fixed epoch). It's a
+   sum of three sine waves of different periods, which produces recognizable
+   bull/bear "cycles" rather than pure noise. Because it's deterministic, the
+   chart can show a short window into the near future too, so a patient
+   player really can learn to read a cycle instead of just watching a random
+   walk. A mild, capped time-held bonus sits underneath it so patience still
+   helps on average, but the index itself can push value below 1.0 - holding
+   is no longer a guaranteed profit. */
+const MARKET_EPOCH = Date.parse('2024-01-01T00:00:00Z');
+const MARKET_WAVES = [
+  { periodMs: 5   * 60*60*1000, amp: 0.35, phase: 1.1 }, // long supercycle (~5h)
+  { periodMs: 41  * 60*1000,    amp: 0.15, phase: 2.7 }, // medium swing (~41m)
+  { periodMs: 9   * 60*1000,    amp: 0.07, phase: 4.2 }, // short jitter (~9m)
+];
+const MARKET_HELD_BONUS_CAP = 0.30;      // max +30%
+const MARKET_HELD_BONUS_RATE = 0.01;     // per hour held
+const MARKET_MULT_FLOOR = 0.15;          // guard against near-zero/negative payouts
+
+function marketIndexAt(t){
+  let idx = 1;
+  MARKET_WAVES.forEach(w=>{
+    idx += w.amp * Math.sin((2*Math.PI*(t-MARKET_EPOCH))/w.periodMs + w.phase);
+  });
+  return idx;
+}
+function marketPhaseFor(idx){
+  if(idx >= 1.15) return {label:'BULL MARKET', color:'var(--foil1)'};
+  if(idx <= 0.85) return {label:'BEAR MARKET', color:'#ff4444'};
+  return {label:'NEUTRAL', color:'var(--muted)'};
+}
+function heldBonusFor(hoursHeld){
+  return Math.min(MARKET_HELD_BONUS_CAP, Math.max(0,hoursHeld) * MARKET_HELD_BONUS_RATE);
+}
+function cardMultiplier(hoursHeld, tNow){
+  return Math.max(MARKET_MULT_FLOOR, marketIndexAt(tNow) + heldBonusFor(hoursHeld));
+}
+
+const STORAGE_KEY = 'pokehex-state-v2';
+let state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[] };
+let view = 'open';
+let opening = null;
+let wheelSpinning = false;
+let wheelResult = null;
+
+async function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      state = JSON.parse(raw);
+    }
+  }catch(e){}
+  
+  if((!state.instances || state.instances.length === 0) && state.dex && Object.keys(state.dex).length > 0){
+    state.instances = [];
+    Object.entries(state.dex).forEach(([idStr, data])=>{
+      const count = data.count || 1;
+      const acquiredAt = data.acquiredAt || Date.now();
+      for(let i=0; i<count; i++){
+        state.instances.push({
+          uid: 'inst_' + Math.random().toString(36).substr(2,9) + '_' + i,
+          id: Number(idStr),
+          rarity: data.rarity,
+          acquiredAt: acquiredAt - (i * 1000)
+        });
+      }
+    });
+  }
+
+  if(state.lastSpinAt===undefined) state.lastSpinAt = null;
+  if(state.collectibles===undefined) state.collectibles = {};
+  if(state.instances===undefined) state.instances = [];
+  if(state.valueHistory===undefined) state.valueHistory = [];
+  
+  recordVaultValue();
+  render();
+}
+async function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e){ console.error('save failed', e); }
+}
+
+function calculateCurrentVaultValue(){
+  const instances = state.instances || [];
+  const now = Date.now();
+  let total = 0;
+  instances.forEach(inst => {
+    const p = POKEMON.find(x => x.id === inst.id);
+    if(!p) return;
+    const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
+    const multiplier = cardMultiplier(hoursHeld, now);
+    total += Math.max(1, Math.round(p.value * multiplier));
+  });
+  return total;
+}
+
+function recordVaultValue(){
+  const now = Date.now();
+  const currentVal = calculateCurrentVaultValue();
+  if(!state.valueHistory) state.valueHistory = [];
+  
+  const lastEntry = state.valueHistory[state.valueHistory.length - 1];
+  if(!lastEntry || (now - lastEntry.time > 10000) || lastEntry.val !== currentVal){
+    state.valueHistory.push({ time: now, val: currentVal });
+    if(state.valueHistory.length > 30) state.valueHistory.shift();
+  }
+}
+
+function weightedTier(weights){
+  const entries = Object.entries(weights);
+  const total = entries.reduce((s,[,w])=>s+w,0);
+  let r = Math.random()*total;
+  for(const [tier,w] of entries){ if(r<w) return tier; r-=w; }
+  return entries[0][0];
+}
+function randCard(tier){
+  const pool = BY_TIER[tier];
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+function openPack(pack){
+  if(state.hex < pack.price) return toast("Not enough HEX for that pack.");
+  state.hex -= pack.price;
+  const cards = [];
+  const order = ['common','uncommon','rare','ultra','secret'];
+  
+  for(let i=0;i<pack.cards;i++){
+    let tier = weightedTier(pack.weights);
+    if(pack.guaranteeTier && i===pack.cards-1){
+      const hasGuarantee = cards.some(c=>order.indexOf(c.rarity)>=order.indexOf(pack.guaranteeTier));
+      if(!hasGuarantee){
+        if(pack.guaranteeTier === 'ultra') tier = Math.random()<0.75?'ultra':'secret';
+        else if(pack.guaranteeTier === 'rare') tier = Math.random()<0.6?'rare':(Math.random()<0.15?'ultra':'uncommon');
+      }
+    }
+    cards.push(randCard(tier));
+  }
+  opening = {pack, cards, flipped:[], stage:'closed', keep:cards.map(()=>true)};
+  recordVaultValue();
+  saveState();
+  render();
+}
+function finalizeOpening(){
+  let earned = 0;
+  const now = Date.now();
+  opening.cards.forEach((c,i)=>{
+    if(opening.keep[i]){
+      const existing = state.dex[c.id];
+      if(existing){ existing.count++; }
+      else{ state.dex[c.id] = {count:1, rarity:c.rarity, acquiredAt: now}; }
+
+      state.instances.push({
+        uid: 'inst_' + Math.random().toString(36).substr(2, 9),
+        id: c.id,
+        rarity: c.rarity,
+        acquiredAt: now
+      });
+    } else {
+      earned += c.value;
+    }
+  });
+  state.hex += earned;
+  opening = null;
+  recordVaultValue();
+  saveState();
+  view='open';
+  render();
+}
+
+function buyCollectible(item){
+  if(state.collectibles[item.id]) return toast("You already own this badge!");
+  if(state.hex < item.price) return toast("Not enough HEX! Keep grinding packs or spinning the wheel.");
+  state.hex -= item.price;
+  state.collectibles[item.id] = 1;
+  saveState();
+  burstConfetti();
+  toast(`Purchased ${item.name}! Milestone unlocked.`);
+  render();
+}
+
+function sellCollectible(item){
+  if(!state.collectibles[item.id]) return toast("You don't own this badge!");
+  const refund = Math.round(item.price * 0.6);
+  delete state.collectibles[item.id];
+  state.hex += refund;
+  recordVaultValue();
+  saveState();
+  toast(`Sold ${item.name} for liquid capital: <i class="hex-icon"></i>${fmtHex(refund)}!`);
+  render();
+}
+
+function pickWheelIndex(){
+  const total = WHEEL_REWARDS.reduce((s,r)=>s+r.weight,0);
+  let r = Math.random()*total;
+  for(let i=0;i<WHEEL_REWARDS.length;i++){ if(r<WHEEL_REWARDS[i].weight) return i; r-=WHEEL_REWARDS[i].weight; }
+  return 0;
+}
+function canSpin(){ return !state.lastSpinAt || (Date.now()-state.lastSpinAt) >= WHEEL_COOLDOWN; }
+function fmtCountdown(ms){
+  const s = Math.max(0,Math.floor(ms/1000));
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  return `${h>0?h+':':''}${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+function spinStatusText(){
+  if(canSpin()) return 'Ready';
+  return fmtCountdown(WHEEL_COOLDOWN - (Date.now()-state.lastSpinAt));
+}
+function fmtHex(n){ return n.toLocaleString('en-US'); }
+
+let actx;
+function ac(){ actx = actx || new (window.AudioContext||window.webkitAudioContext)(); return actx; }
+function tone(freq,dur,type,gain,delay){
+  try{
+    const c = ac(); const t0 = c.currentTime+(delay||0);
+    const osc = c.createOscillator(); const g = c.createGain();
+    osc.type = type||'sine'; osc.frequency.setValueAtTime(freq,t0);
+    g.gain.setValueAtTime(0,t0);
+    g.gain.linearRampToValueAtTime(gain||0.08,t0+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+    osc.connect(g); g.connect(c.destination);
+    osc.start(t0); osc.stop(t0+dur+0.02);
+  }catch(e){}
+}
+function ripSound(){ tone(120,0.25,'sawtooth',0.06); tone(400,0.15,'square',0.03,0.05); }
+function revealSound(rarity){
+  const base = {common:440,uncommon:520,rare:600,ultra:820,secret:980}[rarity]||440;
+  tone(base,0.18,'triangle',0.07);
+  if(rarity==='ultra'||rarity==='secret'){ tone(base*1.5,0.3,'triangle',0.06,0.08); tone(base*2,0.4,'sine',0.05,0.16); }
+}
+
+function burstConfetti(){
+  const colors = ['#39ff14','#9d4edd','#c77dff','#f0d9ff'];
+  for(let i=0;i<26;i++){
+    const el = document.createElement('div');
+    el.className='confetti';
+    el.style.left = (45+Math.random()*10)+'vw';
+    el.style.background = colors[i%colors.length];
+    el.style.transform = `rotate(${Math.random()*360}deg)`;
+    document.body.appendChild(el);
+    const dur = 1200+Math.random()*900;
+    const drift = (Math.random()-0.5)*300;
+    el.animate([
+      {transform:`translate(0,0) rotate(0deg)`,opacity:1},
+      {transform:`translate(${drift}px, 100vh) rotate(720deg)`,opacity:0}
+    ],{duration:dur,easing:'ease-in'});
+    setTimeout(()=>el.remove(),dur+50);
+  }
+}
+
+let toastTimer;
+function toast(msg){
+  let t = document.getElementById('toast');
+  if(!t){ t=document.createElement('div'); t.id='toast'; t.className='toast'; document.body.appendChild(t); }
+  t.innerHTML = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderOpen(){
+  return `
+  <div class="section-label">Choose a pack</div>
+  <div class="packgrid">
+    ${PACKS.map(p=>`
+      <div class="packcard ${p.id==='basic'?'theme-basic':(p.id==='whale'?'theme-whale':(p.id==='diamond'?'theme-diamond':''))}" data-pack="${p.id}">
+        <div class="pack-name">${esc(p.name)}</div>
+        <div class="pack-desc">${esc(p.desc)}</div>
+        <div class="pack-odds">
+          <b>${p.cards}</b> cards &middot; secret odds <b>${p.weights.secret}%</b>${p.guaranteeTier?` &middot; guaranteed ${p.guaranteeTier.toUpperCase()}+`:''}
+        </div>
+        <div class="pack-price">
+          <span class="price-tag mono"><i class="hex-icon"></i>${p.price}</span>
+          <button class="buybtn" data-buy="${p.id}" ${state.hex<p.price?'disabled':''}>Open</button>
+        </div>
+      </div>
+    `).join('')}
+  </div>
+  <div class="section-label">Dex progress</div>
+  <div style="color:var(--muted);font-size:13px;">${Object.keys(state.dex).length} / 151 species collected</div>
+  `;
+}
+
+function renderVaultChart(){
+  const history = state.valueHistory && state.valueHistory.length > 0 ? state.valueHistory : [{time: Date.now(), val: calculateCurrentVaultValue()}];
+  const currentTotal = calculateCurrentVaultValue();
+
+  const width = 880;
+  const height = 140;
+  const padTop = 15;
+  const padBottom = 20;
+  const padLeft = 45;
+  const padRight = 20;
+
+  const innerW = width - padLeft - padRight;
+  const innerH = height - padTop - padBottom;
+
+  const vals = history.map(h => h.val);
+  const minVal = 0;
+  const maxVal = Math.max(100, ...vals) * 1.15;
+
+  const points = history.map((h, i) => {
+    const x = padLeft + (history.length === 1 ? innerW / 2 : (i / (history.length - 1)) * innerW);
+    const y = padTop + innerH - ((h.val - minVal) / (maxVal - minVal)) * innerH;
+    return { x, y, val: h.val };
+  });
+
+  const pathD = points.length === 1 
+    ? `M ${points[0].x} ${points[0].y} L ${points[0].x} ${points[0].y}`
+    : points.reduce((acc, p, i) => i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`, '');
+
+  const areaD = points.length === 1
+    ? `M ${padLeft} ${padTop + innerH} L ${points[0].x} ${points[0].y} L ${padLeft + innerW} ${padTop + innerH} Z`
+    : `${pathD} L ${points[points.length - 1].x} ${padTop + innerH} L ${points[0].x} ${padTop + innerH} Z`;
+
+  return `
+    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span style="font-family:'VT323',monospace; font-size:18px; color:var(--foil1); letter-spacing:0.04em;">Vault Valuation Live Feed</span>
+        <span id="vaultTotalVal" class="mono" style="font-size:14px; color:var(--gold);"><i class="hex-icon"></i>${fmtHex(currentTotal)} HEX</span>
+      </div>
+      <div style="width:100%; overflow-x:auto;">
+        <svg id="vaultChartSvg" viewBox="0 0 ${width} ${height}" style="width:100%; height:120px; display:block;">
+          <defs>
+            <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--foil1)" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="var(--foil2)" stop-opacity="0.0"/>
+            </linearGradient>
+          </defs>
+          <!-- Grid lines -->
+          <line x1="${padLeft}" y1="${padTop}" x2="${width - padRight}" y2="${padTop}" stroke="var(--line)" stroke-dasharray="3,3" />
+          <line x1="${padLeft}" y1="${padTop + innerH / 2}" x2="${width - padRight}" y2="${padTop + innerH / 2}" stroke="var(--line)" stroke-dasharray="3,3" />
+          <line x1="${padLeft}" y1="${padTop + innerH}" x2="${width - padRight}" y2="${padTop + innerH}" stroke="var(--line)" />
+
+          <!-- Axis Labels -->
+          <text x="${padLeft - 6}" y="${padTop + 4}" fill="var(--muted)" font-size="9" font-family="JetBrains Mono" text-anchor="end">${fmtHex(Math.round(maxVal))}</text>
+          <text x="${padLeft - 6}" y="${padTop + innerH + 4}" fill="var(--muted)" font-size="9" font-family="JetBrains Mono" text-anchor="end">0</text>
+
+          <!-- Area & Line -->
+          <path d="${areaD}" fill="url(#chartGrad)" />
+          <path d="${pathD}" fill="none" stroke="var(--foil1)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 4px rgba(57,255,20,0.5));" />
+
+          <!-- Data Points -->
+          ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="var(--foil2)" stroke="var(--foil1)" stroke-width="1.5" />`).join('')}
+        </svg>
+      </div>
+    </div>
+  `;
+}
+
+function updateVaultFeedLive() {
+  if (view !== 'market') return;
+  
+  const currentTotal = calculateCurrentVaultValue();
+  const balanceValEl = document.querySelector('.balance .val');
+  if (balanceValEl) {
+    balanceValEl.innerHTML = `<i class="hex-icon"></i>${fmtHex(state.hex)}`;
+  }
+
+  const chartContainer = document.querySelector('.wrap');
+  if (chartContainer && chartContainer.querySelector('#vaultChartSvg')) {
+    const history = state.valueHistory && state.valueHistory.length > 0 ? state.valueHistory : [{time: Date.now(), val: currentTotal}];
+    
+    const width = 880;
+    const height = 140;
+    const padTop = 15;
+    const padBottom = 20;
+    const padLeft = 45;
+    const padRight = 20;
+
+    const innerW = width - padLeft - padRight;
+    const innerH = height - padTop - padBottom;
+
+    const vals = history.map(h => h.val);
+    const minVal = 0;
+    const maxVal = Math.max(100, ...vals) * 1.15;
+
+    const points = history.map((h, i) => {
+      const x = padLeft + (history.length === 1 ? innerW / 2 : (i / (history.length - 1)) * innerW);
+      const y = padTop + innerH - ((h.val - minVal) / (maxVal - minVal)) * innerH;
+      return { x, y, val: h.val };
+    });
+
+    const pathD = points.length === 1 
+      ? `M ${points[0].x} ${points[0].y} L ${points[0].x} ${points[0].y}`
+      : points.reduce((acc, p, i) => i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`, '');
+
+    const areaD = points.length === 1
+      ? `M ${padLeft} ${padTop + innerH} L ${points[0].x} ${points[0].y} L ${padLeft + innerW} ${padTop + innerH} Z`
+      : `${pathD} L ${points[points.length - 1].x} ${padTop + innerH} L ${points[0].x} ${padTop + innerH} Z`;
+
+    const svgElement = chartContainer.querySelector('#vaultChartSvg');
+    if (svgElement) {
+      svgElement.innerHTML = `
+        <defs>
+          <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--foil1)" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="var(--foil2)" stop-opacity="0.0"/>
+          </linearGradient>
+        </defs>
+        <line x1="${padLeft}" y1="${padTop}" x2="${width - padRight}" y2="${padTop}" stroke="var(--line)" stroke-dasharray="3,3" />
+        <line x1="${padLeft}" y1="${padTop + innerH / 2}" x2="${width - padRight}" y2="${padTop + innerH / 2}" stroke="var(--line)" stroke-dasharray="3,3" />
+        <line x1="${padLeft}" y1="${padTop + innerH}" x2="${width - padRight}" y2="${padTop + innerH}" stroke="var(--line)" />
+
+        <text x="${padLeft - 6}" y="${padTop + 4}" fill="var(--muted)" font-size="9" font-family="JetBrains Mono" text-anchor="end">${fmtHex(Math.round(maxVal))}</text>
+        <text x="${padLeft - 6}" y="${padTop + innerH + 4}" fill="var(--muted)" font-size="9" font-family="JetBrains Mono" text-anchor="end">0</text>
+
+        <path d="${areaD}" fill="url(#chartGrad)" />
+        <path d="${pathD}" fill="none" stroke="var(--foil1)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 4px rgba(57,255,20,0.5));" />
+
+        ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="var(--foil2)" stroke="var(--foil1)" stroke-width="1.5" />`).join('')}
+      `;
+    }
+
+    const headerValLabel = chartContainer.querySelector('#vaultTotalVal');
+    if (headerValLabel) {
+      headerValLabel.innerHTML = `<i class="hex-icon"></i>${fmtHex(currentTotal)} HEX`;
+    }
+  }
+
+  const idxSvg = document.getElementById('marketIdxSvg');
+  if(idxSvg){
+    const nowT = Date.now();
+    const { svgInner, phase, idxNow } = marketIndexChartParts(nowT);
+    idxSvg.innerHTML = svgInner;
+    const labelEl = document.getElementById('marketPhaseLabel');
+    const valEl = document.getElementById('marketPhaseVal');
+    if(labelEl){ labelEl.textContent = phase.label; labelEl.style.color = phase.color; }
+    if(valEl){ valEl.textContent = (idxNow*100).toFixed(0); valEl.style.color = phase.color; }
+  }
+}
+
+function computeMarketIndexSeries(now){
+  const windowPastMs = 2*60*60*1000;
+  const windowFutureMs = 3*60*60*1000;
+  const totalMs = windowPastMs + windowFutureMs;
+  const steps = 120;
+  const points = [];
+  for(let i=0;i<=steps;i++){
+    const t = now - windowPastMs + (totalMs * i / steps);
+    points.push({ t, idx: marketIndexAt(t) });
+  }
+  return points;
+}
+
+function marketIndexChartParts(now){
+  const points = computeMarketIndexSeries(now);
+  const width=880, height=140, padTop=15, padBottom=20, padLeft=45, padRight=20;
+  const innerW = width-padLeft-padRight, innerH = height-padTop-padBottom;
+  const vals = points.map(p=>p.idx);
+  const minVal = Math.min(0.3, ...vals) - 0.05;
+  const maxVal = Math.max(1.7, ...vals) + 0.05;
+  const t0 = points[0].t, t1 = points[points.length-1].t;
+  const xForT = t => padLeft + ((t-t0)/(t1-t0)) * innerW;
+  const yForV = v => padTop + innerH - ((v-minVal)/(maxVal-minVal)) * innerH;
+  const nowX = xForT(now);
+  const baselineY = yForV(1);
+
+  const pastPts = points.filter(p=>p.t<=now);
+  const futurePts = points.filter(p=>p.t>now);
+  if(futurePts.length && pastPts.length) futurePts.unshift(pastPts[pastPts.length-1]);
+
+  const pathFor = pts => pts.length ? pts.reduce((acc,p,i)=> i===0 ? `M ${xForT(p.t)} ${yForV(p.idx)}` : `${acc} L ${xForT(p.t)} ${yForV(p.idx)}`, '') : '';
+
+  const idxNow = marketIndexAt(now);
+  const phase = marketPhaseFor(idxNow);
+
+  const svgInner = `
+    <line x1="${padLeft}" y1="${baselineY}" x2="${width-padRight}" y2="${baselineY}" stroke="var(--muted)" stroke-dasharray="2,4" />
+    <text x="${padLeft-6}" y="${baselineY+3}" fill="var(--muted)" font-size="9" font-family="JetBrains Mono" text-anchor="end">100%</text>
+    <path d="${pathFor(pastPts)}" fill="none" stroke="${phase.color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="${pathFor(futurePts)}" fill="none" stroke="${phase.color}" stroke-width="2" stroke-dasharray="5,5" opacity="0.6" stroke-linecap="round" />
+    <line x1="${nowX}" y1="${padTop}" x2="${nowX}" y2="${padTop+innerH}" stroke="var(--gold)" stroke-width="1.5" />
+    <text x="${nowX}" y="${padTop-4}" fill="var(--gold)" font-size="9" font-family="JetBrains Mono" text-anchor="middle">NOW</text>
+  `;
+  return { svgInner, phase, idxNow };
+}
+
+function renderMarketIndexChart(){
+  const now = Date.now();
+  const { svgInner, phase, idxNow } = marketIndexChartParts(now);
+  return `
+    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+        <span style="font-family:'VT323',monospace; font-size:18px; color:var(--foil1); letter-spacing:0.04em;">Market Cycle</span>
+        <span class="mono" style="font-size:13px;font-weight:700;">
+          <span id="marketPhaseLabel" style="color:${phase.color};">${phase.label}</span> &middot; <span id="marketPhaseVal" style="color:${phase.color};">${(idxNow*100).toFixed(0)}</span>%
+        </span>
+      </div>
+      <div style="width:100%; overflow-x:auto;">
+        <svg id="marketIdxSvg" viewBox="0 0 880 140" style="width:100%; height:120px; display:block;">${svgInner}</svg>
+      </div>
+      <div style="color:var(--muted);font-size:10.5px;margin-top:6px;">dashed = projected near-term cycle &middot; solid = actual</div>
+    </div>
+  `;
+}
+
+function renderMarket(){
+  const instances = state.instances || [];
+  const now = Date.now();
+
+  const tierOrder = ['secret', 'ultra', 'rare', 'uncommon', 'common'];
+  const tierLabels = {
+    secret: 'Secret Rare',
+    ultra: 'Ultra Rare',
+    rare: 'Rare',
+    uncommon: 'Uncommon',
+    common: 'Common'
+  };
+
+  const groupedByTier = {};
+  tierOrder.forEach(t => groupedByTier[t] = []);
+
+  instances.forEach((inst) => {
+    const p = POKEMON.find(x => x.id === inst.id);
+    if(!p) return;
+    if(groupedByTier[inst.rarity]) {
+      groupedByTier[inst.rarity].push({ p, inst });
+    }
+  });
+
+  tierOrder.forEach(t => {
+    groupedByTier[t].sort((a, b) => {
+      const getPayout = (item) => {
+        const acquired = item.inst.acquiredAt || now;
+        const hoursHeld = Math.max(0, (now - acquired) / (1000 * 60 * 60));
+        const multiplier = cardMultiplier(hoursHeld, now);
+        return Math.max(1, Math.round(item.p.value * multiplier));
+      };
+      return getPayout(b) - getPayout(a);
+    });
+  });
+
+  return `
+    <div class="dexhead">
+      <div class="dexhead-left">
+        <h2 class="disp">Liquid Market</h2>
+        <div class="dexcount mono">Individual card management &middot; Prices track the live market cycle</div>
+      </div>
+    </div>
+    
+    <div style="color:var(--muted);font-size:12.5px;margin-bottom:16px;line-height:1.5;background:var(--surface);border:1px solid var(--line);padding:14px;border-radius:12px;">
+      <b>Card prices move with the market.</b> Sell when it's up, hold off when it's down — waiting alone won't save you from a bad sale.
+    </div>
+
+    ${renderMarketIndexChart()}
+
+    ${renderVaultChart()}
+
+    <div style="color:var(--muted);font-size:11.5px;margin-bottom:16px;line-height:1.5;background:var(--surface);border:1px solid var(--line);padding:10px 14px;border-radius:10px;">
+      Holding cards a while adds a small bonus &mdash; up to <b>+30%</b>, earned at +1% per hour. It softens a dip, but it won't turn a bear market into a profit.
+    </div>
+
+    ${instances.length === 0 ? `
+      <div style="text-align:center;color:var(--muted);padding:40px;font-size:13px;">Your vault is empty. Break open some packs to acquire tradeable assets.</div>
+    ` : `
+      ${tierOrder.map(tier => {
+        const items = groupedByTier[tier];
+        if(!items || items.length === 0) return '';
+        const rc = RARITY[tier];
+
+        return `
+          <details style="margin-bottom:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px;">
+            <summary style="font-family:'VT323',monospace; font-size:20px; color:${rc.color}; cursor:pointer; text-transform:uppercase; letter-spacing:0.04em; outline:none;">
+              <span>${tierLabels[tier]} (${items.length})</span>
+            </summary>
+            
+            <div style="padding-top:12px;">
+              <div class="dexgrid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr));">
+                ${items.map(({ p, inst }) => {
+                  const acquired = inst.acquiredAt || now;
+                  const hoursHeld = Math.max(0, (now - acquired) / (1000 * 60 * 60));
+                  const multiplier = cardMultiplier(hoursHeld, now);
+                  const payout = Math.max(1, Math.round(p.value * multiplier));
+                  const dateStr = new Date(acquired).toLocaleDateString(undefined, {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+
+                  return `
+                    <div class="packcard" style="padding:12px;border-color:${rc.color};display:flex;flex-direction:column;justify-content:space-between;background:var(--surface2);">
+                      <div>
+                        <div class="cf-top" style="margin-bottom:4px;">
+                          <span class="cf-num mono">#${String(p.id).padStart(3,'0')}</span>
+                          <span class="cf-type" style="background:${TYPE_COLORS[p.type]};color:#000;">${p.type}</span>
+                        </div>
+                        <div style="text-align:center;font-weight:600;font-size:11px;margin:4px 0;">${esc(p.name)}</div>
+                        <div style="font-size:8.5px;color:var(--muted);text-align:center;margin-bottom:6px;">
+                          Acquired: ${dateStr}
+                        </div>
+                        <div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;">
+                          Held: <b>${hoursHeld.toFixed(1)}h</b> (${(multiplier * 100).toFixed(0)}% val)
+                        </div>
+                      </div>
+                      <div>
+                        <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gold);margin-bottom:8px;">
+                          <i class="hex-icon"></i>${fmtHex(payout)}
+                        </div>
+                        <button class="buybtn" style="width:100%;padding:6px;font-size:11px;" data-liquidate-uid="${inst.uid}">
+                          Liquidate
+                        </button>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+
+              <div style="margin-top:16px; display:flex; justify-content:flex-end;">
+                <button class="buybtn" style="background:#ff4444; color:#fff; padding:8px 16px; font-size:12px; box-shadow:0 0 8px rgba(255,68,68,0.4);" data-liquidate-tier="${tier}">
+                  Liquidate All ${tierLabels[tier]}
+                </button>
+              </div>
+            </div>
+          </details>
+        `;
+      }).join('')}
+    `}
+  `;
+}
+
+function renderShopBonus(){
+  const stripItems = [];
+  for(let rep=0; rep<12; rep++){
+    WHEEL_REWARDS.forEach(r=>{
+      stripItems.push(`<span><i class="hex-icon" style="width:14px;height:16px;margin-right:4px;"></i>${fmtHex(r.amt)}</span>`);
+    });
+  }
+
+  return `
+  <div class="section-label">Bonus wheel</div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:18px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:26px;">
+    <div class="disp" style="font-size:22px;">Hourly HEX Bonus</div>
+    <div style="color:var(--muted);font-size:12.5px;text-align:center;">One free spin every hour. Payouts from <i class="hex-icon"></i>150 up to <i class="hex-icon"></i>369,000.</div>
+    
+    ${wheelResult ? `
+      <div class="wheel-overlay-stage" style="width:100%;text-align:center;">
+        <div class="wheel-result mono">+<i class="hex-icon" style="width:20px;height:22px;margin-right:6px;"></i> ${fmtHex(wheelResult.amt)}</div>
+        <button class="spin-btn" data-wheelcollect>Collect</button>
+      </div>
+    ` : `
+      <div class="wheel-overlay-stage" style="width:100%;align-items:center;">
+        <div class="term-slot-frame">
+          <div class="term-pointer-line"></div>
+          <div class="term-strip" id="termStrip" style="transform: translateY(-47px);">
+            ${stripItems.map(html=>`<div class="term-item">${html}</div>`).join('')}
+          </div>
+        </div>
+        <button class="spin-btn" id="wheelSpinBtn" ${wheelSpinning || !canSpin()?'disabled':''}>
+          ${wheelSpinning ? 'Spinning…' : (canSpin() ? 'Spin the wheel' : 'Wait (' + spinStatusText() + ')')}
+        </button>
+      </div>
+    `}
+  </div>
+
+  <div class="section-label">Kanto Gym Badges</div>
+  <div style="color:var(--muted);font-size:11.5px;margin-bottom:12px;font-style:italic;">(Badges act as supreme collection flexes. Selling them back returns 60% value if you need emergency pack capital.)</div>
+  <div class="packgrid" style="margin-bottom:26px;">
+    ${SHOP_COLLECTIBLES.map(item=>{
+      const owned = !!state.collectibles[item.id];
+      const refundAmt = Math.round(item.price * 0.6);
+      return `
+      <div class="packcard" style="border-color:${item.colorVar};">
+        <div style="font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">[${item.tier}]</div>
+        <div class="pack-name" style="color:${item.colorVar};">${esc(item.name)}</div>
+        <div class="pack-desc">${esc(item.desc)}</div>
+        <div class="pack-odds">Status: <b>${owned ? 'Unlocked (1/1)' : 'Locked (0/1)'}</b></div>
+        <div class="pack-price">
+          <span class="price-tag mono"><i class="hex-icon"></i>${fmtHex(item.price)}</span>
+          ${owned ? 
+            `<button class="sellbtn" data-sellcol="${item.id}">Sell (<i class="hex-icon" style="width:10px;height:12px;"></i>${fmtHex(refundAmt)})</button>` :
+            `<button class="buybtn" data-buycol="${item.id}" ${state.hex<item.price?'disabled':''}>Purchase</button>`
+          }
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+  `;
+}
+
+function renderDex(){
+  const owned = state.dex;
+  const ownedCols = state.collectibles || {};
+  const totalBadges = SHOP_COLLECTIBLES.length;
+  const ownedBadgesCount = SHOP_COLLECTIBLES.filter(i => !!ownedCols[i.id]).length;
+
+  return `
+  <div class="dexhead">
+    <div class="dexhead-left">
+      <h2 class="disp">Collection</h2>
+      <div class="dexcount mono">${Object.keys(owned).length}/151 Cards &middot; ${ownedBadgesCount}/${totalBadges} Badges</div>
+    </div>
+    <div class="rarity-key">
+      <div class="key-item"><span class="key-dot" style="--dot-color:var(--common)"></span>Common</div>
+      <div class="key-item"><span class="key-dot" style="--dot-color:var(--uncommon)"></span>Uncommon</div>
+      <div class="key-item"><span class="key-dot" style="--dot-color:var(--rare)"></span>Rare</div>
+      <div class="key-item"><span class="key-dot" style="--dot-color:var(--ultra)"></span>Ultra</div>
+      <div class="key-item"><span class="key-dot" style="--dot-color:var(--secret)"></span>Secret</div>
+    </div>
+  </div>
+  <div class="dexgrid" style="margin-bottom:24px;">
+    ${POKEMON.map(p=>{
+      const o = owned[p.id];
+      const color = TYPE_COLORS[p.type];
+      return `<div class="dexslot ${o?'owned':''}" style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};">
+        <span class="num mono">#${String(p.id).padStart(3,'0')}</span>
+        <div class="glyph">
+          ${o?`<img src="${p.sprite}" alt="${esc(p.name)}" loading="lazy">`:``}
+        </div>
+        ${o?`<div class="nm">${esc(p.name)}</div><span class="cnt">x${o.count}</span>`:`<div class="nm" style="color:var(--muted)">???</div>`}
+      </div>`;
+    }).join('')}
+  </div>
+
+  <div class="section-label">Badges & Collectibles</div>
+  <div class="dexgrid">
+    ${SHOP_COLLECTIBLES.map(item=>{
+      const isOwned = !!ownedCols[item.id];
+      return `<div class="dexslot ${isOwned?'owned':''}" style="--slot-color:${item.colorVar};">
+        <span class="num mono">BADGE</span>
+        <div class="glyph" style="display:flex;align-items:center;justify-content:center;">
+          ${isOwned ? `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="${item.colorVar}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 4px ${item.colorVar});"><polyline points="20 6 9 17 4 12"></polyline></svg>` : ''}
+        </div>
+        ${isOwned?`<div class="nm">${esc(item.name)}</div><span class="cnt" style="color:${item.colorVar}">UNLOCKED</span>`:`<div class="nm" style="color:var(--muted)">???</div>`}
+      </div>`;
+    }).join('')}
+  </div>
+  `;
+}
+
+function renderCardFace(card, flipped){
+  const rc = RARITY[card.rarity];
+  const shineTiers = ['ultra','secret'];
+  const isAlreadyOwned = !!state.dex[card.id];
+  const packTheme = (opening && opening.pack) ? (opening.pack.id==='basic'?'theme-basic':(opening.pack.id==='whale'?'theme-whale':'')) : '';
+  return `
+    <div class="card-slot-wrapper">
+      <div class="already-owned-badge" style="visibility: ${isAlreadyOwned ? 'visible' : 'hidden'};">ALREADY OWNED</div>
+      <div class="card-slot ${flipped?'flipped':''}" data-flip>
+        <div class="card-inner">
+          <div class="card-face card-back ${packTheme} ${shineTiers.includes(card.rarity)?'flame-aura':''}"><span>POKéHEX</span></div>
+          <div class="card-face card-front ${shineTiers.includes(card.rarity)?'shine flame-aura':''}"
+               style="--card-color:${rc.color};--type-color:${TYPE_COLORS[card.type]};">
+            <div class="cf-top">
+              <span class="cf-num mono">#${String(card.id).padStart(3,'0')}</span>
+              <span class="cf-type">${card.type}</span>
+            </div>
+            <div class="cf-glyph">
+              <img src="${card.sprite}" alt="${esc(card.name)}" loading="lazy">
+            </div>
+            <div class="cf-bottom">
+              <div class="cf-name">${esc(card.name)}</div>
+              <div class="cf-rarity">${rc.label}</div>
+              <div class="cf-value"><i class="hex-icon"></i> ${card.value} HEX</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderOpening(){
+  if(!opening) return '';
+  const {pack, cards, stage} = opening;
+  if(stage==='closed' || stage==='ripping'){
+    return `
+    <div class="overlay">
+      <button class="closex" data-close>&times;</button>
+      <div class="pack-stage">
+        <div class="pack-visual ${stage==='ripping'?'ripping':''} ${pack.id==='basic'?'theme-basic':(pack.id==='whale'?'theme-whale':(pack.id==='diamond'?'theme-diamond':''))}" data-rip>
+          <div class="sheen"></div>
+          <div class="mark">${esc(pack.name)}</div>
+        </div>
+        <div class="pack-hint">tap the pack to rip it open</div>
+      </div>
+    </div>`;
+  }
+  const allFlipped = opening.flipped.length === cards.length;
+  return `
+  <div class="overlay">
+    <button class="closex" data-close>&times;</button>
+    <div class="reveal-row">
+      ${cards.map((c,i)=>renderCardFace(c, opening.flipped.includes(i))).join('')}
+    </div>
+    ${allFlipped ? renderSummary() : `<div class="pack-hint" style="margin-top:18px;">tap each card to flip it</div>`}
+  </div>`;
+}
+
+function renderSummary(){
+  const total = opening.cards.reduce((s,c,i)=>s+ (opening.keep[i]?0:c.value),0);
+  const sellAllTotal = opening.cards.reduce((s,c)=>s+c.value,0);
+  const keepCount = opening.keep.filter(Boolean).length;
+  return `
+  <div class="summary-panel">
+    <div class="summary-total mono">Keeping <b>${keepCount}</b> for your dex &middot; selling the rest for <b><i class="hex-icon"></i> ${total}</b></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+      ${opening.cards.map((c,i)=>`<label style="font-size:11px;color:var(--muted);display:flex;gap:5px;align-items:center;">
+        <input type="checkbox" data-keep="${i}" ${opening.keep[i]?'checked':''}/> ${esc(c.name)}
+      </label>`).join('')}
+    </div>
+    <div class="summary-actions">
+      <button class="sbtn sell" data-sellall>Sell all for <i class="hex-icon"></i> ${sellAllTotal}</button>
+      <button class="sbtn keep" data-confirm>Confirm & continue</button>
+    </div>
+  </div>`;
+}
+
+function render(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="topbar">
+      <div class="brand-mark disp">phx</div>
+      <div class="brand">
+        <div>
+          <h1>POKéHEX</h1>
+          <span>rip packs &middot; fill your dex &middot; risk fake currency &middot; v1.0 </span>
+        </div>
+      </div>
+      <div class="balance"><span class="tick">Balance</span><span class="val mono"><i class="hex-icon"></i>${fmtHex(state.hex)}</span></div>
+    </div>
+    <div class="navrow">
+      <button class="navbtn ${view==='open'?'active':''}" data-nav="open">Break</button>
+      <button class="navbtn ${view==='dex'?'active':''}" data-nav="dex">Dex and Badges</button>
+      <button class="navbtn ${view==='shop'?'active':''}" data-nav="shop">Shop and Bonuses</button>
+      <button class="navbtn ${view==='market'?'active':''}" data-nav="market">Market</button>
+    </div>
+    <div class="wrap">
+      ${view==='open'?renderOpen():(view==='market'?renderMarket():(view==='shop'?renderShopBonus():renderDex()))}
+      <div class="footer-actions"><button class="reset-link" data-reset>reset progress</button><button class="reset-link" data-devhex>[dev] +100,000 hex</button></div>
+    </div>
+    ${opening?renderOpening():''}
+  `;
+  wire();
+}
+
+function wire(){
+  document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{ view=b.dataset.nav; render(); });
+  document.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{
+    const pack = PACKS.find(p=>p.id===b.dataset.buy);
+    openPack(pack);
+  });
+  document.querySelectorAll('[data-buycol]').forEach(b=>b.onclick=()=>{
+    const item = SHOP_COLLECTIBLES.find(i=>i.id===b.dataset.buycol);
+    buyCollectible(item);
+  });
+  document.querySelectorAll('[data-sellcol]').forEach(b=>b.onclick=()=>{
+    const item = SHOP_COLLECTIBLES.find(i=>i.id===b.dataset.sellcol);
+    sellCollectible(item);
+  });
+
+  document.querySelectorAll('[data-liquidate-uid]').forEach(btn => {
+    btn.onclick = () => {
+      const uid = btn.dataset.liquidateUid;
+      const idx = (state.instances || []).findIndex(x => x.uid === uid);
+      if(idx === -1) return;
+
+      const inst = state.instances[idx];
+      const p = POKEMON.find(x => x.id === inst.id);
+      const now = Date.now();
+      const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
+      const multiplier = cardMultiplier(hoursHeld, now);
+      const payout = Math.max(1, Math.round(p.value * multiplier));
+
+      state.instances.splice(idx, 1);
+
+      const dexEntry = state.dex[p.id];
+      if(dexEntry){
+        dexEntry.count--;
+        if(dexEntry.count <= 0) delete state.dex[p.id];
+      }
+
+      state.hex += payout;
+      recordVaultValue();
+      saveState();
+      toast(`Liquidated ${p.name} for <i class="hex-icon"></i>${fmtHex(payout)} HEX!`);
+      render();
+    };
+  });
+
+  document.querySelectorAll('[data-liquidate-tier]').forEach(btn => {
+    btn.onclick = () => {
+      const targetTier = btn.dataset.liquidateTier;
+      let totalPayout = 0;
+      let countSold = 0;
+      const now = Date.now();
+
+      const remainingInstances = [];
+      (state.instances || []).forEach(inst => {
+        if(inst.rarity === targetTier){
+          const p = POKEMON.find(x => x.id === inst.id);
+          const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
+          const multiplier = cardMultiplier(hoursHeld, now);
+          const payoutPerCard = Math.max(1, Math.round(p.value * multiplier));
+
+          totalPayout += payoutPerCard;
+          countSold++;
+
+          const dexEntry = state.dex[inst.id];
+          if(dexEntry){
+            dexEntry.count--;
+            if(dexEntry.count <= 0) delete state.dex[inst.id];
+          }
+        } else {
+          remainingInstances.push(inst);
+        }
+      });
+
+      if(countSold > 0) {
+        state.instances = remainingInstances;
+        state.hex += totalPayout;
+        recordVaultValue();
+        saveState();
+        toast(`Liquidated all ${targetTier} cards for <i class="hex-icon"></i>${fmtHex(totalPayout)} HEX!`);
+        render();
+      }
+    };
+  });
+
+  const rip = document.querySelector('[data-rip]');
+  if(rip) rip.onclick = ()=>{
+    if(opening.stage!=='closed') return;
+    opening.stage='ripping'; ripSound(); render();
+    setTimeout(()=>{ opening.stage='revealing'; render(); },380);
+  };
+  document.querySelectorAll('[data-flip]').forEach((el,i)=>{
+    el.onclick = ()=>{
+      if(opening.flipped.includes(i)) return;
+      opening.flipped.push(i);
+      const card = opening.cards[i];
+      revealSound(card.rarity);
+      if(card.rarity==='ultra'||card.rarity==='secret') burstConfetti();
+      render();
+    };
+  });
+  document.querySelectorAll('[data-keep]').forEach(el=>{
+    el.onchange = ()=>{ opening.keep[+el.dataset.keep] = el.checked; render(); };
+  });
+  const sellAll = document.querySelector('[data-sellall]');
+  if(sellAll) sellAll.onclick = ()=>{
+    opening.keep = opening.keep.map(()=>false);
+    finalizeOpening();
+  };
+  const confirm = document.querySelector('[data-confirm]');
+  if(confirm) confirm.onclick = ()=>{ finalizeOpening(); };
+  const close = document.querySelector('[data-close]');
+  if(close) close.onclick = ()=>{
+    if(opening.stage==='closed'){ state.hex += opening.pack.price; saveState(); }
+    opening = null; render();
+  };
+  const reset = document.querySelector('[data-reset]');
+  if(reset) reset.onclick = ()=>{
+    state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[] };
+    saveState(); render();
+  };
+
+  const devHex = document.querySelector('[data-devhex]');
+  if(devHex) devHex.onclick = ()=>{
+    state.hex += 100000;
+    recordVaultValue();
+    saveState();
+    toast(`[dev] +100,000 HEX added.`);
+    render();
+  };
+
+  const wheelCollect = document.querySelector('[data-wheelcollect]');
+  if(wheelCollect) wheelCollect.onclick = ()=>{
+    wheelResult = null; render();
+  };
+
+  const wheelSpinBtn = document.getElementById('wheelSpinBtn');
+  if(wheelSpinBtn) wheelSpinBtn.onclick = ()=>{
+    if(wheelSpinning || !canSpin()) return;
+    const strip = document.getElementById('termStrip');
+    if(!strip) return;
+    wheelSpinning = true;
+    wheelSpinBtn.disabled = true;
+    wheelSpinBtn.textContent = 'Spinning…';
+
+    const idx = pickWheelIndex();
+    const reward = WHEEL_REWARDS[idx];
+    const itemHeight = 46;
+    const itemsPerSet = WHEEL_REWARDS.length;
+    const targetRepetition = 8;
+    const targetOffset = (targetRepetition * itemsPerSet + idx) * itemHeight;
+    const finalTranslateY = targetOffset - (140 / 2) + (itemHeight / 2);
+
+    strip.style.transition = 'transform 4.2s cubic-bezier(0.1, 0.7, 0.1, 1)';
+    requestAnimationFrame(()=>{ strip.style.transform = `translateY(-${finalTranslateY}px)`; });
+    revealSound('rare');
+
+    setTimeout(()=>{
+      wheelSpinning = false;
+      wheelResult = reward;
+      state.hex += reward.amt;
+      state.lastSpinAt = Date.now();
+      recordVaultValue();
+      saveState();
+      strip.style.transition = 'none';
+      if(reward.amt>=25000) burstConfetti();
+      render();
+    }, 4300);
+  };
+}
+
+setInterval(()=>{
+  const btn = document.getElementById('wheelSpinBtn');
+  if(btn && !wheelSpinning && view==='shop'){
+    btn.disabled = !canSpin();
+    btn.textContent = canSpin() ? 'Spin the wheel' : 'Wait (' + spinStatusText() + ')';
+  }
+  if(view === 'market'){
+    if(state.instances && state.instances.length > 0){
+      recordVaultValue();
+    }
+    updateVaultFeedLive();
+  }
+}, 1000);
+
+loadState();
+})();
+</script>
+</body>
+</html>
