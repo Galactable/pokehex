@@ -647,7 +647,12 @@ let usernameCheckTimer = null;
 
 // null = unknown, true = available, false = taken by someone else
 async function isUsernameAvailable(username, forUserId){
-  const { data, error } = await sb.from('profiles').select('user_id').eq('username', username).maybeSingle();
+  // case-insensitive, matching the lower(username) unique index server-side.
+  // ilike treats '_' as a single-character wildcard in SQL, and usernames
+  // are allowed to contain underscores - escape it so "dungeon_master"
+  // only matches that exact string, not "dungeonXmaster" for any X
+  const escaped = username.replace(/_/g, '\\_');
+  const { data, error } = await sb.from('profiles').select('user_id').ilike('username', escaped).maybeSingle();
   if(error) return null;
   if(!data) return true;
   return data.user_id === forUserId;
