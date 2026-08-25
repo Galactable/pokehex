@@ -563,10 +563,6 @@ body {
   white-space: normal;
   word-wrap: break-word;
 }
-.slippage-icon {
-  font-size: 16px;
-  color: #ffaa00;
-}
 
 /* ---------- auth screen ---------- */
 .authwrap{
@@ -876,11 +872,11 @@ const TYPE_COLORS = {
 };
 
 const RARITY = {
-  common:{label:'Common',color:'var(--common)',weight:55},
-  uncommon:{label:'Uncommon',color:'var(--uncommon)',weight:28},
-  rare:{label:'Rare',color:'var(--rare)',weight:14},
-  ultra:{label:'Ultra',color:'var(--ultra)',weight:2.2},
-  secret:{label:'Secret',color:'var(--secret)',weight:0.8}
+  common:{label:'Common',color:'var(--common)'},
+  uncommon:{label:'Uncommon',color:'var(--uncommon)'},
+  rare:{label:'Rare',color:'var(--rare)'},
+  ultra:{label:'Ultra',color:'var(--ultra)'},
+  secret:{label:'Secret',color:'var(--secret)'}
 };
 
 const POKEMON = [
@@ -984,9 +980,6 @@ const POKEMON = [
   };
 });
 
-const BY_TIER = {};
-POKEMON.forEach(p=>{ (BY_TIER[p.rarity]=BY_TIER[p.rarity]||[]).push(p); });
-
 const PACKS = [
   {id:'basic',name:'Basic Pack',price:500,cards:5,
     desc:'Standard issue. Reliable baseline pulls.',
@@ -1051,7 +1044,6 @@ function cardMultiplier(hoursHeld, tNow){
   return Math.max(MARKET_MULT_FLOOR, marketIndexAt(tNow) + heldBonusFor(hoursHeld));
 }
 
-const STORAGE_KEY = 'pokehex-state-v2';
 let state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] }; // hex:0 until signed in - real balance loads after auth
 let view = 'open';
 let profileStats = null;
@@ -1064,6 +1056,28 @@ let wheelSpinning = false;
 let wheelResult = null;
 let vaultChartMode = 'live';
 let activeModal = null; // Confirmation modal state
+let resetConfirmOpen = false;
+let resetBusy = false;
+
+function renderResetConfirmModal(){
+  if(!resetConfirmOpen) return '';
+  return `
+  <div class="overlay">
+    <div class="summary-panel" style="max-width:440px;">
+      <div style="font-family:'VT323',monospace;font-size:22px;color:#ff4444;text-transform:uppercase;">Reset Progress?</div>
+      <div style="font-size:13px;text-align:center;line-height:1.5;">
+        Resetting your progress will <b>delete all cards</b>, reset your HEX balance to <b>1000</b>, and <b>wipe all account stats</b>.
+      </div>
+      <div style="font-size:13px;text-align:center;font-weight:700;color:#ff4444;">ARE YOU SURE?</div>
+      <div class="summary-actions" style="margin-top:8px;">
+        <button class="sbtn sell" data-reset-cancel>Cancel</button>
+        <button class="sbtn keep" style="background:#ff4444;box-shadow:0 0 10px rgba(255,68,68,0.4);" data-reset-confirm ${resetBusy?'disabled':''}>
+          ${resetBusy ? 'Wiping…' : 'Wipe Everything'}
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
 
 async function loadState(){
   try{
@@ -1137,7 +1151,8 @@ function calculateCurrentVaultValue(){
     if(!p) return;
     const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
     const multiplier = cardMultiplier(hoursHeld, now);
-    total += Math.max(1, Math.round(p.value * multiplier));
+    const baseValue = inst.shiny ? p.value * 10 : p.value;
+    total += Math.max(1, Math.round(baseValue * multiplier));
   });
   return total;
 }
@@ -1508,7 +1523,8 @@ function updateVaultFeedLive() {
       if (p) {
         const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
         const multiplier = cardMultiplier(hoursHeld, now);
-        const payout = Math.max(1, Math.round(p.value * multiplier));
+        const baseValue = inst.shiny ? p.value * 10 : p.value;
+        const payout = Math.max(1, Math.round(baseValue * multiplier));
         el.innerHTML = `<i class="hex-icon"></i>~${fmtHex(payout)}`;
       }
     }
@@ -1524,7 +1540,8 @@ function updateVaultFeedLive() {
           if (p) {
             const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
             const multiplier = cardMultiplier(hoursHeld, now);
-            totalPayout += Math.max(1, Math.round(p.value * multiplier));
+            const baseValue = inst.shiny ? p.value * 10 : p.value;
+            totalPayout += Math.max(1, Math.round(baseValue * multiplier));
           }
         }
       });
@@ -2134,6 +2151,7 @@ function render(){
     </div>
     ${authUser ? `<div class="signoutbtn-row"><button class="signoutbtn" data-signout title="${authUser.email}">SIGN OUT</button></div>` : ''}
     ${opening?renderOpening():''}
+    ${renderResetConfirmModal()}
   `;
   wire();
 }
@@ -2357,12 +2375,24 @@ function wire(){
       finalizeOpening();
     }
   };
-  let resetBusy = false;
   const reset = document.querySelector('[data-reset]');
-  if(reset) reset.onclick = async ()=>{
+  if(reset) reset.onclick = ()=>{
     if(!requireAuth()) return;
+    resetConfirmOpen = true;
+    render();
+  };
+
+  const resetCancel = document.querySelector('[data-reset-cancel]');
+  if(resetCancel) resetCancel.onclick = ()=>{
+    resetConfirmOpen = false;
+    render();
+  };
+
+  const resetConfirm = document.querySelector('[data-reset-confirm]');
+  if(resetConfirm) resetConfirm.onclick = async ()=>{
     if(resetBusy) return;
     resetBusy = true;
+    render();
     try{
       const { error } = await sb.rpc('reset_game_state');
       if(error){
@@ -2375,9 +2405,11 @@ function wire(){
       // needs to keep showing the real remaining cooldown, not "Ready"
       const preservedLastSpinAt = state.lastSpinAt;
       state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[] };
-      saveState(); render();
+      saveState();
+      resetConfirmOpen = false;
     } finally {
       resetBusy = false;
+      render();
     }
   };
 
