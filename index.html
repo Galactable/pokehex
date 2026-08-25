@@ -319,6 +319,11 @@ body {
   background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;
   font-size:10px;color:var(--muted);position:relative;padding:4px;text-align:center;
 }
+.stat-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 2px;border-bottom:1px solid var(--line);font-size:13px;
+}
+.stat-row:last-child{border-bottom:none;}
 .dexslot.owned{border-color:var(--slot-color,var(--rare));background:var(--surface2);color:var(--text);}
 .dexslot .num{position:absolute;top:4px;left:6px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);}
 .dexslot .glyph{
@@ -407,6 +412,32 @@ body {
   background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,0.35) 45%,rgba(57,255,20,0.4) 50%,rgba(157,78,221,0.35) 55%,transparent 70%);
   background-size:220% 220%;animation:sheenmove 2.4s linear infinite;
   mix-blend-mode:screen;
+}
+
+/* ---------- white sparkle overlay for shiny (1-in-4096) card variants ---------- */
+/* Distinct from .shine (rarity-tier glow) so a shiny ultra/secret shows both */
+.shiny-sparkle-overlay{
+  position:absolute;inset:0;pointer-events:none;z-index:2;
+  background-image:
+    radial-gradient(circle, #fff 1px, transparent 1.5px),
+    radial-gradient(circle, #fff 1px, transparent 1.5px),
+    radial-gradient(circle, #fff 1.5px, transparent 2px),
+    radial-gradient(circle, #fff 1px, transparent 1.5px);
+  background-size: 40px 40px, 60px 60px, 80px 80px, 50px 50px;
+  background-position: 10px 15px, 40px 60px, 70px 20px, 20px 80px;
+  animation: shinytwinkle 1.8s ease-in-out infinite;
+  mix-blend-mode:screen;
+}
+@keyframes shinytwinkle{
+  0%,100%{ opacity:0.35; }
+  50%{ opacity:0.95; }
+}
+.shiny-label{
+  position:absolute;top:4px;right:4px;z-index:3;
+  font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;
+  color:#0b0b14;background:#fff;padding:2px 5px;border-radius:4px;
+  letter-spacing:0.05em;text-transform:uppercase;
+  box-shadow:0 0 6px 2px rgba(255,255,255,0.7);
 }
 
 /* ---------- purple flame aura for ultra/secret tier cards ---------- */
@@ -613,6 +644,90 @@ let authUser = null;      // current logged-in Supabase user, or null
 let authMode = 'signin';  // 'signin' | 'signup'
 let authBusy = false;
 let authMsg = null;       // {type:'err'|'ok', text}
+let needsUsername = false;
+let pendingUsername = ''; // carried over from the signup form to prefill the gate
+let usernameMsg = null;
+let usernameCheckTimer = null;
+
+// null = unknown, true = available, false = taken by someone else
+async function isUsernameAvailable(username, forUserId){
+  const { data, error } = await sb.from('profiles').select('user_id').eq('username', username).maybeSingle();
+  if(error) return null;
+  if(!data) return true;
+  return data.user_id === forUserId;
+}
+
+async function saveUsername(username){
+  const { error } = await sb.from('profiles').upsert({ user_id: authUser.id, username });
+  return { ok: !error, error };
+}
+
+// The single place a profile row ever gets created or changed - used both
+// for brand-new signups and for existing accounts that don't have a
+// username yet. One code path means no risk of two competing inserts.
+function renderUsernameGate(){
+  const el = document.getElementById('app');
+  el.innerHTML = `
+    <div class="authwrap">
+      <div class="authcard">
+        <div class="brand-hexmark auth-hexmark"></div>
+        <h1>Choose a username</h1>
+        <p class="sub">This is how you'll appear on leaderboards. 3-20 characters: letters, numbers, underscores.</p>
+        <form id="usernameform">
+          <div class="authfield">
+            <label>Username</label>
+            <input type="text" id="usernameInput" autocomplete="off" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" value="${esc(pendingUsername)}" />
+          </div>
+          <div id="usernameStatus" style="font-size:12px;min-height:16px;"></div>
+          <button type="submit" class="authbtn" id="usernameSubmitBtn">Save username</button>
+        </form>
+        ${usernameMsg ? `<div class="authmsg ${usernameMsg.type}">${usernameMsg.text}</div>` : ''}
+      </div>
+    </div>
+  `;
+  const input = document.getElementById('usernameInput');
+  const status = document.getElementById('usernameStatus');
+  const checkNow = ()=>{
+    clearTimeout(usernameCheckTimer);
+    const val = input.value.trim();
+    if(val.length < 3){ status.textContent=''; return; }
+    if(!/^[a-zA-Z0-9_]{3,20}$/.test(val)){ status.textContent='Letters, numbers, underscores only.'; status.style.color='#ff4444'; return; }
+    status.textContent = 'Checking…'; status.style.color='var(--muted)';
+    usernameCheckTimer = setTimeout(async ()=>{
+      const available = await isUsernameAvailable(val, authUser ? authUser.id : null);
+      if(input.value.trim() !== val) return; // stale response, input changed since
+      if(available === true){ status.textContent='Available'; status.style.color='#39ff14'; }
+      else if(available === false){ status.textContent='Already taken'; status.style.color='#ff4444'; }
+      else { status.textContent=''; }
+    }, 400);
+  };
+  input.oninput = checkNow;
+  if(pendingUsername) checkNow();
+
+  document.getElementById('usernameform').onsubmit = async (e)=>{
+    e.preventDefault();
+    const val = input.value.trim();
+    if(!/^[a-zA-Z0-9_]{3,20}$/.test(val)){
+      usernameMsg = { type:'err', text:'3-20 characters: letters, numbers, underscores only.' };
+      renderUsernameGate();
+      return;
+    }
+    const btn = document.getElementById('usernameSubmitBtn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const { ok, error } = await saveUsername(val);
+    if(!ok){
+      usernameMsg = { type:'err', text: (error && error.message && error.message.includes('duplicate'))
+        ? 'That username was just taken - try another.'
+        : 'Could not save username - try again.' };
+      renderUsernameGate();
+      return;
+    }
+    needsUsername = false;
+    pendingUsername = '';
+    usernameMsg = null;
+    loadState(); // proceed into the actual game now that a profile exists
+  };
+}
 
 function renderAuth(){
   const el = document.getElementById('app');
@@ -631,6 +746,12 @@ function renderAuth(){
             <label>Password</label>
             <input type="password" id="authPassword" autocomplete="${authMode==='signin'?'current-password':'new-password'}" minlength="6" required />
           </div>
+          ${authMode==='signup' ? `
+          <div class="authfield">
+            <label>Username</label>
+            <input type="text" id="authUsername" autocomplete="off" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" />
+            <div id="authUsernameStatus" style="font-size:12px;min-height:16px;margin-top:2px;"></div>
+          </div>` : ''}
           <button type="submit" class="authbtn" ${authBusy?'disabled':''}>
             ${authBusy ? 'Please wait…' : (authMode==='signin' ? 'Sign in' : 'Create account')}
           </button>
@@ -650,10 +771,36 @@ function renderAuth(){
   };
   const backBtn = document.getElementById('authBackBtn');
   if(backBtn) backBtn.onclick = ()=>{ authMsg = null; render(); };
+
+  const authUsernameInput = document.getElementById('authUsername');
+  if(authUsernameInput){
+    const status = document.getElementById('authUsernameStatus');
+    authUsernameInput.oninput = ()=>{
+      clearTimeout(usernameCheckTimer);
+      const val = authUsernameInput.value.trim();
+      if(val.length < 3){ status.textContent=''; return; }
+      if(!/^[a-zA-Z0-9_]{3,20}$/.test(val)){ status.textContent='Letters, numbers, underscores only.'; status.style.color='#ff4444'; return; }
+      status.textContent = 'Checking…'; status.style.color='var(--muted)';
+      usernameCheckTimer = setTimeout(async ()=>{
+        const available = await isUsernameAvailable(val, null);
+        if(authUsernameInput.value.trim() !== val) return;
+        if(available === true){ status.textContent='Available'; status.style.color='#39ff14'; }
+        else if(available === false){ status.textContent='Already taken'; status.style.color='#ff4444'; }
+        else { status.textContent=''; }
+      }, 400);
+    };
+  }
+
   document.getElementById('authform').onsubmit = async (e)=>{
     e.preventDefault();
     const email = document.getElementById('authEmail').value.trim();
     const password = document.getElementById('authPassword').value;
+    const username = authMode==='signup' ? document.getElementById('authUsername').value.trim() : null;
+    if(authMode==='signup' && !/^[a-zA-Z0-9_]{3,20}$/.test(username)){
+      authMsg = { type:'err', text:'Username must be 3-20 characters: letters, numbers, underscores only.' };
+      renderAuth();
+      return;
+    }
     authBusy = true; authMsg = null; renderAuth();
     try{
       if(authMode==='signin'){
@@ -670,6 +817,10 @@ function renderAuth(){
           renderAuth();
           return;
         }
+        // don't insert the profile here - the username gate (triggered by
+        // onAuthStateChange below) is the single place that ever writes a
+        // profile row, so there's no chance of two competing inserts
+        pendingUsername = username;
       }
     }catch(err){
       authBusy = false;
@@ -695,17 +846,24 @@ function requireAuth(){
   return true;
 }
 
-sb.auth.onAuthStateChange((event, session)=>{
+sb.auth.onAuthStateChange(async (event, session)=>{
   const user = session ? session.user : null;
   const wasLoggedIn = !!authUser;
   authUser = user;
   if(user && !wasLoggedIn){
     authBusy = false; authMsg = null;
-    loadState(); // boots the real, saved game state now that we have a user
+    const { data: profile } = await sb.from('profiles').select('username').eq('user_id', user.id).maybeSingle();
+    if(!profile){
+      needsUsername = true;
+      renderUsernameGate();
+    } else {
+      loadState(); // boots the real, saved game state now that we have a user
+    }
   } else if(!user && wasLoggedIn){
     // user just signed out - drop back to guest browsing of the Packs page, not the login screen
     authBusy = false;
     state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
+    profileStats = null; profileUsername = null; profileLoading = false; profileUsernameMsg = null;
     view = 'open';
     render();
   }
@@ -896,6 +1054,11 @@ function cardMultiplier(hoursHeld, tNow){
 const STORAGE_KEY = 'pokehex-state-v2';
 let state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] }; // hex:0 until signed in - real balance loads after auth
 let view = 'open';
+let profileStats = null;
+let profileUsername = null;
+let profileUsernameUpdatedAt = null;
+let profileLoading = false;
+let profileUsernameMsg = null;
 let opening = null;
 let wheelSpinning = false;
 let wheelResult = null;
@@ -904,38 +1067,34 @@ let activeModal = null; // Confirmation modal state
 
 async function loadState(){
   try{
+    // ensure a row exists for brand-new accounts (idempotent - safe to call every load)
+    await sb.rpc('ensure_game_state');
+
     const { data, error } = await sb
-      .from('game_states')
-      .select('state')
+      .from('game_states_v2')
+      .select('hex, dex, instances, collectibles, last_spin_at, value_history, long_history')
       .eq('user_id', authUser.id)
       .maybeSingle();
     if(error) throw error;
-    if(data && data.state){
-      state = data.state;
+
+    if(data){
+      state = {
+        hex: data.hex,
+        dex: data.dex || {},
+        instances: data.instances || [],
+        collectibles: data.collectibles || {},
+        lastSpinAt: data.last_spin_at ? new Date(data.last_spin_at).getTime() : null,
+        valueHistory: data.value_history || [],
+        longHistory: data.long_history || []
+      };
     } else {
-      // first time this user has logged in - create their row
+      // shouldn't happen given ensure_game_state() above, but fail safe
       state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
-      await sb.from('game_states').insert({ user_id: authUser.id, state });
     }
   }catch(e){
     console.error('load failed', e);
     toast('Could not load your saved data - starting fresh this session.');
-  }
-  
-  if((!state.instances || state.instances.length === 0) && state.dex && Object.keys(state.dex).length > 0){
-    state.instances = [];
-    Object.entries(state.dex).forEach(([idStr, data])=>{
-      const count = data.count || 1;
-      const acquiredAt = data.acquiredAt || Date.now();
-      for(let i=0; i<count; i++){
-        state.instances.push({
-          uid: 'inst_' + Math.random().toString(36).substr(2,9) + '_' + i,
-          id: Number(idStr),
-          rarity: data.rarity,
-          acquiredAt: acquiredAt - (i * 1000)
-        });
-      }
-    });
+    state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
   }
 
   if(state.lastSpinAt===undefined) state.lastSpinAt = null;
@@ -943,22 +1102,25 @@ async function loadState(){
   if(state.instances===undefined) state.instances = [];
   if(state.valueHistory===undefined) state.valueHistory = [];
   if(state.longHistory===undefined) state.longHistory = [];
-  
+
   recordVaultValue();
   render();
 }
 let saveTimer = null;
 async function saveState(){
-  // small debounce so rapid-fire actions (e.g. selling a stack of cards) collapse into one write
+  // hex/dex/instances/collectibles are already persisted server-side by
+  // whichever RPC just ran - this only needs to persist the chart history,
+  // debounced so rapid-fire actions collapse into one write
   clearTimeout(saveTimer);
   saveTimer = setTimeout(doSave, 250);
 }
 async function doSave(){
   if(!authUser) return;
   try{
-    const { error } = await sb
-      .from('game_states')
-      .upsert({ user_id: authUser.id, state, updated_at: new Date().toISOString() });
+    const { error } = await sb.rpc('save_vault_history', {
+      p_value_history: state.valueHistory,
+      p_long_history: state.longHistory
+    });
     if(error) throw error;
   }catch(e){
     console.error('save failed', e);
@@ -1000,22 +1162,6 @@ function recordVaultValue(){
   }
 }
 
-function weightedTier(weights){
-  const entries = Object.entries(weights);
-  const total = entries.reduce((s,[,w])=>s+w,0);
-  let r = Math.random()*total;
-  for(let i = entries.length - 1; i >= 0; i--){
-    const [tier, w] = entries[i];
-    if(r < w) return tier;
-    r -= w;
-  }
-  return entries[0][0];
-}
-function randCard(tier){
-  const pool = BY_TIER[tier];
-  if(!pool || pool.length === 0) return POKEMON[0];
-  return pool[Math.floor(Math.random()*pool.length)];
-}
 let packBusy = false;
 async function openPack(pack){
   if(!requireAuth()) return;
@@ -1088,36 +1234,54 @@ async function finalizeOpening(){
   }
 }
 
-function buyCollectible(item){
+let badgeBusy = false;
+async function buyCollectible(item){
   if(!requireAuth()) return;
+  if(badgeBusy) return;
   if(state.collectibles[item.id]) return toast("You already own this badge!");
   if(state.hex < item.price) return toast("Not enough HEX! Keep grinding packs or spinning the wheel.");
-  state.hex -= item.price;
-  state.collectibles[item.id] = 1;
-  saveState();
-  burstConfetti();
-  toast(`Purchased ${item.name}! Milestone unlocked.`);
-  render();
+  badgeBusy = true;
+  try{
+    const { error } = await sb.rpc('buy_collectible', { p_item_id: item.id });
+    if(error){
+      toast(error.message.includes('insufficient') ? "Not enough HEX! Keep grinding packs or spinning the wheel."
+        : error.message.includes('owned') ? "You already own this badge!"
+        : "Couldn't complete that purchase - try again.");
+      return;
+    }
+    state.hex -= item.price;
+    state.collectibles[item.id] = 1;
+    saveState();
+    burstConfetti();
+    toast(`Purchased ${item.name}! Milestone unlocked.`);
+    render();
+  } finally {
+    badgeBusy = false;
+  }
 }
 
-function sellCollectible(item){
+async function sellCollectible(item){
   if(!requireAuth()) return;
+  if(badgeBusy) return;
   if(!state.collectibles[item.id]) return toast("You don't own this badge!");
-  const refund = Math.round(item.price * 0.6);
-  delete state.collectibles[item.id];
-  state.hex += refund;
-  recordVaultValue();
-  saveState();
-  toast(`Sold ${item.name} for liquid capital: <i class="hex-icon"></i>${fmtHex(refund)}!`);
-  render();
+  badgeBusy = true;
+  try{
+    const { data, error } = await sb.rpc('sell_collectible', { p_item_id: item.id });
+    if(error){
+      toast("Couldn't sell that badge - try again.");
+      return;
+    }
+    delete state.collectibles[item.id];
+    state.hex += data.refund;
+    recordVaultValue();
+    saveState();
+    toast(`Sold ${item.name} for liquid capital: <i class="hex-icon"></i>${fmtHex(data.refund)}!`);
+    render();
+  } finally {
+    badgeBusy = false;
+  }
 }
 
-function pickWheelIndex(){
-  const total = WHEEL_REWARDS.reduce((s,r)=>s+r.weight,0);
-  let r = Math.random()*total;
-  for(let i=0;i<WHEEL_REWARDS.length;i++){ if(r<WHEEL_REWARDS[i].weight) return i; r-=WHEEL_REWARDS[i].weight; }
-  return 0;
-}
 function canSpin(){ return !state.lastSpinAt || (Date.now()-state.lastSpinAt) >= WHEEL_COOLDOWN; }
 function fmtCountdown(ms){
   const s = Math.max(0,Math.floor(ms/1000));
@@ -1444,13 +1608,14 @@ function renderMarketModal() {
     const now = Date.now();
     const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
     const multiplier = cardMultiplier(hoursHeld, now);
-    const estPayout = Math.max(1, Math.round(p.value * multiplier));
+    const baseValue = inst.shiny ? p.value * 10 : p.value;
+    const estPayout = Math.max(1, Math.round(baseValue * multiplier));
 
     return `
     <div class="overlay">
       <div class="summary-panel" style="max-width:440px;">
         <div style="font-family:'VT323',monospace;font-size:22px;color:var(--gold);text-transform:uppercase;">Confirm Liquidation</div>
-        <div style="font-size:13px;text-align:center;">Liquidate <b>${esc(p.name)}</b>?</div>
+        <div style="font-size:13px;text-align:center;">Liquidate <b>${esc(p.name)}${inst.shiny ? ' ✨' : ''}</b>?</div>
         
         <div style="background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:12px;width:100%;text-align:center;">
           <div style="font-size:11px;color:var(--muted);">Estimated Current Price:</div>
@@ -1480,7 +1645,8 @@ function renderMarketModal() {
         const p = POKEMON.find(x => x.id === inst.id);
         const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
         const multiplier = cardMultiplier(hoursHeld, now);
-        totalEstPayout += Math.max(1, Math.round(p.value * multiplier));
+        const baseValue = inst.shiny ? p.value * 10 : p.value;
+        totalEstPayout += Math.max(1, Math.round(baseValue * multiplier));
         count++;
       }
     });
@@ -1526,6 +1692,8 @@ function renderMarket(){
   const groupedByTier = {};
   tierOrder.forEach(t => groupedByTier[t] = []);
 
+  const effValue = (p, inst) => inst.shiny ? p.value * 10 : p.value;
+
   instances.forEach((inst) => {
     const p = POKEMON.find(x => x.id === inst.id);
     if(!p) return;
@@ -1540,7 +1708,7 @@ function renderMarket(){
         const acquired = item.inst.acquiredAt || now;
         const hoursHeld = Math.max(0, (now - acquired) / (1000 * 60 * 60));
         const multiplier = cardMultiplier(hoursHeld, now);
-        return Math.max(1, Math.round(item.p.value * multiplier));
+        return Math.max(1, Math.round(effValue(item.p, item.inst) * multiplier));
       };
       return getPayout(b) - getPayout(a);
     });
@@ -1584,7 +1752,7 @@ function renderMarket(){
           const acquired = inst.acquiredAt || now;
           const hoursHeld = Math.max(0, (now - acquired) / (1000 * 60 * 60));
           const multiplier = cardMultiplier(hoursHeld, now);
-          tierTotalPayout += Math.max(1, Math.round(p.value * multiplier));
+          tierTotalPayout += Math.max(1, Math.round(effValue(p, inst) * multiplier));
         });
 
         return `
@@ -1602,11 +1770,12 @@ function renderMarket(){
                   const acquired = inst.acquiredAt || now;
                   const hoursHeld = Math.max(0, (now - acquired) / (1000 * 60 * 60));
                   const multiplier = cardMultiplier(hoursHeld, now);
-                  const payout = Math.max(1, Math.round(p.value * multiplier));
+                  const payout = Math.max(1, Math.round(effValue(p, inst) * multiplier));
                   const dateStr = new Date(acquired).toLocaleDateString(undefined, {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
 
                   return `
                     <div class="packcard" style="padding:12px;border-color:${rc.color};display:flex;flex-direction:column;justify-content:space-between;background:var(--surface2);">
+                      ${inst.shiny ? `<span style="position:absolute;top:6px;right:6px;color:gold;font-size:13px;text-shadow:0 0 5px gold;z-index:2;" title="Shiny">★</span>` : ''}
                       <div>
                         <div class="cf-top" style="margin-bottom:4px;">
                           <span class="cf-num mono">#${String(p.id).padStart(3,'0')}</span>
@@ -1707,6 +1876,103 @@ function renderShopBonus(){
   `;
 }
 
+async function loadProfileStats(retrying){
+  profileLoading = true;
+  render();
+  try{
+    const [{ data: statsData, error: statsErr }, { data: profileData, error: profileErr }] = await Promise.all([
+      sb.rpc('get_player_stats'),
+      sb.from('profiles').select('username, username_updated_at').eq('user_id', authUser.id).maybeSingle()
+    ]);
+    if(statsErr) throw statsErr;
+    if(profileErr) throw profileErr;
+    profileStats = statsData;
+    profileUsername = profileData ? profileData.username : null;
+    profileUsernameUpdatedAt = profileData && profileData.username_updated_at ? new Date(profileData.username_updated_at).getTime() : null;
+  }catch(e){
+    console.error('failed to load profile stats:', e && e.message, e);
+    if(!retrying){
+      // transient failures (e.g. a freshly-created RPC not yet visible to
+      // the API layer) are common right after schema changes - one silent
+      // retry means the player never has to know it happened
+      profileLoading = false;
+      return loadProfileStats(true);
+    }
+    toast('Could not load your stats - try again.');
+  } finally {
+    profileLoading = false;
+    render();
+  }
+}
+
+function renderProfile(){
+  if(!authUser){
+    return `<div class="section-label">Profile</div><div style="color:var(--muted);padding:20px 0;">Sign in to view your profile and stats.</div>`;
+  }
+  if(profileLoading || !profileStats){
+    return `<div class="section-label">Profile</div><div style="color:var(--muted);padding:20px 0;">Loading your stats…</div>`;
+  }
+  const s = profileStats;
+  const mvp = s.mostValuablePull;
+  const mvpPokemon = mvp ? POKEMON.find(p=>p.id===mvp.id) : null;
+  const mvpCard = mvpPokemon ? {
+    id: mvp.id, name: mvp.name, rarity: mvp.rarity, value: mvp.value,
+    shiny: mvp.shiny, type: mvpPokemon.type, sprite: mvpPokemon.sprite
+  } : null;
+
+  const packRows = PACKS.map(p=>{
+    const count = (s.packsOpened && s.packsOpened[p.id]) || 0;
+    return `<div class="stat-row"><span>${esc(p.name)}</span><span class="mono">${count}</span></div>`;
+  }).join('');
+
+  const profitLossColor = s.totalProfitLoss >= 0 ? '#39ff14' : '#ff4444';
+
+  const cooldownMs = 7*24*60*60*1000;
+  const cooldownRemaining = profileUsernameUpdatedAt ? cooldownMs - (Date.now() - profileUsernameUpdatedAt) : 0;
+  const onCooldown = cooldownRemaining > 0;
+  const cooldownDays = Math.ceil(cooldownRemaining / (24*60*60*1000));
+
+  return `
+  <h2 class="disp">${esc(profileUsername || 'Profile')}</h2>
+
+  <div class="section-label">Collection</div>
+  <div class="stat-row"><span>% of Complete OG Collection</span><span class="mono">${s.collectionPercent}% (${s.uniqueCardsOwned}/151)</span></div>
+  <div class="stat-row"><span># of Secret Rares Pulled</span><span class="mono">${s.secretPullsCount}</span></div>
+  <div class="stat-row"><span># of Shinies Found</span><span class="mono">${s.shinyPullsCount}</span></div>
+
+  <div class="section-label" style="margin-top:20px;">Most Valuable Pull</div>
+  ${mvpCard ? `
+    <div style="display:flex;justify-content:center;margin:10px 0 4px;">
+      ${renderCardFace(mvpCard, true)}
+    </div>
+    <div style="text-align:center;color:var(--muted);font-size:12px;">
+      ${mvp.shiny ? 'Shiny ' : ''}${esc(mvp.name)} &middot; <i class="hex-icon"></i>${fmtHex(mvp.effectiveValue)} HEX
+    </div>
+  ` : `<div style="color:var(--muted);padding:10px 0;">No pulls recorded yet.</div>`}
+
+  <div class="section-label" style="margin-top:20px;">Packs Opened by Tier</div>
+  ${packRows}
+
+  <div class="section-label" style="margin-top:20px;">Vault &amp; Economy</div>
+  <div class="stat-row"><span>Highest All-Time Vault Value</span><span class="mono"><i class="hex-icon"></i>${fmtHex(s.highestVaultValue)}</span></div>
+  <div class="stat-row"><span>Number of Cards Liquidated</span><span class="mono">${s.cardsLiquidatedCount}</span></div>
+  <div class="stat-row"><span>HEX Spent on Packs</span><span class="mono"><i class="hex-icon"></i>${fmtHex(s.hexSpentOnPacks)}</span></div>
+  <div class="stat-row"><span>HEX Earned from Card Sales</span><span class="mono"><i class="hex-icon"></i>${fmtHex(s.hexEarnedFromCardSales)}</span></div>
+  <div class="stat-row"><span>Total HEX Profit/Loss (incl. bonuses)</span><span class="mono" style="color:${profitLossColor};">${s.totalProfitLoss>=0?'+':''}${fmtHex(s.totalProfitLoss)}</span></div>
+
+  <div style="width:220px;max-width:100%;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:12px;margin:28px auto 0;">
+    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;">Change username</div>
+    <form id="profileUsernameForm" style="display:flex;gap:6px;align-items:center;">
+      <input type="text" id="profileUsernameInput" value="${esc(profileUsername||'')}" minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" required ${onCooldown?'disabled':''}
+        style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;" />
+      <button type="submit" class="sbtn keep" style="padding:5px 10px;font-size:11px;" ${onCooldown?'disabled':''}>Save</button>
+    </form>
+    <div id="profileUsernameStatus" style="font-size:11px;min-height:14px;margin-top:5px;${onCooldown?'color:var(--muted);':''}">${onCooldown?`Next change available in ${cooldownDays} day${cooldownDays===1?'':'s'}`:''}</div>
+    ${profileUsernameMsg ? `<div class="authmsg ${profileUsernameMsg.type}" style="margin-top:5px;font-size:11px;">${profileUsernameMsg.text}</div>` : ''}
+  </div>
+  `;
+}
+
 function renderDex(){
   const owned = state.dex;
   const ownedCols = state.collectibles || {};
@@ -1733,6 +1999,7 @@ function renderDex(){
       const color = TYPE_COLORS[p.type];
       return `<div class="dexslot ${o?'owned':''}" style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};">
         <span class="num mono">#${String(p.id).padStart(3,'0')}</span>
+        ${o && o.hasShiny ? `<span style="position:absolute;top:2px;right:2px;font-size:11px;" title="Shiny found">✨</span>` : ''}
         <div class="glyph">
           ${o?`<img src="${p.sprite}" alt="${esc(p.name)}" loading="lazy">`:``}
         </div>
@@ -1770,6 +2037,7 @@ function renderCardFace(card, flipped){
           <div class="card-face card-back ${packTheme} ${shineTiers.includes(card.rarity)?'flame-aura':''}"><span>POKéHEX</span></div>
           <div class="card-face card-front ${shineTiers.includes(card.rarity)?'shine flame-aura':''}"
                style="--card-color:${rc.color};--type-color:${TYPE_COLORS[card.type]};">
+            ${card.shiny ? `<div class="shiny-sparkle-overlay"></div><div class="shiny-label">✨ Shiny</div>` : ''}
             <div class="cf-top">
               <span class="cf-num mono">#${String(card.id).padStart(3,'0')}</span>
               <span class="cf-type">${card.type}</span>
@@ -1780,7 +2048,7 @@ function renderCardFace(card, flipped){
             <div class="cf-bottom">
               <div class="cf-name">${esc(card.name)}</div>
               <div class="cf-rarity">${rc.label}</div>
-              <div class="cf-value"><i class="hex-icon"></i> ${card.value} HEX</div>
+              <div class="cf-value"><i class="hex-icon"></i> ${card.shiny ? card.value * 10 : card.value} HEX</div>
             </div>
           </div>
         </div>
@@ -1817,15 +2085,16 @@ function renderOpening(){
 }
 
 function renderSummary(){
-  const total = opening.cards.reduce((s,c,i)=>s+ (opening.keep[i]?0:c.value),0);
-  const sellAllTotal = opening.cards.reduce((s,c)=>s+c.value,0);
+  const effValue = c => c.shiny ? c.value * 10 : c.value;
+  const total = opening.cards.reduce((s,c,i)=>s+ (opening.keep[i]?0:effValue(c)),0);
+  const sellAllTotal = opening.cards.reduce((s,c)=>s+effValue(c),0);
   const keepCount = opening.keep.filter(Boolean).length;
   return `
   <div class="summary-panel">
     <div class="summary-total mono">Keeping <b>${keepCount}</b> for your dex &middot; selling the rest for <b><i class="hex-icon"></i> ${total}</b></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
       ${opening.cards.map((c,i)=>`<label style="font-size:11px;color:var(--muted);display:flex;gap:5px;align-items:center;">
-        <input type="checkbox" data-keep="${i}" ${opening.keep[i]?'checked':''}/> ${esc(c.name)}
+        <input type="checkbox" data-keep="${i}" ${opening.keep[i]?'checked':''}/> ${esc(c.name)}${c.shiny ? ' ✨' : ''}
       </label>`).join('')}
     </div>
     <div class="summary-actions">
@@ -1856,11 +2125,12 @@ function render(){
       <button class="navbtn ${view==='dex'?'active':''}" data-nav="dex">Dex and Badges</button>
       <button class="navbtn ${view==='shop'?'active':''}" data-nav="shop">Shop and Bonuses</button>
       <button class="navbtn ${view==='market'?'active':''}" data-nav="market">Market</button>
+      <button class="navbtn ${view==='profile'?'active':''}" data-nav="profile">Profile</button>
     </div>
-    ${!authUser ? `<div class="cta-account-row"><button class="cta-account-link" data-createaccount>CREATE AN ACCOUNT TO PLAY</button></div>` : ''}
+    ${!authUser ? `<div class="cta-account-row"><button class="cta-account-link" data-createaccount>SIGN IN OR CREATE AN ACCOUNT TO PLAY</button></div>` : ''}
     <div class="wrap">
-      ${view==='open'?renderOpen():(view==='market'?renderMarket():(view==='shop'?renderShopBonus():renderDex()))}
-      <div class="footer-actions"><button class="reset-link" data-reset>[reset progress and burn everything]</button><button class="reset-link" data-devhex>[dev by dungeon]</button></div>
+      ${view==='open'?renderOpen():(view==='market'?renderMarket():(view==='shop'?renderShopBonus():(view==='profile'?renderProfile():renderDex())))}
+      <div class="footer-actions"><button class="reset-link" data-reset>[reset progress and burn everything]</button><span class="reset-link" style="cursor:default;text-decoration:none;">[dev by dungeon]</span></div>
     </div>
     ${authUser ? `<div class="signoutbtn-row"><button class="signoutbtn" data-signout title="${authUser.email}">SIGN OUT</button></div>` : ''}
     ${opening?renderOpening():''}
@@ -1872,8 +2142,64 @@ function wire(){
   const signoutBtn = document.querySelector('[data-signout]');
   if(signoutBtn) signoutBtn.onclick = ()=>{ signOut(); };
   const createAccountBtn = document.querySelector('[data-createaccount]');
-  if(createAccountBtn) createAccountBtn.onclick = ()=>{ requireAuth(); };
-  document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{ view=b.dataset.nav; render(); });
+  if(createAccountBtn) createAccountBtn.onclick = ()=>{
+    authMode = 'signin';
+    authMsg = null;
+    renderAuth();
+  };
+  document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{
+    view=b.dataset.nav;
+    if(view==='profile' && authUser) loadProfileStats();
+    render();
+  });
+
+  const profileUsernameForm = document.getElementById('profileUsernameForm');
+  if(profileUsernameForm){
+    const input = document.getElementById('profileUsernameInput');
+    const status = document.getElementById('profileUsernameStatus');
+    let checkTimer = null;
+    input.oninput = ()=>{
+      clearTimeout(checkTimer);
+      const val = input.value.trim();
+      if(val === profileUsername){ status.textContent=''; return; }
+      if(val.length < 3){ status.textContent=''; return; }
+      if(!/^[a-zA-Z0-9_]{3,20}$/.test(val)){ status.textContent='Letters, numbers, underscores only.'; status.style.color='#ff4444'; return; }
+      status.textContent = 'Checking…'; status.style.color='var(--muted)';
+      checkTimer = setTimeout(async ()=>{
+        const available = await isUsernameAvailable(val, authUser.id);
+        if(input.value.trim() !== val) return;
+        if(available === true){ status.textContent='Available'; status.style.color='#39ff14'; }
+        else if(available === false){ status.textContent='Already taken'; status.style.color='#ff4444'; }
+        else { status.textContent=''; }
+      }, 400);
+    };
+    profileUsernameForm.onsubmit = async (e)=>{
+      e.preventDefault();
+      const val = input.value.trim();
+      if(val === profileUsername) return; // nothing changed
+      if(!/^[a-zA-Z0-9_]{3,20}$/.test(val)){
+        profileUsernameMsg = { type:'err', text:'3-20 characters: letters, numbers, underscores only.' };
+        render();
+        return;
+      }
+      const btn = profileUsernameForm.querySelector('button');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      const { ok, error } = await saveUsername(val);
+      if(!ok){
+        profileUsernameMsg = { type:'err', text: (error && error.message && error.message.includes('duplicate'))
+          ? 'That username was just taken - try another.'
+          : (error && error.message && error.message.includes('cooldown'))
+          ? 'You can only change your username once every 7 days.'
+          : 'Could not save username - try again.' };
+        render();
+        return;
+      }
+      profileUsername = val;
+      profileUsernameUpdatedAt = Date.now();
+      profileUsernameMsg = { type:'ok', text:'Username updated.' };
+      render();
+    };
+  }
   document.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{
     const pack = PACKS.find(p=>p.id===b.dataset.buy);
     openPack(pack);
@@ -1907,18 +2233,24 @@ function wire(){
     cancelBtn.onclick = () => { activeModal = null; render(); };
   }
 
+  let liquidateBusy = false;
   const confirmSingleBtn = document.querySelector('[data-modal-confirm-single]');
   if (confirmSingleBtn) {
-    confirmSingleBtn.onclick = () => {
+    confirmSingleBtn.onclick = async () => {
+      if(liquidateBusy) return;
       const uid = confirmSingleBtn.dataset.modalConfirmSingle;
       const idx = (state.instances || []).findIndex(x => x.uid === uid);
-      if (idx !== -1) {
+      if (idx === -1) { activeModal = null; render(); return; }
+
+      liquidateBusy = true;
+      try{
+        const { data, error } = await sb.rpc('liquidate_instance', { p_uid: uid });
+        if(error){
+          toast("Couldn't liquidate that card - try again.");
+          return;
+        }
         const inst = state.instances[idx];
         const p = POKEMON.find(x => x.id === inst.id);
-        const now = Date.now();
-        const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
-        const multiplier = cardMultiplier(hoursHeld, now);
-        const payout = Math.max(1, Math.round(p.value * multiplier));
 
         state.instances.splice(idx, 1);
         const dexEntry = state.dex[p.id];
@@ -1927,54 +2259,54 @@ function wire(){
           if (dexEntry.count <= 0) delete state.dex[p.id];
         }
 
-        state.hex += payout;
+        state.hex += data.payout; // authoritative payout from the server, not a local recompute
         recordVaultValue();
         saveState();
-        toast(`Liquidated ${p.name} for <i class="hex-icon"></i>${fmtHex(payout)} HEX!`);
+        toast(`Liquidated ${p.name} for <i class="hex-icon"></i>${fmtHex(data.payout)} HEX!`);
+      } finally {
+        liquidateBusy = false;
+        activeModal = null;
+        render();
       }
-      activeModal = null;
-      render();
     };
   }
 
   const confirmTierBtn = document.querySelector('[data-modal-confirm-tier]');
   if (confirmTierBtn) {
-    confirmTierBtn.onclick = () => {
+    confirmTierBtn.onclick = async () => {
+      if(liquidateBusy) return;
       const targetTier = confirmTierBtn.dataset.modalConfirmTier;
-      let totalPayout = 0;
-      let countSold = 0;
-      const now = Date.now();
-
-      const remainingInstances = [];
-      (state.instances || []).forEach(inst => {
-        if (inst.rarity === targetTier) {
-          const p = POKEMON.find(x => x.id === inst.id);
-          const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
-          const multiplier = cardMultiplier(hoursHeld, now);
-          const payoutPerCard = Math.max(1, Math.round(p.value * multiplier));
-
-          totalPayout += payoutPerCard;
-          countSold++;
-
-          const dexEntry = state.dex[inst.id];
-          if (dexEntry) {
-            dexEntry.count--;
-            if (dexEntry.count <= 0) delete state.dex[inst.id];
-          }
-        } else {
-          remainingInstances.push(inst);
+      liquidateBusy = true;
+      try{
+        const { data, error } = await sb.rpc('liquidate_tier', { p_rarity: targetTier });
+        if(error){
+          toast("Couldn't liquidate those cards - try again.");
+          return;
         }
-      });
-
-      if (countSold > 0) {
-        state.instances = remainingInstances;
-        state.hex += totalPayout;
-        recordVaultValue();
-        saveState();
-        toast(`Liquidated ${countSold} ${targetTier} cards for <i class="hex-icon"></i>${fmtHex(totalPayout)} HEX!`);
+        if (data.count > 0) {
+          const remainingInstances = [];
+          (state.instances || []).forEach(inst => {
+            if (inst.rarity === targetTier) {
+              const dexEntry = state.dex[inst.id];
+              if (dexEntry) {
+                dexEntry.count--;
+                if (dexEntry.count <= 0) delete state.dex[inst.id];
+              }
+            } else {
+              remainingInstances.push(inst);
+            }
+          });
+          state.instances = remainingInstances;
+          state.hex += data.payout; // authoritative payout from the server, not a local recompute
+          recordVaultValue();
+          saveState();
+          toast(`Liquidated ${data.count} ${targetTier} cards for <i class="hex-icon"></i>${fmtHex(data.payout)} HEX!`);
+        }
+      } finally {
+        liquidateBusy = false;
+        activeModal = null;
+        render();
       }
-      activeModal = null;
-      render();
     };
   }
 
@@ -2018,26 +2350,35 @@ function wire(){
         }
       }catch(e){ console.error('cancel_pack_opening failed', e); }
     } else {
-      // ripped but never finalized: matches original behavior - cards are
-      // forfeited (no refund), the pending opening just expires server-side
-      opening = null; render();
+      // ripped but not yet finalized: closing here should behave the same
+      // as hitting "Confirm & continue" (keep everything), not forfeit the
+      // cards and the pack price the player already paid
+      opening.keep = opening.cards.map(()=>true);
+      finalizeOpening();
     }
   };
+  let resetBusy = false;
   const reset = document.querySelector('[data-reset]');
-  if(reset) reset.onclick = ()=>{
+  if(reset) reset.onclick = async ()=>{
     if(!requireAuth()) return;
-    state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
-    saveState(); render();
-  };
-
-  const devHex = document.querySelector('[data-devhex]');
-  if(devHex) devHex.onclick = ()=>{
-    if(!requireAuth()) return;
-    state.hex += 3;
-    recordVaultValue();
-    saveState();
-    toast(`:] +3 HEX added.`);
-    render();
+    if(resetBusy) return;
+    resetBusy = true;
+    try{
+      const { error } = await sb.rpc('reset_game_state');
+      if(error){
+        toast("Couldn't reset progress - try again.");
+        return;
+      }
+      // intentionally NOT clearing lastSpinAt: the server's wheel cooldown
+      // survives a reset by design (otherwise reset -> respin -> reset would
+      // be a way to farm the wheel with nothing at stake), so the button
+      // needs to keep showing the real remaining cooldown, not "Ready"
+      const preservedLastSpinAt = state.lastSpinAt;
+      state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[] };
+      saveState(); render();
+    } finally {
+      resetBusy = false;
+    }
   };
 
   document.querySelectorAll('[data-vaultmode]').forEach(btn=>{
@@ -2053,7 +2394,7 @@ function wire(){
   };
 
   const wheelSpinBtn = document.getElementById('wheelSpinBtn');
-  if(wheelSpinBtn) wheelSpinBtn.onclick = ()=>{
+  if(wheelSpinBtn) wheelSpinBtn.onclick = async ()=>{
     if(!requireAuth()) return;
     if(wheelSpinning || !canSpin()) return;
     const strip = document.getElementById('termStrip');
@@ -2062,8 +2403,19 @@ function wire(){
     wheelSpinBtn.disabled = true;
     wheelSpinBtn.textContent = 'Spinning…';
 
-    const idx = pickWheelIndex();
-    const reward = WHEEL_REWARDS[idx];
+    const { data, error } = await sb.rpc('spin_wheel');
+    if(error){
+      wheelSpinning = false;
+      wheelSpinBtn.disabled = !canSpin();
+      wheelSpinBtn.textContent = canSpin() ? 'Spin the wheel' : 'Wait (' + spinStatusText() + ')';
+      toast(error.message.includes('cooldown') ? "The wheel's still on cooldown." : "Couldn't spin - try again.");
+      return;
+    }
+    // server has already picked (and paid out) the reward; find the matching
+    // strip entry purely to know where to animate the visual to
+    const reward = WHEEL_REWARDS.find(r=>r.amt===data.amount);
+    const idx = WHEEL_REWARDS.indexOf(reward);
+
     const itemHeight = 46;
     const itemsPerSet = WHEEL_REWARDS.length;
     const targetRepetition = 8;
@@ -2077,7 +2429,7 @@ function wire(){
     setTimeout(()=>{
       wheelSpinning = false;
       wheelResult = reward;
-      state.hex += reward.amt;
+      state.hex += data.amount; // authoritative payout from the server, not a local recompute
       state.lastSpinAt = Date.now();
       recordVaultValue();
       saveState();
