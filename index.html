@@ -1012,54 +1012,76 @@ function randCard(tier){
   const pool = BY_TIER[tier];
   return pool[Math.floor(Math.random()*pool.length)];
 }
-function openPack(pack){
+let packBusy = false;
+async function openPack(pack){
   if(!requireAuth()) return;
+  if(packBusy) return;
   if(state.hex < pack.price) return toast("Not enough HEX for that pack.");
-  state.hex -= pack.price;
-  const cards = [];
-  const order = ['common','uncommon','rare','ultra','secret'];
-  
-  for(let i=0;i<pack.cards;i++){
-    let tier = weightedTier(pack.weights);
-    if(pack.guaranteeTier && i===pack.cards-1){
-      const hasGuarantee = cards.some(c=>order.indexOf(c.rarity)>=order.indexOf(pack.guaranteeTier));
-      if(!hasGuarantee){
-        if(pack.guaranteeTier === 'ultra') tier = Math.random()<0.75?'ultra':'secret';
-        else if(pack.guaranteeTier === 'rare') tier = Math.random()<0.6?'rare':(Math.random()<0.15?'ultra':'uncommon');
-      }
+  packBusy = true;
+  try{
+    const { data, error } = await sb.rpc('open_pack', { p_pack_id: pack.id });
+    if(error){
+      // server is authoritative on the balance check too - it may reject
+      // even if the client's local number looked sufficient (e.g. stale cache)
+      toast(error.message.includes('insufficient') ? "Not enough HEX for that pack." : "Couldn't open that pack - try again.");
+      return;
     }
-    cards.push(randCard(tier));
+    // server already rolled + charged; enrich with local cosmetic data (type/sprite) for display only
+    const cards = data.cards.map(c=>{
+      const p = POKEMON.find(x=>x.id===c.id);
+      return { ...c, type: p.type, sprite: p.sprite };
+    });
+    opening = {pack, cards, flipped:[], stage:'closed', keep:cards.map(()=>true), openingId:data.opening_id};
+    // mirror the server's deduction locally so the rest of the (not-yet-migrated) UI stays in sync
+    state.hex -= pack.price;
+    recordVaultValue();
+    saveState();
+    render();
+  } finally {
+    packBusy = false;
   }
-  opening = {pack, cards, flipped:[], stage:'closed', keep:cards.map(()=>true)};
-  recordVaultValue();
-  saveState();
-  render();
 }
-function finalizeOpening(){
-  let earned = 0;
+let finalizeBusy = false;
+async function finalizeOpening(){
+  if(finalizeBusy) return;
+  finalizeBusy = true;
   const now = Date.now();
-  opening.cards.forEach((c,i)=>{
-    if(opening.keep[i]){
-      const existing = state.dex[c.id];
-      if(existing){ existing.count++; }
-      else{ state.dex[c.id] = {count:1, rarity:c.rarity, acquiredAt: now}; }
-
-      state.instances.push({
-        uid: 'inst_' + Math.random().toString(36).substr(2, 9),
-        id: c.id,
-        rarity: c.rarity,
-        acquiredAt: now
-      });
-    } else {
-      earned += c.value;
+  const cardsSnapshot = opening.cards;
+  const keepSnapshot = opening.keep;
+  const openingId = opening.openingId;
+  try{
+    const { data, error } = await sb.rpc('finalize_pack_opening', {
+      p_opening_id: openingId,
+      p_keep: keepSnapshot
+    });
+    if(error){
+      toast("Couldn't finalize that opening - try again.");
+      return;
     }
-  });
-  state.hex += earned;
-  opening = null;
-  recordVaultValue();
-  saveState();
-  view='open';
-  render();
+    // server has already committed dex/instances/hex for real; mirror the
+    // same changes into local state so the rest of the app (old table) matches
+    cardsSnapshot.forEach((c,i)=>{
+      if(keepSnapshot[i]){
+        const existing = state.dex[c.id];
+        if(existing){ existing.count++; }
+        else{ state.dex[c.id] = {count:1, rarity:c.rarity, acquiredAt: now}; }
+        state.instances.push({
+          uid: 'inst_' + Math.random().toString(36).substr(2, 9),
+          id: c.id,
+          rarity: c.rarity,
+          acquiredAt: now
+        });
+      }
+    });
+    state.hex += data.earned; // authoritative payout from the server, not a local recompute
+    opening = null;
+    recordVaultValue();
+    saveState();
+    view='open';
+    render();
+  } finally {
+    finalizeBusy = false;
+  }
 }
 
 function buyCollectible(item){
@@ -1980,9 +2002,23 @@ function wire(){
   const confirm = document.querySelector('[data-confirm]');
   if(confirm) confirm.onclick = ()=>{ finalizeOpening(); };
   const close = document.querySelector('[data-close]');
-  if(close) close.onclick = ()=>{
-    if(opening.stage==='closed'){ state.hex += opening.pack.price; saveState(); }
-    opening = null; render();
+  if(close) close.onclick = async ()=>{
+    if(opening.stage==='closed'){
+      const openingId = opening.openingId;
+      opening = null; render(); // close immediately, don't make the player wait on the network
+      try{
+        const { data, error } = await sb.rpc('cancel_pack_opening', { p_opening_id: openingId });
+        if(!error){
+          state.hex += data.refund;
+          saveState();
+          render();
+        }
+      }catch(e){ console.error('cancel_pack_opening failed', e); }
+    } else {
+      // ripped but never finalized: matches original behavior - cards are
+      // forfeited (no refund), the pending opening just expires server-side
+      opening = null; render();
+    }
   };
   const reset = document.querySelector('[data-reset]');
   if(reset) reset.onclick = ()=>{
