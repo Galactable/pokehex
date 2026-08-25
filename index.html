@@ -711,7 +711,6 @@ sb.auth.onAuthStateChange((event, session)=>{
   }
   // if !user && !wasLoggedIn (e.g. no session on initial load), leave whatever's already on screen alone
 });
-
 const TYPE_COLORS = {
   normal:'#A8A878',fire:'#F08030',water:'#6890F0',electric:'#F0C020',grass:'#78C850',
   ice:'#98D8D8',fighting:'#C03028',poison:'#A040A0',ground:'#E0C068',flying:'#A890F0',
@@ -831,7 +830,7 @@ const BY_TIER = {};
 POKEMON.forEach(p=>{ (BY_TIER[p.rarity]=BY_TIER[p.rarity]||[]).push(p); });
 
 const PACKS = [
-  {id:'basic',name:'Basic Pack',price:150,cards:5,
+  {id:'basic',name:'Basic Pack',price:500,cards:5,
     desc:'Standard issue. Reliable baseline pulls.',
     weights:{common:65,uncommon:25,rare:8,ultra:1.8,secret:0.2}},
   {id:'diamond',name:'Diamond Pack',price:1200,cards:5,
@@ -867,9 +866,9 @@ const WHEEL_COOLDOWN = 60*60*1000; // 1 hour
 
 const MARKET_EPOCH = Date.parse('2024-01-01T00:00:00Z');
 const MARKET_WAVES = [
-  { periodMs: 5   * 60*60*1000, amp: 0.35, phase: 1.1 }, // long supercycle (~5h)
+  { periodMs: 5    * 60*60*1000, amp: 0.35, phase: 1.1 }, // long supercycle (~5h)
   { periodMs: 41  * 60*1000,    amp: 0.15, phase: 2.7 }, // medium swing (~41m)
-  { periodMs: 9   * 60*1000,    amp: 0.07, phase: 4.2 }, // short jitter (~9m)
+  { periodMs: 9    * 60*1000,    amp: 0.07, phase: 4.2 }, // short jitter (~9m)
 ];
 const MARKET_HELD_BONUS_CAP = 0.30;      // max +30%
 const MARKET_HELD_BONUS_RATE = 0.01;     // per hour held
@@ -1005,11 +1004,16 @@ function weightedTier(weights){
   const entries = Object.entries(weights);
   const total = entries.reduce((s,[,w])=>s+w,0);
   let r = Math.random()*total;
-  for(const [tier,w] of entries){ if(r<w) return tier; r-=w; }
+  for(let i = entries.length - 1; i >= 0; i--){
+    const [tier, w] = entries[i];
+    if(r < w) return tier;
+    r -= w;
+  }
   return entries[0][0];
 }
 function randCard(tier){
   const pool = BY_TIER[tier];
+  if(!pool || pool.length === 0) return POKEMON[0];
   return pool[Math.floor(Math.random()*pool.length)];
 }
 let packBusy = false;
@@ -1199,7 +1203,6 @@ function renderOpen(){
   <div style="color:var(--muted);font-size:13px;">${Object.keys(state.dex).length} / 151 cards collected</div>
   `;
 }
-
 function vaultChartInner(history){
   const width = 880;
   const height = 140;
@@ -1857,7 +1860,7 @@ function render(){
     ${!authUser ? `<div class="cta-account-row"><button class="cta-account-link" data-createaccount>CREATE AN ACCOUNT TO PLAY</button></div>` : ''}
     <div class="wrap">
       ${view==='open'?renderOpen():(view==='market'?renderMarket():(view==='shop'?renderShopBonus():renderDex()))}
-      <div class="footer-actions"><button class="reset-link" data-reset>reset progress</button><button class="reset-link" data-devhex>[dev] +100,000 hex</button></div>
+      <div class="footer-actions"><button class="reset-link" data-reset>[reset progress and burn everything]</button><button class="reset-link" data-devhex>[dev by dungeon]</button></div>
     </div>
     ${authUser ? `<div class="signoutbtn-row"><button class="signoutbtn" data-signout title="${authUser.email}">SIGN OUT</button></div>` : ''}
     ${opening?renderOpening():''}
@@ -2030,10 +2033,10 @@ function wire(){
   const devHex = document.querySelector('[data-devhex]');
   if(devHex) devHex.onclick = ()=>{
     if(!requireAuth()) return;
-    state.hex += 100000;
+    state.hex += 3;
     recordVaultValue();
     saveState();
-    toast(`[dev] +100,000 HEX added.`);
+    toast(`:] +3 HEX added.`);
     render();
   };
 
