@@ -2134,7 +2134,7 @@ function render(){
       <div class="brand">
         <div>
           <h1>POKéHEX</h1>
-          <span>rip packs &middot; fill your dex &middot; risk fake currency &middot; v1.0 </span>
+          <span>rip packs &middot; fill your dex <br>risk fake currency &middot; beta 1.0.1 </span>
         </div>
       </div>
       ${authUser
@@ -2142,12 +2142,14 @@ function render(){
         : ''
       }
     </div>
-    <div class="navrow">
+    <div class="navrow" style="margin-bottom:8px;">
       <button class="navbtn ${view==='open'?'active':''}" data-nav="open">Packs</button>
       <button class="navbtn ${view==='dex'?'active':''}" data-nav="dex">Dex and Badges</button>
-      <button class="navbtn ${view==='shop'?'active':''}" data-nav="shop">Shop and Bonuses</button>
       <button class="navbtn ${view==='market'?'active':''}" data-nav="market">Market</button>
-      <button class="navbtn ${view==='profile'?'active':''}" data-nav="profile">Profile</button>
+    </div>
+    <div class="navrow">
+      <button class="navbtn ${view==='shop'?'active':''}" data-nav="shop">Shop and Bonuses</button>
+      <button class="navbtn ${view==='profile'?'active':''}" data-nav="profile">Stats</button>
     </div>
     ${!authUser ? `<div class="cta-account-row"><button class="cta-account-link" data-createaccount>SIGN IN OR CREATE AN ACCOUNT TO PLAY</button></div>` : ''}
     <div class="wrap">
