@@ -1215,12 +1215,10 @@ let finalizeBusy = false;
 async function finalizeOpening(){
   if(finalizeBusy) return;
   finalizeBusy = true;
-  const now = Date.now();
-  const cardsSnapshot = opening.cards;
   const keepSnapshot = opening.keep;
   const openingId = opening.openingId;
   try{
-    const { data, error } = await sb.rpc('finalize_pack_opening', {
+    const { error } = await sb.rpc('finalize_pack_opening', {
       p_opening_id: openingId,
       p_keep: keepSnapshot
     });
@@ -1228,22 +1226,33 @@ async function finalizeOpening(){
       toast("Couldn't finalize that opening - try again.");
       return;
     }
-    // server has already committed dex/instances/hex for real; mirror the
-    // same changes into local state so the rest of the app (old table) matches
-    cardsSnapshot.forEach((c,i)=>{
-      if(keepSnapshot[i]){
-        const existing = state.dex[c.id];
-        if(existing){ existing.count++; }
-        else{ state.dex[c.id] = {count:1, rarity:c.rarity, acquiredAt: now}; }
-        state.instances.push({
-          uid: 'inst_' + Math.random().toString(36).substr(2, 9),
-          id: c.id,
-          rarity: c.rarity,
-          acquiredAt: now
-        });
-      }
-    });
-    state.hex += data.earned; // authoritative payout from the server, not a local recompute
+    // the server has already committed dex/instances/hex, so read those rows
+    // back instead of rebuilding them locally. a hand-maintained object literal
+    // silently drops every server-generated field it doesn't happen to list -
+    // that's how uid, shiny and hasShiny all went missing - whereas a re-read
+    // picks up anything the server writes, including fields added later.
+    const { data: fresh, error: readErr } = await sb
+      .from('game_states_v2')
+      .select('hex, dex, instances')
+      .eq('user_id', authUser.id)
+      .maybeSingle();
+
+    if(readErr || !fresh){
+      // finalize already succeeded, so the pending row is gone and this opening
+      // must not be retried. close it out, but leave local state untouched
+      // rather than writing values we already know are stale - in particular
+      // skip recordVaultValue(), which would persist a wrong point to the chart.
+      console.error('post-finalize re-read failed', readErr);
+      opening = null;
+      view='open';
+      render();
+      toast('Your cards are saved - reload the page to see them.');
+      return;
+    }
+
+    state.hex = fresh.hex;
+    state.dex = fresh.dex || {};
+    state.instances = fresh.instances || [];
     opening = null;
     recordVaultValue();
     saveState();
