@@ -414,6 +414,15 @@ body {
   mix-blend-mode:screen;
 }
 
+/* ---------- shiny palette swap ---------- */
+/* Static hue rotation on the sprite itself - deliberately NOT animated, so it
+   reads differently from .shine / .flame-aura used for high-value rarity tiers.
+   Applies to pack-reveal card faces (.cf-glyph) and dex tiles (.glyph). */
+.shiny-card .cf-glyph img,
+.shiny-card .glyph img{
+  filter: hue-rotate(150deg) saturate(1.25);
+}
+
 /* ---------- white sparkle overlay for shiny (1-in-4096) card variants ---------- */
 /* Distinct from .shine (rarity-tier glow) so a shiny ultra/secret shows both */
 .shiny-sparkle-overlay{
@@ -2086,6 +2095,10 @@ function renderProfile(){
 
 function renderDex(){
   const owned = state.dex;
+  // Shiny indication is ownership-based, derived from instances - not from the
+  // dex entry. Liquidate the shiny and the dex forgets it. Lifetime credit for
+  // having pulled it lives in player_stats.shiny_pulls_count instead.
+  const shinyIds = new Set((state.instances || []).filter(i => i.shiny).map(i => i.id));
   const ownedCols = state.collectibles || {};
   const totalBadges = SHOP_COLLECTIBLES.length;
   const ownedBadgesCount = SHOP_COLLECTIBLES.filter(i => !!ownedCols[i.id]).length;
@@ -2108,9 +2121,9 @@ function renderDex(){
     ${POKEMON.map(p=>{
       const o = owned[p.id];
       const color = TYPE_COLORS[p.type];
-      return `<div class="dexslot ${o?'owned':''}" style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};">
+      return `<div class="dexslot ${o?'owned':''} ${o && shinyIds.has(p.id) ? 'shiny-card' : ''}" style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};">
         <span class="num mono">#${String(p.id).padStart(3,'0')}</span>
-        ${o && o.hasShiny ? `<span style="position:absolute;top:2px;right:2px;font-size:11px;" title="Shiny found">✨</span>` : ''}
+        ${o && shinyIds.has(p.id) ? `<span style="position:absolute;top:2px;right:2px;font-size:11px;" title="Shiny owned">✨</span>` : ''}
         <div class="glyph">
           ${o?`<img src="${p.sprite}" alt="${esc(p.name)}" loading="lazy">`:``}
         </div>
@@ -2146,7 +2159,7 @@ function renderCardFace(card, flipped){
       <div class="card-slot ${flipped?'flipped':''}" data-flip>
         <div class="card-inner">
           <div class="card-face card-back ${packTheme} ${shineTiers.includes(card.rarity)?'flame-aura':''}"><span>POKéHEX</span></div>
-          <div class="card-face card-front ${shineTiers.includes(card.rarity)?'shine flame-aura':''}"
+          <div class="card-face card-front ${card.shiny?'shiny-card':''} ${shineTiers.includes(card.rarity)?'shine flame-aura':''}"
                style="--card-color:${rc.color};--type-color:${TYPE_COLORS[card.type]};">
             ${card.shiny ? `<div class="shiny-sparkle-overlay"></div><div class="shiny-label">✨ Shiny</div>` : ''}
             <div class="cf-top">
