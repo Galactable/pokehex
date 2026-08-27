@@ -1664,6 +1664,46 @@ function renderMarketModal() {
     </div>`;
   }
 
+  if (activeModal.type === 'dupes') {
+    const targetTier = activeModal.tier;
+    const tierLabels = { secret: 'Secret Rare', ultra: 'Ultra Rare', rare: 'Rare', uncommon: 'Uncommon', common: 'Common' };
+    const now = Date.now();
+    const prev = dupePreview(targetTier, now);
+
+    return `
+    <div class="overlay">
+      <div class="summary-panel" style="max-width:460px;">
+        <div style="font-family:'VT323',monospace;font-size:22px;color:#a855f7;text-transform:uppercase;">Confirm Duplicate Liquidation</div>
+        <div style="font-size:13px;text-align:center;">Liquidate <b>${prev.count}</b> duplicate ${prev.count === 1 ? 'card' : 'cards'} in <b>${tierLabels[targetTier]}</b> tier?</div>
+        <div style="font-size:11px;color:var(--muted);text-align:center;line-height:1.4;">
+          Your least valuable copy of each card is kept, so it can keep maturing.
+        </div>
+
+        <div style="background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:12px;width:100%;text-align:center;">
+          <div style="font-size:11px;color:var(--muted);">Total Estimated Payout:</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:22px;color:var(--gold);margin:4px 0;"><i class="hex-icon"></i>~${fmtHex(prev.est)} HEX</div>
+          <div style="font-size:10px;color:#ffaa00;margin-top:6px;line-height:1.3;">
+            &#9888;&#65039; <b>Real-Time Market Slippage Warning:</b> Market values fluctuate live. Payout for all ${prev.count} cards will calculate individually at execution time.
+          </div>
+        </div>
+
+        <div style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.35);border-radius:8px;padding:10px;width:100%;text-align:center;">
+          <div style="font-size:10px;color:#c084fc;line-height:1.4;">
+            &#10024; <b>Shiny cards are never liquidated in bulk executions.</b>
+            ${prev.shinyKept > 0
+              ? `${prev.shinyKept} shiny ${prev.shinyKept === 1 ? 'card is' : 'cards are'} protected in this tier. Where a shiny exists, it is kept as your copy and the duplicates sell.`
+              : `You have no shinies in this tier.`}
+          </div>
+        </div>
+
+        <div class="summary-actions" style="margin-top:8px;">
+          <button class="sbtn sell" data-modal-cancel>Cancel</button>
+          <button class="sbtn keep" style="background:#a855f7;box-shadow:0 0 10px rgba(168,85,247,0.4);" data-modal-confirm-dupes="${targetTier}">Liquidate Duplicates</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
   if (activeModal.type === 'tier') {
     const targetTier = activeModal.tier;
     const tierLabels = { secret: 'Secret Rare', ultra: 'Ultra Rare', rare: 'Rare', uncommon: 'Uncommon', common: 'Common' };
@@ -1705,6 +1745,39 @@ function renderMarketModal() {
   }
 
   return '';
+}
+
+// Preview for Liquidate Duplicates. Mirrors the server's liquidate_duplicates
+// grouping exactly: keep the LEAST valuable non-shiny copy of each species and
+// sell the rest; if a species has a shiny, the shiny is kept and every
+// non-shiny copy of it sells. Estimate only - the server recalculates each
+// payout at execution time, so slippage applies.
+function dupePreview(tier, now){
+  const groups = {};
+  (state.instances || []).forEach(inst => {
+    if (inst.rarity !== tier) return;
+    (groups[inst.id] = groups[inst.id] || []).push(inst);
+  });
+
+  let count = 0, est = 0, shinyKept = 0;
+  Object.values(groups).forEach(g => {
+    const hasShiny = g.some(x => x.shiny);
+    if (hasShiny) shinyKept += g.filter(x => x.shiny).length;
+
+    const valued = g.filter(x => !x.shiny).map(inst => {
+      const p = POKEMON.find(x => x.id === inst.id);
+      const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
+      return { inst, hoursHeld,
+        // effValue is local to renderMarket(), so the same rule is inlined here
+        payout: Math.max(1, Math.round((inst.shiny ? p.value * 10 : p.value) * cardMultiplier(hoursHeld, now))) };
+    });
+    // same tiebreak chain as the RPC: payout asc, hours asc, uid asc
+    valued.sort((a, b) => a.payout - b.payout || a.hoursHeld - b.hoursHeld
+                       || (a.inst.uid < b.inst.uid ? -1 : 1));
+
+    (hasShiny ? valued : valued.slice(1)).forEach(d => { est += d.payout; count++; });
+  });
+  return { count, est, shinyKept };
 }
 
 function renderMarket(){
@@ -1785,6 +1858,7 @@ function renderMarket(){
           const multiplier = cardMultiplier(hoursHeld, now);
           tierTotalPayout += Math.max(1, Math.round(effValue(p, inst) * multiplier));
         });
+        const dupePrev = dupePreview(tier, now);
 
         return `
           <details style="margin-bottom:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px;">
@@ -1835,9 +1909,15 @@ function renderMarket(){
 
               <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:10px; color:#ffaa00;">⚠️ Real-Time Liquidation Subject to Market Dynamics</span>
-                <button class="buybtn" style="background:#ff4444; color:#fff; padding:8px 16px; font-size:12px; box-shadow:0 0 8px rgba(255,68,68,0.4);" data-open-tier-modal="${tier}">
-                  Liquidate All ${tierLabels[tier]} (<span id="btn-tier-${tier}">~${fmtHex(tierTotalPayout)}</span>)
-                </button>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  ${dupePrev.count > 0 ? `
+                  <button class="buybtn" style="background:#a855f7; color:#fff; padding:8px 16px; font-size:12px; box-shadow:0 0 8px rgba(168,85,247,0.4);" data-open-dupes-modal="${tier}">
+                    Liquidate Duplicates (<span id="btn-dupes-${tier}">~${fmtHex(dupePrev.est)}</span>)
+                  </button>` : ''}
+                  <button class="buybtn" style="background:#ff4444; color:#fff; padding:8px 16px; font-size:12px; box-shadow:0 0 8px rgba(255,68,68,0.4);" data-open-tier-modal="${tier}">
+                    Liquidate All ${tierLabels[tier]} (<span id="btn-tier-${tier}">~${fmtHex(tierTotalPayout)}</span>)
+                  </button>
+                </div>
               </div>
             </div>
           </details>
@@ -2297,6 +2377,44 @@ function wire(){
         recordVaultValue();
         saveState();
         toast(`Liquidated ${p.name} for <i class="hex-icon"></i>${fmtHex(data.payout)} HEX!`);
+      } finally {
+        liquidateBusy = false;
+        activeModal = null;
+        render();
+      }
+    };
+  }
+
+  document.querySelectorAll('[data-open-dupes-modal]').forEach(btn => {
+    btn.onclick = () => {
+      activeModal = { type: 'dupes', tier: btn.dataset.openDupesModal };
+      render();
+    };
+  });
+
+  const confirmDupesBtn = document.querySelector('[data-modal-confirm-dupes]');
+  if (confirmDupesBtn) {
+    confirmDupesBtn.onclick = async () => {
+      if(liquidateBusy) return;
+      const targetTier = confirmDupesBtn.dataset.modalConfirmDupes;
+      liquidateBusy = true;
+      try{
+        const { data, error } = await sb.rpc('liquidate_duplicates', { p_rarity: targetTier });
+        if(error){
+          toast("Couldn't liquidate those duplicates - try again.");
+          return;
+        }
+        if (data.count > 0) {
+          // the server decides which copy survives, so refetch rather than
+          // reproduce the keeper logic client-side and risk drift
+          activeModal = null;
+          await loadState();
+          recordVaultValue();
+          saveState();
+          toast(`Liquidated ${data.count} duplicate ${data.count === 1 ? 'card' : 'cards'} for <i class="hex-icon"></i>${fmtHex(data.payout)} HEX!`);
+          return;
+        }
+        toast('No duplicates to liquidate in that tier.');
       } finally {
         liquidateBusy = false;
         activeModal = null;
