@@ -515,6 +515,36 @@ body {
   filter:drop-shadow(0 0 4px rgba(57,255,20,0.55));
 }
 
+/* ---------- how to play ---------- */
+.howto{max-width:680px;margin:0 auto;}
+.howto p{color:var(--text);font-size:14px;line-height:1.65;margin:0 0 14px;}
+.howto p.lead{color:var(--muted);}
+.howto h3{
+  font-family:'VT323',monospace;font-weight:400;font-size:22px;
+  letter-spacing:0.06em;text-transform:uppercase;color:var(--foil1);
+  text-shadow:0 0 8px rgba(57,255,20,0.45);
+  margin:34px 0 4px;
+}
+.howto hr{border:none;border-top:1px solid var(--line);margin:30px 0;}
+.howto strong{color:var(--foil2);font-weight:400;}
+.howto em{color:var(--muted);font-style:italic;}
+.howto-payout{
+  border-left:2px solid var(--foil1);
+  background:var(--surface2);
+  padding:12px 16px;margin:0 0 14px;
+  color:var(--text);font-size:14px;line-height:1.5;
+}
+.howto-tip{display:flex;gap:12px;margin:0 0 14px;align-items:baseline;}
+.howto-tip .n{
+  font-family:'VT323',monospace;font-size:20px;color:var(--foil1);
+  flex:0 0 auto;min-width:18px;
+}
+.howto-sign{
+  display:flex;justify-content:center;align-items:center;gap:14px;
+  margin-top:38px;padding-top:22px;border-top:1px solid var(--line);
+  color:var(--muted);font-size:12px;
+}
+
 /* ---------- vertical terminal wheel ---------- */
 .wheel-overlay-stage{display:flex;flex-direction:column;align-items:center;gap:18px;}
 .term-slot-frame{
@@ -2139,6 +2169,76 @@ function renderProfile(){
   `;
 }
 
+function renderHowTo(){
+  return `
+  <div class="howto">
+    <h2 class="disp" style="font-size:26px;margin:0 0 6px;">How to Play</h2>
+
+    <h3>The Goal</h3>
+    <p>Collect all 151. That's it. That's the game.</p>
+    <p>You need to be <strong>holding</strong> one of each. Not "pulled it once." Not "had it for a while." Holding it. Right now. This is a binder, not a diary &mdash; sell your only Charizard and #006 goes dark like you never met him.</p>
+    <p>Nobody has finished. Someone will. Statistically it probably won't be you, but somebody's got to be the outlier and the odds aren't zero, so.</p>
+
+    <hr>
+
+    <h3>HEX</h3>
+    <p>HEX is the only currency. HEX buys packs. Packs contain cards. Cards, when you no longer want them, become HEX again.</p>
+    <p>You started with 2,500 of it. Nobody knows where it came from. Don't think about it too hard.</p>
+
+    <hr>
+
+    <h3>The Three Things You Can Do</h3>
+    <p><strong>Open packs.</strong> Basic, Diamond, Whale Vault, in ascending order of price and descending order of financial responsibility. Five cards each. Diamond guarantees a Rare or better. Whale guarantees an Ultra or better and guarantees you'll feel something.</p>
+    <p><strong>Sell cards.</strong> Every card you're holding sits in your Vault. The Vault is not a display case. It's inventory. It's the pile you liquidate to keep the lights on.</p>
+    <p><strong>Spin the wheel.</strong> Once an hour. Free. This is, and I cannot stress this enough, your actual job.</p>
+
+    <hr>
+
+    <h3>The Market (Read This One)</h3>
+    <p>Card prices move. Constantly. There's a live index at the top of the Market page and it is going up or down at all times, because the economy of this game was designed by someone who thought that would be funny.</p>
+    <p>When you sell a card, you get:</p>
+    <div class="howto-payout">its base value &times; whatever the market feels like right now</div>
+    <p>Bull market? Great. Bear market? Your Pidgey is now worth three HEX and change. Same Pidgey. Same you. Different Tuesday.</p>
+    <p>The index moves in cycles. Some short, some long, all of them stacked on top of each other. It is completely deterministic &mdash; it is the <em>same</em> market for every player at the same moment, so nobody is getting a better roll than you. You are just reading it worse.</p>
+    <p>Learn the rhythm and you'll do fine. Ignore it and you will spend this entire game selling into the floor and wondering why you're poor.</p>
+    <p><strong>The HODL bonus.</strong> Cards gain <strong>+1% per hour</strong> you hold them, up to <strong>+30%</strong>. Thirty hours of doing nothing is the single most profitable activity available to you. Make of that what you will.</p>
+    <p><strong>One more thing.</strong> The sell button on the pack reveal screen and the sell button in your Vault do not do the same math. That's not a bug. Figure out which one you want and when. I'm not going to tell you.</p>
+
+    <hr>
+
+    <h3>The Wheel Is The Economy</h3>
+    <p class="lead">Here's the part the UI doesn't say out loud:</p>
+    <p><strong>Packs lose money.</strong> On average, a pack contains less value than it costs. That's not a flaw, that's the whole design &mdash; it's how a card shop works and how every card shop has always worked. The house edge is the point.</p>
+    <p>So the market isn't how you get rich. The market is how you lose <em>less</em>. A good sell turns a bad pack into a survivable one, and a great sell &mdash; held long, timed right &mdash; can actually come out ahead. That's the skill. That's the entire skill.</p>
+    <p>Your income is the wheel. Every hour, free, no strings. Spin it. Set an alarm. The cooldown survives a game reset, so don't get clever.</p>
+
+    <hr>
+
+    <h3>Badges</h3>
+    <p>Eight gym badges in the Shop. They do nothing.</p>
+    <p>They cost between 2,500 and fifteen million HEX and they do <strong>nothing</strong>. No bonus. No multiplier. No secret unlock. They are a number going down so a different number can go up, and you will want them anyway, and that says more about you than it does about me.</p>
+    <p>The Earth Badge is fifteen million. See you in three months.</p>
+
+    <hr>
+
+    <h3>Three Things That Will Save You</h3>
+    <div class="howto-tip"><span class="n">1</span><span><strong>Never sell your last copy.</strong> Duplicates are income. Singles are the entire point of the game. The Market page can tell the difference &mdash; use it, because at 3am you won't.</span></div>
+    <div class="howto-tip"><span class="n">2</span><span><strong>Spin every hour you're awake.</strong> It's free money and it outearns everything else you can do by a margin that's frankly embarrassing to the rest of the game.</span></div>
+    <div class="howto-tip"><span class="n">3</span><span><strong>Sell into strength, not into need.</strong> The moment you <em>need</em> HEX is almost never the moment the market wants to give you any. Sell when it's high and sit on the cash. Bank the good day.</span></div>
+
+    <hr>
+
+    <h3>That's It</h3>
+    <p>Open packs. Watch the line. Hold when it's low, dump when it's high, never sell your last one, spin every hour.</p>
+    <p>151 cards. Eight useless badges. One market that doesn't care about you.</p>
+    <p>Good luck.</p>
+
+    <div class="howto-sign">
+      <span>[dungeon]</span>
+    </div>
+  </div>`;
+}
+
 function renderDex(){
   const owned = state.dex;
   // Shiny indication is ownership-based, derived from instances - not from the
@@ -2282,7 +2382,7 @@ function render(){
       <div class="brand">
         <div>
           <h1>POKéHEX</h1>
-          <span>rip packs &middot; fill your dex <br>risk fake currency &middot; 0.4.1 beta </span>
+          <span>rip packs &middot; fill your dex <br>risk fake currency &middot; 0.5.0 beta </span>
         </div>
       </div>
       ${authUser
@@ -2298,10 +2398,11 @@ function render(){
     <div class="navrow">
       <button class="navbtn ${view==='shop'?'active':''}" data-nav="shop">Shop and Bonuses</button>
       <button class="navbtn ${view==='profile'?'active':''}" data-nav="profile">Stats</button>
+      <button class="navbtn ${view==='howto'?'active':''}" data-nav="howto">How to Play</button>
     </div>
     ${!authUser ? `<div class="cta-account-row"><button class="cta-account-link" data-createaccount>SIGN IN OR CREATE AN ACCOUNT TO PLAY</button></div>` : ''}
     <div class="wrap">
-      ${view==='open'?renderOpen():(view==='market'?renderMarket():(view==='shop'?renderShopBonus():(view==='profile'?renderProfile():renderDex())))}
+      ${view==='open'?renderOpen():(view==='market'?renderMarket():(view==='shop'?renderShopBonus():(view==='profile'?renderProfile():(view==='howto'?renderHowTo():renderDex()))))}
       <div class="footer-actions"><button class="reset-link" data-reset>[burn everything]</button><img class="sigil" alt="" title="dev by dungeon" src="data:image/png;base64,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"><span class="reset-link" style="cursor:default;text-decoration:none;">[dev by dungeon]</span></div>
     </div>
     ${authUser ? `<div class="signoutbtn-row"><button class="signoutbtn" data-signout title="${authUser.email}">SIGN OUT</button></div>` : ''}
