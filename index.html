@@ -630,6 +630,44 @@ body {
   padding:4px 0;
 }
 .signoutbtn:hover{text-shadow:0 0 8px rgba(57,255,20,0.6);}
+
+/* ---------- responsive ---------- */
+
+/* Kill sideways scroll outright. If something overflows, this contains it
+   instead of letting it drag the whole page off-screen. */
+html,body{ max-width:100%; overflow-x:hidden; }
+
+/* Grid/flex children default to min-width:auto and refuse to shrink below
+   their content - one long uid or number then forces the page wide. */
+.wrap, .topbar, .navrow, .packgrid, .dexgrid,
+.packcard, .dexslot, .dexhead, .dexhead-left{ min-width:0; }
+
+/* Long unbroken strings (uids, big HEX values, usernames) wrap instead of overflowing. */
+.mono, .nm, .cnt, .num{ overflow-wrap:anywhere; }
+
+@media (max-width: 720px){
+  #app{ padding:12px; }
+
+  /* The 1fr auto 1fr header is the main offender - collapse it to a
+     single centred column so nothing gets crushed. */
+  .topbar{
+    grid-template-columns:1fr;
+    justify-items:center;
+    gap:12px;
+    text-align:center;
+  }
+  .brand{ grid-column:1; justify-self:center; }
+
+  .packgrid{ grid-template-columns:1fr; }
+  .dexgrid{ grid-template-columns:repeat(auto-fill,minmax(72px,1fr)); gap:8px; }
+}
+
+@media (max-width: 420px){
+  #app{ padding:10px; }
+  .card-slot{ width:104px; height:144px; }
+  .pack-visual{ width:140px; height:198px; }
+  .dexgrid{ grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); }
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
