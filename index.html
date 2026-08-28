@@ -1064,14 +1064,14 @@ const SHOP_COLLECTIBLES = [
 ];
 
 const WHEEL_REWARDS = [
-  {amt:150,    weight:30},
-  {amt:400,    weight:24},
-  {amt:900,    weight:18},
-  {amt:2500,   weight:13},
-  {amt:7500,   weight:8},
+  {amt:2000,   weight:30},
+  {amt:3000,   weight:24},
+  {amt:4500,   weight:18},
+  {amt:7000,   weight:13},
+  {amt:12000,  weight:8},
   {amt:25000,  weight:4.5},
-  {amt:90000,  weight:1.8},
-  {amt:369000, weight:0.7}
+  {amt:50000,  weight:1.8},
+  {amt:100000, weight:0.7}
 ];
 const WHEEL_COOLDOWN = 60*60*1000; // 1 hour
 
@@ -2638,8 +2638,19 @@ function wire(){
     }
     // server has already picked (and paid out) the reward; find the matching
     // strip entry purely to know where to animate the visual to
-    const reward = WHEEL_REWARDS.find(r=>r.amt===data.amount);
-    const idx = WHEEL_REWARDS.indexOf(reward);
+    let reward = WHEEL_REWARDS.find(r=>r.amt===data.amount);
+    let idx = WHEEL_REWARDS.indexOf(reward);
+    // Catalog-drift guard. WHEEL_REWARDS mirrors the wheel_rewards table with
+    // no automatic sync, so a deploy window (or a stale cached build) can hand
+    // us an amount this strip doesn't contain. Without this, idx is -1: the
+    // strip lands a slot short and the result panel silently disappears, while
+    // the server's HEX is still credited. Animate to the nearest slot instead
+    // and report the amount the server actually paid.
+    if (idx < 0) {
+      idx = WHEEL_REWARDS.reduce((best, r, i) =>
+        Math.abs(r.amt - data.amount) < Math.abs(WHEEL_REWARDS[best].amt - data.amount) ? i : best, 0);
+      reward = { amt: data.amount };
+    }
 
     const itemHeight = 46;
     const itemsPerSet = WHEEL_REWARDS.length;
