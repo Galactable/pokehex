@@ -1041,7 +1041,7 @@ const POKEMON = [
 });
 
 const PACKS = [
-  {id:'basic',name:'Basic Pack',price:500,cards:5,
+  {id:'basic',name:'Basic Pack',price:290,cards:5,
     desc:'Standard issue. Reliable baseline pulls.',
     weights:{common:65,uncommon:25,rare:8,ultra:1.8,secret:0.2}},
   {id:'diamond',name:'Diamond Pack',price:1200,cards:5,
@@ -1126,7 +1126,7 @@ function renderResetConfirmModal(){
     <div class="summary-panel" style="max-width:440px;">
       <div style="font-family:'VT323',monospace;font-size:22px;color:#ff4444;text-transform:uppercase;">Reset Progress?</div>
       <div style="font-size:13px;text-align:center;line-height:1.5;">
-        Resetting your progress will <b>delete all cards</b>, reset your HEX balance to <b>1000</b>, and <b>wipe all account stats</b>.
+        Resetting your progress will <b>delete all cards</b>, reset your HEX balance to <b>2,500</b>, and <b>wipe all account stats</b>.
       </div>
       <div style="font-size:13px;text-align:center;font-weight:700;color:#ff4444;">ARE YOU SURE?</div>
       <div class="summary-actions" style="margin-top:8px;">
@@ -1163,12 +1163,12 @@ async function loadState(){
       };
     } else {
       // shouldn't happen given ensure_game_state() above, but fail safe
-      state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
+      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
     }
   }catch(e){
     console.error('load failed', e);
     toast('Could not load your saved data - starting fresh this session.');
-    state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
+    state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
   }
 
   if(state.lastSpinAt===undefined) state.lastSpinAt = null;
@@ -2597,7 +2597,7 @@ function wire(){
       // be a way to farm the wheel with nothing at stake), so the button
       // needs to keep showing the real remaining cooldown, not "Ready"
       const preservedLastSpinAt = state.lastSpinAt;
-      state = { hex:1000, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[] };
+      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[] };
       saveState();
       resetConfirmOpen = false;
     } finally {
