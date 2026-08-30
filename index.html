@@ -319,6 +319,60 @@ body {
   background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;
   font-size:10px;color:var(--muted);position:relative;padding:4px;text-align:center;
 }
+/* The stats page reuses renderCardFace() with flipped=true, which would show
+   the ALREADY OWNED badge. Suppressed here by scope rather than by threading a
+   flag through renderCardFace, which is shared with the reveal path.
+   display:none rather than visibility:hidden so it reclaims the reserved space. */
+.stats-card-display{
+  display:flex;flex-wrap:wrap;gap:28px;
+  justify-content:center;align-items:flex-start;margin:20px 0 4px;
+}
+.stats-card-col{
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  flex:0 1 auto;min-width:0;
+}
+/* placeholder sized to the card so an empty slot doesn't collapse the row and
+   drag the filled card off-centre */
+.stats-card-empty{
+  width:130px;min-height:180px;display:flex;align-items:center;justify-content:center;
+  text-align:center;color:var(--muted);font-size:11px;line-height:1.4;padding:0 8px;
+  border:1px dashed var(--line);border-radius:12px;
+}
+.stats-card-display .already-owned-badge{display:none;}
+/* The pulsing outer glow on ultra/secret is a pack-opening moment. On the stats
+   page the cards sit in a static row, so the aura is suppressed by scope rather
+   than by conditioning renderCardFace, which the reveal path shares.
+   The inner .shine sheen is a separate effect and is left alone. */
+.stats-card-display .flame-aura{animation:none;box-shadow:none;}
+
+.fav-toggle{
+  align-self:flex-start;display:flex;align-items:center;gap:6px;cursor:pointer;
+  background:var(--surface2);border:1px solid var(--line);color:var(--muted);
+  border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;
+  letter-spacing:0.04em;text-transform:uppercase;
+  transition:color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.fav-toggle .fav-star{font-size:15px;line-height:1;}
+.fav-toggle:hover{color:gold;border-color:gold;}
+.fav-toggle.on{color:gold;border-color:gold;box-shadow:0 0 8px rgba(255,215,0,0.35);}
+.fav-toggle.on .fav-star{text-shadow:0 0 5px gold;}
+
+/* favorite marker on the vault tile itself. sits left of the shiny star so a
+   shiny favorite shows both without overlapping. */
+.fav-tile-mark{
+  position:absolute;top:6px;left:6px;color:gold;font-size:13px;
+  text-shadow:0 0 5px gold;z-index:2;
+}
+
+.backtotop-row{display:flex;justify-content:center;margin:24px 0 8px;}
+.backtotop{
+  display:flex;align-items:center;justify-content:center;
+  width:40px;height:40px;padding:0;border-radius:10px;cursor:pointer;
+  background:var(--surface2);border:1px solid var(--foil1);color:var(--foil1);
+  box-shadow:0 0 8px rgba(57,255,20,0.35);
+  transition:box-shadow 0.15s ease, transform 0.15s ease;
+}
+.backtotop:hover{box-shadow:0 0 14px rgba(57,255,20,0.6);transform:translateY(-2px);}
 .stat-row{
   display:flex;justify-content:space-between;align-items:center;
   padding:8px 2px;border-bottom:1px solid var(--line);font-size:13px;
@@ -441,12 +495,14 @@ body {
   0%,100%{ opacity:0.35; }
   50%{ opacity:0.95; }
 }
-.shiny-label{
-  position:absolute;top:4px;right:4px;z-index:3;
-  font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;
-  color:#0b0b14;background:#fff;padding:2px 5px;border-radius:4px;
-  letter-spacing:0.05em;text-transform:uppercase;
-  box-shadow:0 0 6px 2px rgba(255,255,255,0.7);
+/* Sparkle overlay scaled down for dex tiles (~84x112) so the sparkles land on
+   the tile instead of mostly falling outside it. Same class, same animation,
+   same 4-layer pattern at 0.7x. border-radius matches .dexslot because the
+   tile has no overflow:hidden the way .card-face does. */
+.dexslot .shiny-sparkle-overlay{
+  border-radius:10px;
+  background-size: 28px 28px, 42px 42px, 56px 56px, 35px 35px;
+  background-position: 6px 10px, 28px 42px, 49px 14px, 14px 56px;
 }
 
 /* ---------- purple flame aura for ultra/secret tier cards ---------- */
@@ -703,6 +759,10 @@ html,body{ max-width:100%; overflow-x:hidden; }
 @media (max-width: 420px){
   #app{ padding:10px; }
   .card-slot{ width:104px; height:144px; }
+  /* keep the placeholder the same size as the shrunken card, and tighten the
+     gap so Most Valuable Pull and Favorite Card still sit in one row */
+  .stats-card-empty{ width:104px; min-height:144px; }
+  .stats-card-display{ gap:14px; }
   .pack-visual{ width:140px; height:198px; }
   .dexgrid{ grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); }
 }
@@ -1134,7 +1194,7 @@ function cardMultiplier(hoursHeld, tNow){
   return Math.max(MARKET_MULT_FLOOR, marketIndexAt(tNow) + heldBonusFor(hoursHeld));
 }
 
-let state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] }; // hex:0 until signed in - real balance loads after auth
+let state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[], favoriteUid:null }; // hex:0 until signed in - real balance loads after auth
 let view = 'open';
 let profileStats = null;
 let profileUsername = null;
@@ -1176,7 +1236,7 @@ async function loadState(){
 
     const { data, error } = await sb
       .from('game_states_v2')
-      .select('hex, dex, instances, collectibles, last_spin_at, value_history, long_history')
+      .select('hex, dex, instances, collectibles, last_spin_at, value_history, long_history, favorite_uid')
       .eq('user_id', authUser.id)
       .maybeSingle();
     if(error) throw error;
@@ -1189,16 +1249,20 @@ async function loadState(){
         collectibles: data.collectibles || {},
         lastSpinAt: data.last_spin_at ? new Date(data.last_spin_at).getTime() : null,
         valueHistory: data.value_history || [],
-        longHistory: data.long_history || []
+        longHistory: data.long_history || [],
+        // may point at a card that has since been liquidated - deliberate.
+        // a favorite is not protected from selling, so every reader must
+        // treat a uid that no longer resolves as "no favorite set".
+        favoriteUid: data.favorite_uid || null
       };
     } else {
       // shouldn't happen given ensure_game_state() above, but fail safe
-      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
+      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[], favoriteUid:null };
     }
   }catch(e){
     console.error('load failed', e);
     toast('Could not load your saved data - starting fresh this session.');
-    state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
+    state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[], favoriteUid:null };
   }
 
   if(state.lastSpinAt===undefined) state.lastSpinAt = null;
@@ -1714,9 +1778,91 @@ function renderMarketIndexChart(){
   `;
 }
 
+// Shared by every long page (market, dex, shop, how to play) so the control
+// looks and behaves identically everywhere and only has to change in one place.
+// Relies on the [data-scrolltop] handler bound in the render pass.
+function backToTopBtn(){
+  return `
+    <div class="backtotop-row">
+      <button class="backtotop" data-scrolltop title="Back to top" aria-label="Back to top">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+      </button>
+    </div>`;
+}
+
 function renderMarketModal() {
   if (!activeModal) return '';
-  
+
+  if (activeModal.type === 'detail') {
+    const inst = (state.instances || []).find(x => x.uid === activeModal.uid);
+    // same self-clearing guard the single-liquidation modal uses: if the card
+    // went away while the modal was open, close rather than render a ghost
+    if (!inst) { activeModal = null; return ''; }
+    const p = POKEMON.find(x => x.id === inst.id);
+    if (!p) { activeModal = null; return ''; }
+    const rc = RARITY[inst.rarity];
+    const now = Date.now();
+    const acquired = inst.acquiredAt || now;
+    const hoursHeld = Math.max(0, (now - acquired) / (1000 * 60 * 60));
+    const baseValue = p.value;
+    const effective = inst.shiny ? p.value * 10 : p.value;
+    const multiplier = cardMultiplier(hoursHeld, now);
+    const payout = Math.max(1, Math.round(effective * multiplier));
+    // derived from heldBonusFor / the MARKET_* constants rather than restating
+    // "+1%/hr capped at +30%" here - a second copy of the formula would drift
+    // silently the moment either constant is retuned
+    const hodlBonus = heldBonusFor(hoursHeld);
+    const hodlPct = hodlBonus * 100;
+    const hoursToCap = Math.max(0, (MARKET_HELD_BONUS_CAP / MARKET_HELD_BONUS_RATE) - hoursHeld);
+    const hodlMaxed = hodlBonus >= MARKET_HELD_BONUS_CAP;
+    const isFav = state.favoriteUid === inst.uid;
+    const acquiredStr = new Date(acquired).toLocaleString(undefined,
+      {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+
+    const row = (label, value, color) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px;">
+        <span style="color:var(--muted);">${label}</span>
+        <span class="mono" style="${color ? `color:${color};` : ''}">${value}</span>
+      </div>`;
+
+    return `
+    <div class="overlay">
+      <div class="summary-panel" style="max-width:460px;">
+        <button class="fav-toggle ${isFav ? 'on' : ''}" data-fav-toggle="${inst.uid}" title="${isFav ? 'Remove as favorite' : 'Set as favorite'}">
+          <span class="fav-star">${isFav ? '\u2605' : '\u2606'}</span>
+          <span>Favorite Card?</span>
+        </button>
+
+        <div style="font-family:'VT323',monospace;font-size:24px;color:${rc.color};text-transform:uppercase;letter-spacing:0.04em;">
+          ${esc(p.name)}${inst.shiny ? ' \u2605' : ''}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:-6px;">
+          #${String(p.id).padStart(3,'0')} &middot; ${p.type} &middot; ${rc.label}${inst.shiny ? ' &middot; SHINY' : ''}
+        </div>
+
+        <div style="background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;width:100%;">
+          ${inst.shiny ? row('Base Value', `<i class="hex-icon"></i>${fmtHex(baseValue)}`) : ''}
+          ${inst.shiny ? row('Shiny Multiplier', '&times;10', 'gold') : ''}
+          ${row('Card Value', `<i class="hex-icon"></i>${fmtHex(effective)}`)}
+          ${row('Acquired', acquiredStr)}
+          ${row('Held', `${hoursHeld.toFixed(1)}h`)}
+          ${row('HODL Bonus', `+${hodlPct.toFixed(1)}%`, hodlMaxed ? 'var(--foil1)' : '')}
+          ${row(`Time to +${(MARKET_HELD_BONUS_CAP*100).toFixed(0)}% Cap`, hodlMaxed ? 'maxed' : `${hoursToCap.toFixed(1)}h`, hodlMaxed ? 'var(--foil1)' : '')}
+          ${row('Current Multiplier', `${(multiplier * 100).toFixed(0)}%`, multiplier >= 1 ? 'var(--foil1)' : '#ff4444')}
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 0;font-size:13px;">
+            <span style="color:var(--muted);">Sells For Now</span>
+            <span class="mono" style="color:var(--gold);font-size:16px;"><i class="hex-icon"></i>~${fmtHex(payout)}</span>
+          </div>
+        </div>
+
+        <div class="summary-actions" style="margin-top:4px;">
+          <button class="sbtn sell" data-modal-cancel>Close</button>
+          <button class="sbtn keep" style="background:#ff4444;box-shadow:0 0 10px rgba(255,68,68,0.4);" data-open-single-modal="${inst.uid}">Liquidate</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
   if (activeModal.type === 'single') {
     const inst = (state.instances || []).find(x => x.uid === activeModal.uid);
     if (!inst) { activeModal = null; return ''; }
@@ -1964,8 +2110,9 @@ function renderMarket(){
                   const dateStr = new Date(acquired).toLocaleDateString(undefined, {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
 
                   return `
-                    <div class="packcard" style="padding:12px;border-color:${rc.color};display:flex;flex-direction:column;justify-content:space-between;background:var(--surface2);">
+                    <div class="packcard" style="padding:12px;border-color:${rc.color};display:flex;flex-direction:column;justify-content:space-between;background:var(--surface2);cursor:pointer;" data-open-detail-modal="${inst.uid}" title="View card details">
                       ${inst.shiny ? `<span style="position:absolute;top:6px;right:6px;color:gold;font-size:13px;text-shadow:0 0 5px gold;z-index:2;" title="Shiny">★</span>` : ''}
+                      ${state.favoriteUid === inst.uid ? `<span class="fav-tile-mark" title="Favorite card">★</span>` : ''}
                       <div>
                         <div class="cf-top" style="margin-bottom:4px;">
                           <span class="cf-num mono">#${String(p.id).padStart(3,'0')}</span>
@@ -2009,6 +2156,7 @@ function renderMarket(){
         `;
       }).join('')}
     `}
+    ${backToTopBtn()}
     ${renderMarketModal()}
   `;
 }
@@ -2069,7 +2217,28 @@ function renderShopBonus(){
       </div>`;
     }).join('')}
   </div>
+  ${backToTopBtn()}
   `;
+}
+
+async function setFavoriteCard(uid){
+  // toggle: starring the card that is already the favorite clears it
+  const next = (state.favoriteUid === uid) ? null : uid;
+  const prev = state.favoriteUid;
+  // optimistic, so the star responds on the tap rather than after the round
+  // trip; rolled back below if the server refuses
+  state.favoriteUid = next;
+  render();
+  try{
+    const { error } = await sb.rpc('set_favorite_card', { p_uid: next });
+    if(error) throw error;
+    toast(next ? 'Favorite card set.' : 'Favorite card cleared.');
+  }catch(e){
+    console.error('set_favorite_card failed:', e && e.message, e);
+    state.favoriteUid = prev;
+    render();
+    toast('Could not update your favorite - try again.');
+  }
 }
 
 async function loadProfileStats(retrying){
@@ -2116,6 +2285,18 @@ function renderProfile(){
     shiny: mvp.shiny, type: mvpPokemon.type, sprite: mvpPokemon.sprite
   } : null;
 
+  // the favorite is not protected from being sold, so the uid may no longer
+  // resolve. an unresolvable uid reads as "none set" rather than an error.
+  const favInst = state.favoriteUid
+    ? (state.instances || []).find(x => x.uid === state.favoriteUid)
+    : null;
+  const favPokemon = favInst ? POKEMON.find(x => x.id === favInst.id) : null;
+  const favCard = favPokemon ? {
+    id: favPokemon.id, name: favPokemon.name, rarity: favInst.rarity,
+    value: favPokemon.value, shiny: favInst.shiny,
+    type: favPokemon.type, sprite: favPokemon.sprite
+  } : null;
+
   const packRows = PACKS.map(p=>{
     const count = (s.packsOpened && s.packsOpened[p.id]) || 0;
     return `<div class="stat-row"><span>${esc(p.name)}</span><span class="mono">${count}</span></div>`;
@@ -2136,15 +2317,20 @@ function renderProfile(){
   <div class="stat-row"><span># of Secret Rares Pulled</span><span class="mono">${s.secretPullsCount}</span></div>
   <div class="stat-row"><span># of Shinies Found</span><span class="mono">${s.shinyPullsCount}</span></div>
 
-  <div class="section-label" style="margin-top:20px;">Most Valuable Pull</div>
-  ${mvpCard ? `
-    <div style="display:flex;justify-content:center;margin:10px 0 4px;">
-      ${renderCardFace(mvpCard, true)}
+  <div class="stats-card-display">
+    <div class="stats-card-col">
+      <div class="section-label" style="margin:0;">Most Valuable Pull</div>
+      ${mvpCard
+        ? renderCardFace(mvpCard, true)
+        : `<div class="stats-card-empty">No pulls recorded yet.</div>`}
     </div>
-    <div style="text-align:center;color:var(--muted);font-size:12px;">
-      ${mvp.shiny ? 'Shiny ' : ''}${esc(mvp.name)} &middot; <i class="hex-icon"></i>${fmtHex(mvp.effectiveValue)} HEX
+    <div class="stats-card-col">
+      <div class="section-label" style="margin:0;">Favorite Card</div>
+      ${favCard
+        ? renderCardFace(favCard, true)
+        : `<div class="stats-card-empty">Star a card in your vault to set one.</div>`}
     </div>
-  ` : `<div style="color:var(--muted);padding:10px 0;">No pulls recorded yet.</div>`}
+  </div>
 
   <div class="section-label" style="margin-top:20px;">Packs Opened by Tier</div>
   ${packRows}
@@ -2236,6 +2422,7 @@ function renderHowTo(){
     <div class="howto-sign">
       <span>[dungeon]</span>
     </div>
+    ${backToTopBtn()}
   </div>`;
 }
 
@@ -2269,7 +2456,7 @@ function renderDex(){
       const color = TYPE_COLORS[p.type];
       return `<div class="dexslot ${o?'owned':''} ${o && shinyIds.has(p.id) ? 'shiny-card' : ''}" style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};">
         <span class="num mono">#${String(p.id).padStart(3,'0')}</span>
-        ${o && shinyIds.has(p.id) ? `<span style="position:absolute;top:2px;right:2px;font-size:11px;" title="Shiny owned">✨</span>` : ''}
+        ${o && shinyIds.has(p.id) ? `<div class="shiny-sparkle-overlay"></div><span style="position:absolute;top:2px;right:4px;color:gold;font-size:12px;text-shadow:0 0 5px gold;z-index:3;" title="Shiny owned">★</span>` : ''}
         <div class="glyph">
           ${o?`<img src="${p.sprite}" alt="${esc(p.name)}" loading="lazy">`:``}
         </div>
@@ -2291,6 +2478,7 @@ function renderDex(){
       </div>`;
     }).join('')}
   </div>
+  ${backToTopBtn()}
   `;
 }
 
@@ -2301,13 +2489,13 @@ function renderCardFace(card, flipped){
   const packTheme = (opening && opening.pack) ? (opening.pack.id==='basic'?'theme-basic':(opening.pack.id==='whale'?'theme-whale':'')) : '';
   return `
     <div class="card-slot-wrapper">
-      <div class="already-owned-badge" style="visibility: ${isAlreadyOwned ? 'visible' : 'hidden'};">ALREADY OWNED</div>
+      <div class="already-owned-badge" style="visibility: ${flipped && isAlreadyOwned ? 'visible' : 'hidden'};">ALREADY OWNED</div>
       <div class="card-slot ${flipped?'flipped':''}" data-flip>
         <div class="card-inner">
           <div class="card-face card-back ${packTheme} ${shineTiers.includes(card.rarity)?'flame-aura':''}"><span>POKéHEX</span></div>
           <div class="card-face card-front ${card.shiny?'shiny-card':''} ${shineTiers.includes(card.rarity)?'shine flame-aura':''}"
                style="--card-color:${rc.color};--type-color:${TYPE_COLORS[card.type]};">
-            ${card.shiny ? `<div class="shiny-sparkle-overlay"></div><div class="shiny-label">✨ Shiny</div>` : ''}
+            ${card.shiny ? `<div class="shiny-sparkle-overlay"></div>` : ''}
             <div class="cf-top">
               <span class="cf-num mono">#${String(card.id).padStart(3,'0')}</span>
               <span class="cf-type">${card.type}</span>
@@ -2382,7 +2570,7 @@ function render(){
       <div class="brand">
         <div>
           <h1>POKéHEX</h1>
-          <span>rip packs &middot; fill your dex <br>risk fake currency &middot; 0.5.0 beta </span>
+          <span>rip packs &middot; fill your dex <br>risk fake currency &middot; 0.6.0 beta </span>
         </div>
       </div>
       ${authUser
@@ -2425,6 +2613,10 @@ function wire(){
     view=b.dataset.nav;
     if(view==='profile' && authUser) loadProfileStats();
     render();
+  });
+
+  document.querySelectorAll('[data-scrolltop]').forEach(b=>b.onclick=()=>{
+    window.scrollTo({top:0,behavior:'smooth'});
   });
 
   const profileUsernameForm = document.getElementById('profileUsernameForm');
@@ -2488,8 +2680,26 @@ function wire(){
   });
 
   // Modal Handlers
+  document.querySelectorAll('[data-open-detail-modal]').forEach(tile => {
+    tile.onclick = () => {
+      activeModal = { type: 'detail', uid: tile.dataset.openDetailModal };
+      render();
+    };
+  });
+
+  document.querySelectorAll('[data-fav-toggle]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      setFavoriteCard(btn.dataset.favToggle);
+    };
+  });
+
   document.querySelectorAll('[data-open-single-modal]').forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = (e) => {
+      // the Liquidate button on a vault tile is nested inside that tile's own
+      // detail-modal click target. without this the sell confirm and the detail
+      // panel both open, stacked.
+      e.stopPropagation();
       activeModal = { type: 'single', uid: btn.dataset.openSingleModal };
       render();
     };
@@ -2698,7 +2908,9 @@ function wire(){
       // be a way to farm the wheel with nothing at stake), so the button
       // needs to keep showing the real remaining cooldown, not "Ready"
       const preservedLastSpinAt = state.lastSpinAt;
-      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[] };
+      // reset wipes instances, so any favorite_uid still stored server-side can
+      // no longer resolve. cleared locally rather than via the RPC - see notes.
+      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[], favoriteUid:null };
       saveState();
       resetConfirmOpen = false;
     } finally {
