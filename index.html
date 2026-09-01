@@ -1018,7 +1018,10 @@ sb.auth.onAuthStateChange(async (event, session)=>{
 const TYPE_COLORS = {
   normal:'#A8A878',fire:'#F08030',water:'#6890F0',electric:'#F0C020',grass:'#78C850',
   ice:'#98D8D8',fighting:'#C03028',poison:'#A040A0',ground:'#E0C068',flying:'#A890F0',
-  psychic:'#F85888',bug:'#A8B820',rock:'#B8A038',ghost:'#705898',dragon:'#7038F8'
+  psychic:'#F85888',bug:'#A8B820',rock:'#B8A038',ghost:'#705898',dragon:'#7038F8',
+  // Gen 2 additions. steel is deepened from the canonical #B8B8D0, which sits
+  // only dE 26 from ice and reads as the same pale cool tone on a dex tile.
+  dark:'#705848',steel:'#8C8CA8'
 };
 
 const RARITY = {
@@ -1108,7 +1111,42 @@ const POKEMON = [
 [143,'Snorlax','normal','ultra'],
 [144,'Articuno','ice','secret'],[145,'Zapdos','electric','secret'],[146,'Moltres','fire','secret'],
 [147,'Dratini','dragon','rare'],[148,'Dragonair','dragon','rare'],[149,'Dragonite','dragon','secret'],
-[150,'Mewtwo','psychic','secret'],[151,'Mew','psychic','secret']
+[150,'Mewtwo','psychic','secret'],[151,'Mew','psychic','secret'],
+// ---------- Gen 2 (Johto, 152-251) ----------
+[152,'Chikorita','grass','common'],[153,'Bayleef','grass','uncommon'],[154,'Meganium','grass','ultra'],
+[155,'Cyndaquil','fire','common'],[156,'Quilava','fire','uncommon'],[157,'Typhlosion','fire','ultra'],
+[158,'Totodile','water','common'],[159,'Croconaw','water','uncommon'],[160,'Feraligatr','water','ultra'],
+[161,'Sentret','normal','common'],[162,'Furret','normal','rare'],[163,'Hoothoot','normal','common'],
+[164,'Noctowl','normal','rare'],[165,'Ledyba','bug','common'],[166,'Ledian','bug','rare'],
+[167,'Spinarak','bug','common'],[168,'Ariados','bug','rare'],[169,'Crobat','poison','rare'],
+[170,'Chinchou','water','common'],[171,'Lanturn','water','rare'],[172,'Pichu','electric','common'],
+[173,'Cleffa','normal','common'],[174,'Igglybuff','normal','common'],[175,'Togepi','normal','common'],
+[176,'Togetic','normal','uncommon'],[177,'Natu','psychic','common'],[178,'Xatu','psychic','rare'],
+[179,'Mareep','electric','common'],[180,'Flaaffy','electric','uncommon'],[181,'Ampharos','electric','rare'],
+[182,'Bellossom','grass','rare'],[183,'Marill','water','common'],[184,'Azumarill','water','rare'],
+[185,'Sudowoodo','rock','uncommon'],[186,'Politoed','water','ultra'],[187,'Hoppip','grass','common'],
+[188,'Skiploom','grass','uncommon'],[189,'Jumpluff','grass','rare'],[190,'Aipom','normal','uncommon'],
+[191,'Sunkern','grass','common'],[192,'Sunflora','grass','rare'],[193,'Yanma','bug','uncommon'],
+[194,'Wooper','water','common'],[195,'Quagsire','water','rare'],[196,'Espeon','psychic','ultra'],
+[197,'Umbreon','dark','ultra'],[198,'Murkrow','dark','uncommon'],[199,'Slowking','water','ultra'],
+[200,'Misdreavus','ghost','uncommon'],[201,'Unown','psychic','uncommon'],[202,'Wobbuffet','psychic','uncommon'],
+[203,'Girafarig','normal','uncommon'],[204,'Pineco','bug','common'],[205,'Forretress','bug','uncommon'],
+[206,'Dunsparce','normal','uncommon'],[207,'Gligar','ground','uncommon'],[208,'Steelix','steel','ultra'],
+[209,'Snubbull','normal','common'],[210,'Granbull','normal','rare'],[211,'Qwilfish','water','uncommon'],
+[212,'Scizor','bug','ultra'],[213,'Shuckle','bug','uncommon'],[214,'Heracross','bug','rare'],
+[215,'Sneasel','dark','uncommon'],[216,'Teddiursa','normal','common'],[217,'Ursaring','normal','rare'],
+[218,'Slugma','fire','common'],[219,'Magcargo','fire','rare'],[220,'Swinub','ice','common'],
+[221,'Piloswine','ice','rare'],[222,'Corsola','water','uncommon'],[223,'Remoraid','water','common'],
+[224,'Octillery','water','rare'],[225,'Delibird','ice','uncommon'],[226,'Mantine','water','uncommon'],
+[227,'Skarmory','steel','rare'],[228,'Houndour','dark','common'],[229,'Houndoom','dark','rare'],
+[230,'Kingdra','water','ultra'],[231,'Phanpy','ground','common'],[232,'Donphan','ground','rare'],
+[233,'Porygon2','normal','ultra'],[234,'Stantler','normal','uncommon'],[235,'Smeargle','normal','uncommon'],
+[236,'Tyrogue','fighting','common'],[237,'Hitmontop','fighting','uncommon'],[238,'Smoochum','ice','common'],
+[239,'Elekid','electric','common'],[240,'Magby','fire','common'],[241,'Miltank','normal','uncommon'],
+[242,'Blissey','normal','ultra'],[243,'Raikou','electric','secret'],[244,'Entei','fire','secret'],
+[245,'Suicune','water','secret'],[246,'Larvitar','rock','common'],[247,'Pupitar','rock','uncommon'],
+[248,'Tyranitar','rock','secret'],[249,'Lugia','psychic','secret'],[250,'Ho-Oh','fire','secret'],
+[251,'Celebi','psychic','secret']
 ].map(p => {
   const id = p[0];
   const name = p[1];
@@ -1205,6 +1243,8 @@ let opening = null;
 let wheelSpinning = false;
 let wheelResult = null;
 let vaultChartMode = 'live';
+// which generation tab the dex is showing. client-only, resets to 1 on reload.
+let dexGen = 1;
 let activeModal = null; // Confirmation modal state
 let resetConfirmOpen = false;
 let resetBusy = false;
@@ -1542,7 +1582,7 @@ function renderOpen(){
     `).join('')}
   </div>
   <div class="section-label">Dex progress</div>
-  <div style="color:var(--muted);font-size:13px;">${Object.keys(state.dex).length} / 151 cards collected</div>
+  <div style="color:var(--muted);font-size:13px;">${Object.keys(state.dex).length} / 251 cards collected</div>
   `;
 }
 function vaultChartInner(history){
@@ -2304,6 +2344,16 @@ function renderProfile(){
 
   const profitLossColor = s.totalProfitLoss >= 0 ? '#39ff14' : '#ff4444';
 
+  // Split client-side from state.dex rather than from s.collectionPercent.
+  // get_player_stats divides ALL dex keys by 151, so once gen 2 rows exist
+  // server-side that value exceeds 100%. state.dex is the same authoritative
+  // data, so splitting here avoids depending on the RPC being fixed first.
+  const dexIds  = Object.keys(state.dex || {}).map(Number);
+  const ogOwned = dexIds.filter(n => n >= 1   && n <= 151).length;
+  const g2Owned = dexIds.filter(n => n >= 152 && n <= 251).length;
+  const ogPct   = Math.round((ogOwned / 151) * 1000) / 10;
+  const g2Pct   = Math.round((g2Owned / 100) * 1000) / 10;
+
   const cooldownMs = 7*24*60*60*1000;
   const cooldownRemaining = profileUsernameUpdatedAt ? cooldownMs - (Date.now() - profileUsernameUpdatedAt) : 0;
   const onCooldown = cooldownRemaining > 0;
@@ -2313,7 +2363,8 @@ function renderProfile(){
   <h2 class="disp">${esc(profileUsername || 'Profile')}</h2>
 
   <div class="section-label">Collection</div>
-  <div class="stat-row"><span>% of Complete OG Collection</span><span class="mono">${s.collectionPercent}% (${s.uniqueCardsOwned}/151)</span></div>
+  <div class="stat-row"><span>% of Complete OG Collection</span><span class="mono">${ogPct}% (${ogOwned}/151)</span></div>
+  <div class="stat-row"><span>% of Gen 2 Expansion</span><span class="mono">${g2Pct}% (${g2Owned}/100)</span></div>
   <div class="stat-row"><span># of Secret Rares Pulled</span><span class="mono">${s.secretPullsCount}</span></div>
   <div class="stat-row"><span># of Shinies Found</span><span class="mono">${s.shinyPullsCount}</span></div>
 
@@ -2435,12 +2486,17 @@ function renderDex(){
   const ownedCols = state.collectibles || {};
   const totalBadges = SHOP_COLLECTIBLES.length;
   const ownedBadgesCount = SHOP_COLLECTIBLES.filter(i => !!ownedCols[i.id]).length;
+  // one pool, two views: ids 1-151 are Kanto, 152-251 are Johto
+  const genRange = dexGen === 2 ? [152, 251] : [1, 151];
+  const genList = POKEMON.filter(p => p.id >= genRange[0] && p.id <= genRange[1]);
+  const genOwned = genList.filter(p => owned[p.id]).length;
+  const tabBtn = (g, label) => `<button data-dexgen="${g}" style="font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 10px; border-radius:6px; cursor:pointer; border:1px solid ${dexGen===g?'var(--foil1)':'var(--line)'}; background:${dexGen===g?'rgba(57,255,20,0.12)':'transparent'}; color:${dexGen===g?'var(--foil1)':'var(--muted)'};">${label}</button>`;
 
   return `
   <div class="dexhead">
     <div class="dexhead-left">
       <h2 class="disp">Collection</h2>
-      <div class="dexcount mono">${Object.keys(owned).length}/151 Cards &middot; ${ownedBadgesCount}/${totalBadges} Badges</div>
+      <div class="dexcount mono">${Object.keys(owned).length}/251 Cards &middot; ${ownedBadgesCount}/${totalBadges} Badges</div>
     </div>
     <div class="rarity-key">
       <div class="key-item"><span class="key-dot" style="--dot-color:var(--common)"></span>Common</div>
@@ -2450,8 +2506,12 @@ function renderDex(){
       <div class="key-item"><span class="key-dot" style="--dot-color:var(--secret)"></span>Secret</div>
     </div>
   </div>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+    ${tabBtn(1,'Gen 1')}${tabBtn(2,'Gen 2')}
+    <span class="mono" style="font-size:10px;color:var(--muted);">${genOwned}/${genList.length}</span>
+  </div>
   <div class="dexgrid" style="margin-bottom:24px;">
-    ${POKEMON.map(p=>{
+    ${genList.map(p=>{
       const o = owned[p.id];
       const color = TYPE_COLORS[p.type];
       return `<div class="dexslot ${o?'owned':''} ${o && shinyIds.has(p.id) ? 'shiny-card' : ''}" style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};">
@@ -2918,6 +2978,10 @@ function wire(){
       render();
     }
   };
+
+  document.querySelectorAll('[data-dexgen]').forEach(btn=>{
+    btn.onclick = () => { dexGen = Number(btn.dataset.dexgen); render(); };
+  });
 
   document.querySelectorAll('[data-vaultmode]').forEach(btn=>{
     btn.onclick = ()=>{
