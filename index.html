@@ -367,6 +367,33 @@ body {
   text-shadow:0 0 5px gold;z-index:2;
 }
 
+/* Search hit highlight. Pulses in foil green rather than flashing once, so a
+   card found behind a long scroll is still obviously marked when you reach it.
+   Cleared by clearing the search. */
+.packcard.search-hit{
+  border-color:var(--foil1) !important;
+  animation: searchPulse 1.4s ease-in-out infinite;
+}
+@keyframes searchPulse{
+  0%,100%{ box-shadow:0 0 6px 1px rgba(57,255,20,0.35); }
+  50%    { box-shadow:0 0 16px 5px rgba(57,255,20,0.75); }
+}
+
+/* P&L footer figures. Explicitly 2 or 4 columns - never 3. auto-fit with a
+   minmax() was landing on 3 columns at phone widths, which orphans the 4th
+   item exactly the way flex-wrap did. */
+.pnl-stats{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:6px 14px;
+  margin-top:10px;padding-top:10px;border-top:1px solid var(--line);
+  font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted);
+}
+@media (min-width: 721px){
+  .pnl-stats{ grid-template-columns:repeat(4, minmax(0, 1fr)); }
+}
+.pnl-stats > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
 .backtotop-row{display:flex;justify-content:center;margin:24px 0 8px;}
 .backtotop{
   display:flex;align-items:center;justify-content:center;
@@ -436,14 +463,20 @@ body {
 }
 .pack-hint{color:var(--muted);font-size:13px;letter-spacing:0.04em;text-align:center;}
 
-/* Visual state only for the keep/sell stage. The click handler lives on
-   [data-flip] inside, not here - the card faces sit in a rotateY(180deg)
-   preserve-3d context and that is the element that reliably takes the tap. */
+/* Wrapper is rendered for every card from the moment the pack opens, and the
+   selling ring uses outline rather than border+padding. Both matter: a wrapper
+   that appears only once all cards are flipped, or a border that adds 10px of
+   width, reflows the whole row at the exact moment the cards should hold still.
+   Outlines are painted outside the box and never affect layout. */
 .sell-mark{
-  border-radius:14px;padding:3px;border:2px solid transparent;
-  transition:border-color 0.15s ease, opacity 0.15s ease, filter 0.15s ease;
+  display:flex;flex-direction:column;align-items:center;
+  border-radius:14px;
+  transition:opacity 0.15s ease, filter 0.15s ease;
 }
-.sell-mark.selling{ border-color:#ff4444;opacity:0.55;filter:grayscale(0.6); }
+.sell-mark.selling{
+  opacity:0.55;filter:grayscale(0.6);
+  outline:2px solid #ff4444;outline-offset:2px;
+}
 .sell-tag{
   font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
   letter-spacing:0.05em;text-transform:uppercase;text-align:center;
@@ -1259,7 +1292,20 @@ let profileUsernameMsg = null;
 let opening = null;
 let wheelSpinning = false;
 let wheelResult = null;
-let vaultChartMode = 'live';
+let vaultChartMode = 'pnl';
+// P&L series from get_pnl_series(). Cached in-module because the market page
+// re-renders on every card interaction and this is heavier than the other RPCs.
+// Fetched once per market visit, not per render.
+let pnlSeries = null;
+let pnlLoading = false;
+let pnlError = null;
+// Market vault search. marketSearch is the submitted query (not live-typed -
+// render() rebuilds innerHTML, so searching on every keystroke would kill the
+// input's focus and redraw both charts). marketHits holds matching instance
+// uids; marketScrollPending makes the scroll fire once, not on every re-render.
+let marketSearch = '';
+let marketHits = [];
+let marketScrollPending = false;
 // which generation tab the dex is showing. client-only, resets to 1 on reload.
 let dexGen = 1;
 let activeModal = null; // Confirmation modal state
@@ -1667,27 +1713,134 @@ function vaultChartHistoryForMode(){
     : [{ time: Date.now(), val: calculateCurrentVaultValue() }];
 }
 
+// Two lines on one axis: the do-nothing baseline (2500 + all wheel income,
+// from get_pnl_series) and vault value over the same window (from longHistory).
+// Above the baseline means opening packs beat never opening one.
+function pnlChartInner(series, vaultHist){
+  const width = 880, height = 140;
+  const padTop = 15, padBottom = 20, padLeft = 55, padRight = 20;
+  const innerW = width - padLeft - padRight;
+  const innerH = height - padTop - padBottom;
+
+  const pts = (series && series.points) || [];
+  if(pts.length < 2) return { svgInner:'', width, height, empty:true };
+
+  const t0 = pts[0].t, t1 = pts[pts.length-1].t;
+  const span = Math.max(1, t1 - t0);
+
+  // sample vault history onto the baseline's time axis - the two series are
+  // recorded independently and never share timestamps
+  const vh = (vaultHist || []).filter(h => h.time >= t0 && h.time <= t1)
+                              .sort((a,b) => a.time - b.time);
+  let vi = 0;
+  const vaultAt = (t) => {
+    if(!vh.length) return null;
+    while(vi < vh.length - 1 && vh[vi+1].time <= t) vi++;
+    return vh[vi].time <= t ? vh[vi].val : null;
+  };
+
+  const rows = pts.map(p => ({ t:p.t, base:Number(p.baseline), vault:vaultAt(p.t) }));
+  const maxVal = Math.max(100, ...rows.map(r => Math.max(r.base, r.vault || 0))) * 1.12;
+
+  const X = (t) => padLeft + ((t - t0) / span) * innerW;
+  const Y = (v) => padTop + innerH - (v / maxVal) * innerH;
+
+  const pathOf = (key) => {
+    let d = '', started = false;
+    rows.forEach(r => {
+      const v = r[key];
+      if(v === null || v === undefined) return;
+      d += (started ? ' L ' : 'M ') + X(r.t).toFixed(1) + ' ' + Y(v).toFixed(1);
+      started = true;
+    });
+    return d;
+  };
+
+  const gridVals = [0, maxVal*0.25, maxVal*0.5, maxVal*0.75, maxVal];
+  const grid = gridVals.map(v => `
+    <line x1="${padLeft}" y1="${Y(v).toFixed(1)}" x2="${width-padRight}" y2="${Y(v).toFixed(1)}"
+          stroke="var(--line)" stroke-dasharray="3,3" />
+    <text x="${padLeft-6}" y="${(Y(v)+3).toFixed(1)}" text-anchor="end"
+          font-family="'JetBrains Mono',monospace" font-size="8" fill="var(--muted)">${fmtHex(Math.round(v))}</text>`).join('');
+
+  const lastVault = [...rows].reverse().find(r => r.vault !== null);
+  const svgInner = `
+    ${grid}
+    <path d="${pathOf('base')}" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="5,4" />
+    <path d="${pathOf('vault')}" fill="none" stroke="var(--foil1)" stroke-width="2.5" />
+    ${lastVault ? `<circle cx="${X(lastVault.t).toFixed(1)}" cy="${Y(lastVault.vault).toFixed(1)}" r="3" fill="var(--foil1)" />` : ''}
+  `;
+  return { svgInner, width, height, empty:false };
+}
+
 function renderVaultChart(){
-  const history = vaultChartHistoryForMode();
   const currentTotal = calculateCurrentVaultValue();
+
+  if(vaultChartMode === 'pnl'){
+    const totals = (pnlSeries && pnlSeries.totals) || null;
+    const chart = pnlChartInner(pnlSeries, state.longHistory || []);
+    const since = pnlSeries && pnlSeries.since
+      ? new Date(pnlSeries.since).toLocaleDateString(undefined,{month:'short',day:'numeric'})
+      : null;
+    const baseNow = pnlSeries && pnlSeries.points && pnlSeries.points.length
+      ? Number(pnlSeries.points[pnlSeries.points.length-1].baseline) : null;
+    const ahead = baseNow === null ? null : currentTotal - baseNow;
+
+    const body = pnlLoading
+      ? `<div style="color:var(--muted);font-size:12px;padding:24px 0;text-align:center;">Loading P&amp;L history...</div>`
+      : pnlError
+        ? `<div style="color:#ff4444;font-size:12px;padding:24px 0;text-align:center;">${esc(pnlError)}</div>`
+        : chart.empty
+          ? `<div style="color:var(--muted);font-size:12px;padding:24px 0;text-align:center;">Not enough history yet.</div>`
+          : `<div style="width:100%; overflow-x:auto;">
+               <svg viewBox="0 0 ${chart.width} ${chart.height}" style="width:100%; height:120px; display:block;">${chart.svgInner}</svg>
+             </div>
+             <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:6px;">
+               <span><svg width="16" height="6" style="vertical-align:middle;"><line x1="0" y1="3" x2="16" y2="3" stroke="var(--foil1)" stroke-width="2.5"/></svg> vault value</span>
+               <span><svg width="16" height="6" style="vertical-align:middle;"><line x1="0" y1="3" x2="16" y2="3" stroke="var(--muted)" stroke-width="2" stroke-dasharray="4,3"/></svg> if you'd never opened a pack</span>
+             </div>`;
+
+    return `
+    <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+        <span style="font-family:'VT323',monospace; font-size:18px; color:var(--foil1); letter-spacing:0.04em;">Profit &amp; Loss</span>
+        ${ahead === null ? '' : `<span class="mono" style="font-size:14px;color:${ahead>=0?'var(--foil1)':'#ff4444'};">
+          ${ahead>=0?'+':'-'}<i class="hex-icon"></i>${fmtHex(Math.abs(ahead))} vs doing nothing</span>`}
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+        <div style="display:flex; gap:6px;">
+          <button data-vaultmode="pnl" style="font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 10px; border-radius:6px; cursor:pointer; border:1px solid var(--foil1); background:rgba(57,255,20,0.12); color:var(--foil1);">P&amp;L</button>
+          <button data-vaultmode="all" style="font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 10px; border-radius:6px; cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--muted);">Vault</button>
+        </div>
+        <span style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;">${since ? `since ${since}` : ''}</span>
+      </div>
+      ${body}
+      ${totals ? `<div class="pnl-stats">
+        <span>spent <span style="color:#ff4444;"><i class="hex-icon"></i>${fmtHex(totals.spent)}</span></span>
+        <span>sold <span style="color:var(--foil1);"><i class="hex-icon"></i>${fmtHex(totals.sales)}</span></span>
+        <span>wheel <span style="color:var(--gold);"><i class="hex-icon"></i>${fmtHex(totals.wheel)}</span></span>
+        <span>liquid hex <span style="color:var(--text);"><i class="hex-icon"></i>${fmtHex(state.hex)}</span></span>
+      </div>` : ''}
+    </div>`;
+  }
+
+  const history = vaultChartHistoryForMode();
   const { svgInner, width, height } = vaultChartInner(history);
 
-  const rangeLabel = vaultChartMode === 'all'
-    ? (state.longHistory && state.longHistory.length > 1
-        ? `since ${new Date(state.longHistory[0].time).toLocaleDateString(undefined,{month:'short',day:'numeric'})}`
-        : 'not enough history yet')
-    : 'last few minutes';
+  const rangeLabel = (state.longHistory && state.longHistory.length > 1)
+    ? `since ${new Date(state.longHistory[0].time).toLocaleDateString(undefined,{month:'short',day:'numeric'})}`
+    : 'not enough history yet';
 
   return `
     <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:20px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
-        <span style="font-family:'VT323',monospace; font-size:18px; color:var(--foil1); letter-spacing:0.04em;">Vault Valuation Live Feed</span>
+        <span style="font-family:'VT323',monospace; font-size:18px; color:var(--foil1); letter-spacing:0.04em;">Vault Valuation</span>
         <span id="vaultTotalVal" class="mono" style="font-size:14px; color:var(--gold);"><i class="hex-icon"></i>${fmtHex(currentTotal)} HEX</span>
       </div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
         <div style="display:flex; gap:6px;">
-          <button data-vaultmode="live" style="font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 10px; border-radius:6px; cursor:pointer; border:1px solid ${vaultChartMode==='live'?'var(--foil1)':'var(--line)'}; background:${vaultChartMode==='live'?'rgba(57,255,20,0.12)':'transparent'}; color:${vaultChartMode==='live'?'var(--foil1)':'var(--muted)'};">Live</button>
-          <button data-vaultmode="all" style="font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 10px; border-radius:6px; cursor:pointer; border:1px solid ${vaultChartMode==='all'?'var(--foil1)':'var(--line)'}; background:${vaultChartMode==='all'?'rgba(57,255,20,0.12)':'transparent'}; color:${vaultChartMode==='all'?'var(--foil1)':'var(--muted)'};">All Time</button>
+          <button data-vaultmode="pnl" style="font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 10px; border-radius:6px; cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--muted);">P&amp;L</button>
+          <button data-vaultmode="all" style="font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 10px; border-radius:6px; cursor:pointer; border:1px solid var(--foil1); background:rgba(57,255,20,0.12); color:var(--foil1);">Vault</button>
         </div>
         <span id="vaultRangeLabel" style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;">${rangeLabel}</span>
       </div>
@@ -2091,6 +2244,25 @@ function renderMarket(){
 
   const effValue = (p, inst) => inst.shiny ? p.value * 10 : p.value;
 
+  // Resolve the submitted query to a set of instance uids. Matches on dex
+  // number (exact) or name (substring, case-insensitive). A player can hold
+  // several copies of the same species, so this is a set, not one card.
+  const q = marketSearch.trim().toLowerCase();
+  marketHits = [];
+  if(q){
+    instances.forEach(inst => {
+      const p = POKEMON.find(x => x.id === inst.id);
+      if(!p) return;
+      const byNum = /^\d+$/.test(q) && p.id === parseInt(q, 10);
+      const byName = p.name.toLowerCase().includes(q);
+      if(byNum || byName) marketHits.push(inst.uid);
+    });
+  }
+  const hitSet = new Set(marketHits);
+  const tiersWithHits = new Set(
+    instances.filter(i => hitSet.has(i.uid)).map(i => i.rarity)
+  );
+
   instances.forEach((inst) => {
     const p = POKEMON.find(x => x.id === inst.id);
     if(!p) return;
@@ -2119,22 +2291,17 @@ function renderMarket(){
       </div>
     </div>
 
-    ${renderMarketIndexChart()}
-
-    ${renderVaultChart()}
-
-    <div class="slippage-row">
-      <div class="slippage-notice">
-        <div>
-          <b>⚡ Real-Time Slippage!</b><br>Card prices move with the market. Sell when it's up, hold off when it's down. Waiting alone won't save you from a bad sale. Final value is computed at the exact millisecond of sale.
-        </div>
-      </div>
-      <div class="slippage-notice">
-        <div>
-          <b>⏳ HODL BONUS!</b><br>Holding cards a while adds a small bonus &mdash; up to <b>+30%</b>, earned at +1% per hour. It softens a dip, but it won't turn a bear market into a profit.
-        </div>
-      </div>
-    </div>
+    ${instances.length === 0 ? '' : `
+      <form id="marketSearchForm" style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
+        <input type="text" id="marketSearchInput" value="${esc(marketSearch)}" placeholder="Search your vault by name or number..." autocomplete="off"
+          style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;" />
+        <button type="submit" class="sbtn keep" style="padding:7px 12px;font-size:11px;">Find</button>
+        ${marketSearch ? `<button type="button" class="sbtn sell" data-searchclear style="padding:7px 12px;font-size:11px;">Clear</button>` : ''}
+      </form>
+      ${marketSearch ? `<div class="mono" style="font-size:11px;color:${marketHits.length ? 'var(--foil1)' : '#ff4444'};margin:-6px 0 12px 2px;">
+        ${marketHits.length ? `${marketHits.length} match${marketHits.length===1?'':'es'} for "${esc(marketSearch)}"` : `Nothing in your vault matches "${esc(marketSearch)}"`}
+      </div>` : ''}
+    `}
 
     ${instances.length === 0 ? `
       <div style="text-align:center;color:var(--muted);padding:40px;font-size:13px;">Your vault is empty. Break open some packs to acquire tradeable assets.</div>
@@ -2154,7 +2321,7 @@ function renderMarket(){
         const dupePrev = dupePreview(tier, now);
 
         return `
-          <details style="margin-bottom:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px;">
+          <details ${tiersWithHits.has(tier) ? 'open' : ''} style="margin-bottom:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px;">
             <summary style="font-family:'VT323',monospace; font-size:20px; color:${rc.color}; cursor:pointer; text-transform:uppercase; letter-spacing:0.04em; outline:none; display:flex; justify-content:space-between; align-items:center;">
               <span>${tierLabels[tier]} (${items.length})</span>
               <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--gold);">
@@ -2172,7 +2339,7 @@ function renderMarket(){
                   const dateStr = new Date(acquired).toLocaleDateString(undefined, {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
 
                   return `
-                    <div class="packcard" style="padding:12px;border-color:${rc.color};display:flex;flex-direction:column;justify-content:space-between;background:var(--surface2);cursor:pointer;" data-open-detail-modal="${inst.uid}" title="View card details">
+                    <div class="packcard ${hitSet.has(inst.uid) ? 'search-hit' : ''}" style="padding:12px;border-color:${rc.color};display:flex;flex-direction:column;justify-content:space-between;background:var(--surface2);cursor:pointer;" data-open-detail-modal="${inst.uid}" title="View card details">
                       ${inst.shiny ? `<span style="position:absolute;top:6px;right:6px;color:gold;font-size:13px;text-shadow:0 0 5px gold;z-index:2;" title="Shiny">★</span>` : ''}
                       ${state.favoriteUid === inst.uid ? `<span class="fav-tile-mark" title="Favorite card">★</span>` : ''}
                       <div>
@@ -2218,6 +2385,32 @@ function renderMarket(){
         `;
       }).join('')}
     `}
+
+    <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:20px;">
+      <div class="section-label" style="margin-bottom:10px;">Market Charts</div>
+    </div>
+    ${renderMarketIndexChart()}
+
+    ${renderVaultChart()}
+
+    <details style="margin-bottom:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px;">
+      <summary style="font-family:'VT323',monospace; font-size:20px; color:var(--muted); cursor:pointer; text-transform:uppercase; letter-spacing:0.04em; outline:none;">How selling works</summary>
+      <div style="margin-top:12px;">
+    <div class="slippage-row">
+      <div class="slippage-notice">
+        <div>
+          <b>⚡ Real-Time Slippage!</b><br>Card prices move with the market. Sell when it's up, hold off when it's down. Waiting alone won't save you from a bad sale. Final value is computed at the exact millisecond of sale.
+        </div>
+      </div>
+      <div class="slippage-notice">
+        <div>
+          <b>⏳ HODL BONUS!</b><br>Holding cards a while adds a small bonus &mdash; up to <b>+30%</b>, earned at +1% per hour. It softens a dip, but it won't turn a bear market into a profit.
+        </div>
+      </div>
+    </div>
+      </div>
+    </details>
+
     ${backToTopBtn()}
     ${renderMarketModal()}
   `;
@@ -2281,6 +2474,22 @@ function renderShopBonus(){
   </div>
   ${backToTopBtn()}
   `;
+}
+
+async function loadPnlSeries(){
+  if(pnlLoading) return;
+  pnlLoading = true; pnlError = null;
+  try{
+    const { data, error } = await sb.rpc('get_pnl_series', { p_buckets: 60 });
+    if(error) throw error;
+    pnlSeries = data;
+  }catch(e){
+    console.error('get_pnl_series failed:', e && e.message, e);
+    pnlError = 'Could not load P&L history.';
+  }finally{
+    pnlLoading = false;
+    if(view === 'market') render();
+  }
 }
 
 async function setFavoriteCard(uid){
@@ -2619,9 +2828,7 @@ function renderOpening(){
     <button class="closex" data-close>&times;</button>
     ${allFlipped ? `<div class="pack-hint" style="margin-bottom:14px;">tap a card to sell it &middot; tap again to keep</div>` : ''}
     <div class="reveal-row">
-      ${cards.map((c,i)=> allFlipped
-        ? `<div class="sell-mark ${opening.keep[i] ? '' : 'selling'}">${renderCardFace(c, true)}<div class="sell-tag" style="color:${opening.keep[i] ? 'var(--muted)' : '#ff4444'};">${opening.keep[i] ? 'Keeping' : 'Selling'}</div></div>`
-        : renderCardFace(c, opening.flipped.includes(i))).join('')}
+      ${cards.map((c,i)=> `<div class="sell-mark ${allFlipped && !opening.keep[i] ? 'selling' : ''}">${renderCardFace(c, opening.flipped.includes(i))}<div class="sell-tag" style="color:${opening.keep[i] ? 'var(--muted)' : '#ff4444'};">${allFlipped ? (opening.keep[i] ? 'Keeping' : 'Selling') : ''}</div></div>`).join('')}
     </div>
     ${allFlipped ? renderSummary() : `
       <div class="pack-hint" style="margin-top:18px;">tap each card to flip it</div>
@@ -2701,6 +2908,7 @@ function wire(){
   document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{
     view=b.dataset.nav;
     if(view==='profile' && authUser) loadProfileStats();
+    if(view==='market' && authUser && !pnlSeries && !pnlLoading) loadPnlSeries();
     render();
   });
 
@@ -3041,6 +3249,29 @@ function wire(){
   document.querySelectorAll('[data-dexgen]').forEach(btn=>{
     btn.onclick = () => { dexGen = Number(btn.dataset.dexgen); render(); };
   });
+
+  const marketSearchForm = document.getElementById('marketSearchForm');
+  if(marketSearchForm){
+    marketSearchForm.onsubmit = (e)=>{
+      e.preventDefault();
+      const input = document.getElementById('marketSearchInput');
+      marketSearch = input ? input.value : '';
+      marketScrollPending = true;   // one-shot: cleared once we've scrolled
+      render();
+    };
+  }
+  const searchClear = document.querySelector('[data-searchclear]');
+  if(searchClear) searchClear.onclick = ()=>{
+    marketSearch = ''; marketHits = []; marketScrollPending = false; render();
+  };
+  if(marketScrollPending){
+    marketScrollPending = false;
+    const firstHit = document.querySelector('.packcard.search-hit');
+    // scroll after paint, otherwise the <details> we just opened has not
+    // laid out yet and the target lands in the wrong place
+    if(firstHit) requestAnimationFrame(()=>
+      firstHit.scrollIntoView({behavior:'smooth', block:'center'}));
+  }
 
   document.querySelectorAll('[data-vaultmode]').forEach(btn=>{
     btn.onclick = ()=>{
