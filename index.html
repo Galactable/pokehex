@@ -2154,19 +2154,9 @@ function renderMarketModal() {
     const targetTier = activeModal.tier;
     const tierLabels = { secret: 'Secret Rare', ultra: 'Ultra Rare', rare: 'Rare', uncommon: 'Uncommon', common: 'Common' };
     const now = Date.now();
-    let totalEstPayout = 0;
-    let count = 0;
-
-    (state.instances || []).forEach(inst => {
-      if (inst.rarity === targetTier) {
-        const p = POKEMON.find(x => x.id === inst.id);
-        const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
-        const multiplier = cardMultiplier(hoursHeld, now);
-        const baseValue = inst.shiny ? p.value * 10 : p.value;
-        totalEstPayout += Math.max(1, Math.round(baseValue * multiplier));
-        count++;
-      }
-    });
+    const prev = tierPreview(targetTier, now);
+    const count = prev.count;
+    const totalEstPayout = prev.est;
 
     return `
     <div class="overlay">
@@ -2179,6 +2169,15 @@ function renderMarketModal() {
           <div style="font-family:'JetBrains Mono',monospace;font-size:22px;color:var(--gold);margin:4px 0;"><i class="hex-icon"></i>~${fmtHex(totalEstPayout)} HEX</div>
           <div style="font-size:10px;color:#ffaa00;margin-top:6px;line-height:1.3;">
             ⚠️ <b>Real-Time Market Slippage Warning:</b> Market values fluctuate live. Payout for all ${count} cards will calculate individually at execution time.
+          </div>
+        </div>
+
+        <div style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.35);border-radius:8px;padding:10px;width:100%;text-align:center;">
+          <div style="font-size:10px;color:#c084fc;line-height:1.4;">
+            &#10024; <b>Shiny cards are never liquidated in bulk executions.</b>
+            ${prev.shinyKept > 0
+              ? `${prev.shinyKept} shiny ${prev.shinyKept === 1 ? 'card is' : 'cards are'} protected in this tier and will stay in your vault.`
+              : `You have no shinies in this tier.`}
           </div>
         </div>
 
@@ -2222,6 +2221,24 @@ function dupePreview(tier, now){
                        || (a.inst.uid < b.inst.uid ? -1 : 1));
 
     (hasShiny ? valued : valued.slice(1)).forEach(d => { est += d.payout; count++; });
+  });
+  return { count, est, shinyKept };
+}
+
+// Preview for Liquidate Tier. Mirrors the server's liquidate_tier after the
+// shiny-protection fix: every non-shiny card in the tier sells, shinies are
+// kept. The tier header still counts and values the whole tier including
+// shinies - that is inventory. This is what will actually execute.
+function tierPreview(tier, now){
+  let count = 0, est = 0, shinyKept = 0;
+  (state.instances || []).forEach(inst => {
+    if (inst.rarity !== tier) return;
+    if (inst.shiny) { shinyKept++; return; }
+    const p = POKEMON.find(x => x.id === inst.id);
+    if (!p) return;
+    const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
+    est += Math.max(1, Math.round(p.value * cardMultiplier(hoursHeld, now)));
+    count++;
   });
   return { count, est, shinyKept };
 }
@@ -3105,7 +3122,9 @@ function wire(){
         if (data.count > 0) {
           const remainingInstances = [];
           (state.instances || []).forEach(inst => {
-            if (inst.rarity === targetTier) {
+            // must mirror the server: liquidate_tier keeps shinies, so a
+            // shiny stays in instances and its dex count is NOT decremented.
+            if (inst.rarity === targetTier && !inst.shiny) {
               const dexEntry = state.dex[inst.id];
               if (dexEntry) {
                 dexEntry.count--;
