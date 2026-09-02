@@ -315,6 +315,7 @@ body {
   display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px;
 }
 .dexslot{
+  container-type:inline-size;
   aspect-ratio:3/4;border-radius:10px;border:1px solid var(--line);
   background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;
   font-size:10px;color:var(--muted);position:relative;padding:4px;text-align:center;
@@ -418,7 +419,23 @@ body {
 .dexslot .glyph img{
   width:56px;height:56px;object-fit:contain;image-rendering:pixelated;
 }
-.dexslot .nm{font-weight:600;font-size:10px;line-height:1.15;}
+.dexslot .nm{
+  font-weight:600;line-height:1.15;
+  /* The global rule further down sets overflow-wrap:anywhere on .nm, for uids
+     and long HEX values. On a dex tile that splits a species name mid-word -
+     "Charmande" / "r". break-word only breaks a word that cannot fit at all. */
+  overflow-wrap:break-word;
+  hyphens:auto;
+  /* Fallback for browsers without container queries. */
+  font-size:9px;
+  /* Scale with the TILE, not the viewport. A fixed px size is fragile here:
+     the same 72px tile renders names wider on some devices (text scaling, or
+     the webfont failing to load and falling back to a wider system mono), so
+     10-char names like Charmander wrapped on one phone and fitted on another
+     at identical column counts. 11cqw keeps the longest name on one line at
+     every tile width, and the clamp stops it becoming illegible or oversized. */
+  font-size:clamp(6.5px, 12.5cqw, 10px);
+}
 .dexslot .cnt{font-size:9px;margin-top:2px;color:var(--muted);}
 
 /* ---------- opening overlay ---------- */
