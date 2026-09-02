@@ -338,15 +338,18 @@ body {
   text-align:center;color:var(--muted);font-size:11px;line-height:1.4;padding:0 8px;
   border:1px dashed var(--line);border-radius:12px;
 }
-.stats-card-display .already-owned-badge{display:none;}
+.stats-card-display .already-owned-badge,
+.detail-card-display .already-owned-badge{display:none;}
 /* The pulsing outer glow on ultra/secret is a pack-opening moment. On the stats
-   page the cards sit in a static row, so the aura is suppressed by scope rather
-   than by conditioning renderCardFace, which the reveal path shares.
-   The inner .shine sheen is a separate effect and is left alone. */
-.stats-card-display .flame-aura{animation:none;box-shadow:none;}
+   page and in the market detail modal the card sits static, so the aura is
+   suppressed by scope rather than by conditioning renderCardFace, which the
+   reveal path shares. The inner .shine sheen is a separate effect, left alone. */
+.stats-card-display .flame-aura,
+.detail-card-display .flame-aura{animation:none;box-shadow:none;}
+.detail-card-display{display:flex;justify-content:center;}
 
 .fav-toggle{
-  align-self:flex-start;display:flex;align-items:center;gap:6px;cursor:pointer;
+  align-self:center;display:flex;align-items:center;gap:6px;cursor:pointer;
   background:var(--surface2);border:1px solid var(--line);color:var(--muted);
   border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;
   letter-spacing:0.04em;text-transform:uppercase;
@@ -432,6 +435,20 @@ body {
   80%{transform:translateX(4px) rotate(1deg) scale(1.06);}
 }
 .pack-hint{color:var(--muted);font-size:13px;letter-spacing:0.04em;text-align:center;}
+
+/* Visual state only for the keep/sell stage. The click handler lives on
+   [data-flip] inside, not here - the card faces sit in a rotateY(180deg)
+   preserve-3d context and that is the element that reliably takes the tap. */
+.sell-mark{
+  border-radius:14px;padding:3px;border:2px solid transparent;
+  transition:border-color 0.15s ease, opacity 0.15s ease, filter 0.15s ease;
+}
+.sell-mark.selling{ border-color:#ff4444;opacity:0.55;filter:grayscale(0.6); }
+.sell-tag{
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+  letter-spacing:0.05em;text-transform:uppercase;text-align:center;
+  margin-top:3px;height:12px;
+}
 
 .reveal-row{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;max-width:900px;}
 .card-slot-wrapper{display:flex;flex-direction:column;align-items:center;gap:4px;}
@@ -1870,8 +1887,13 @@ function renderMarketModal() {
       <div class="summary-panel" style="max-width:460px;">
         <button class="fav-toggle ${isFav ? 'on' : ''}" data-fav-toggle="${inst.uid}" title="${isFav ? 'Remove as favorite' : 'Set as favorite'}">
           <span class="fav-star">${isFav ? '\u2605' : '\u2606'}</span>
-          <span>Favorite Card?</span>
+          <span>Favorite Card</span>
         </button>
+
+        <div class="detail-card-display">${renderCardFace({
+          id: p.id, name: p.name, rarity: inst.rarity, value: p.value,
+          shiny: inst.shiny, type: p.type, sprite: p.sprite
+        }, true)}</div>
 
         <div style="font-family:'VT323',monospace;font-size:24px;color:${rc.color};text-transform:uppercase;letter-spacing:0.04em;">
           ${esc(p.name)}${inst.shiny ? ' \u2605' : ''}
@@ -1884,13 +1906,13 @@ function renderMarketModal() {
           ${inst.shiny ? row('Base Value', `<i class="hex-icon"></i>${fmtHex(baseValue)}`) : ''}
           ${inst.shiny ? row('Shiny Multiplier', '&times;10', 'gold') : ''}
           ${row('Card Value', `<i class="hex-icon"></i>${fmtHex(effective)}`)}
-          ${row('Acquired', acquiredStr)}
+          ${row('Pulled', acquiredStr)}
           ${row('Held', `${hoursHeld.toFixed(1)}h`)}
           ${row('HODL Bonus', `+${hodlPct.toFixed(1)}%`, hodlMaxed ? 'var(--foil1)' : '')}
           ${row(`Time to +${(MARKET_HELD_BONUS_CAP*100).toFixed(0)}% Cap`, hodlMaxed ? 'maxed' : `${hoursToCap.toFixed(1)}h`, hodlMaxed ? 'var(--foil1)' : '')}
           ${row('Current Multiplier', `${(multiplier * 100).toFixed(0)}%`, multiplier >= 1 ? 'var(--foil1)' : '#ff4444')}
           <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 0;font-size:13px;">
-            <span style="color:var(--muted);">Sells For Now</span>
+            <span style="color:var(--muted);">Sells For</span>
             <span class="mono" style="color:var(--gold);font-size:16px;"><i class="hex-icon"></i>~${fmtHex(payout)}</span>
           </div>
         </div>
@@ -2595,10 +2617,17 @@ function renderOpening(){
   return `
   <div class="overlay">
     <button class="closex" data-close>&times;</button>
+    ${allFlipped ? `<div class="pack-hint" style="margin-bottom:14px;">tap a card to sell it &middot; tap again to keep</div>` : ''}
     <div class="reveal-row">
-      ${cards.map((c,i)=>renderCardFace(c, opening.flipped.includes(i))).join('')}
+      ${cards.map((c,i)=> allFlipped
+        ? `<div class="sell-mark ${opening.keep[i] ? '' : 'selling'}">${renderCardFace(c, true)}<div class="sell-tag" style="color:${opening.keep[i] ? 'var(--muted)' : '#ff4444'};">${opening.keep[i] ? 'Keeping' : 'Selling'}</div></div>`
+        : renderCardFace(c, opening.flipped.includes(i))).join('')}
     </div>
-    ${allFlipped ? renderSummary() : `<div class="pack-hint" style="margin-top:18px;">tap each card to flip it</div>`}
+    ${allFlipped ? renderSummary() : `
+      <div class="pack-hint" style="margin-top:18px;">tap each card to flip it</div>
+      <div style="display:flex;justify-content:center;margin-top:10px;">
+        <button class="sbtn sell" data-flipall style="font-size:11px;padding:6px 14px;">Flip All</button>
+      </div>`}
   </div>`;
 }
 
@@ -2630,7 +2659,7 @@ function render(){
       <div class="brand">
         <div>
           <h1>POKéHEX</h1>
-          <span>rip packs &middot; fill your dex <br>risk fake currency &middot; 0.6.0 beta </span>
+          <span>rip packs &middot; fill your dex <br>risk fake currency &middot; 0.7.0 beta </span>
         </div>
       </div>
       ${authUser
@@ -2898,9 +2927,20 @@ function wire(){
     opening.stage='ripping'; ripSound(); render();
     setTimeout(()=>{ opening.stage='revealing'; render(); },380);
   };
-  document.querySelectorAll('[data-flip]').forEach((el,i)=>{
+  document.querySelectorAll('.reveal-row [data-flip]').forEach((el,i)=>{
     el.onclick = ()=>{
-      if(opening.flipped.includes(i)) return;
+      if(opening.flipped.includes(i)){
+        // Already revealed. Once every card is flipped we are in the
+        // keep/sell selection stage, so a tap here toggles this card.
+        // Bound to [data-flip] rather than a wrapper element because the
+        // card faces sit in a rotateY(180deg) preserve-3d context - this is
+        // the element that demonstrably receives the click.
+        if(opening.flipped.length === opening.cards.length){
+          opening.keep[i] = !opening.keep[i];
+          render();
+        }
+        return;
+      }
       opening.flipped.push(i);
       const card = opening.cards[i];
       revealSound(card.rarity);
@@ -2908,6 +2948,25 @@ function wire(){
       render();
     };
   });
+  const flipAllBtn = document.querySelector('[data-flipall]');
+  if(flipAllBtn) flipAllBtn.onclick = ()=>{
+    // reveal every unflipped card at once. plays the sound for the BEST card
+    // only rather than stacking five, and fires confetti once if any card in
+    // the pack is ultra/secret - the same effects, not five copies of them.
+    const order = ['common','uncommon','rare','ultra','secret'];
+    let best = -1, burst = false;
+    opening.cards.forEach((card,i)=>{
+      if(opening.flipped.includes(i)) return;
+      opening.flipped.push(i);
+      const r = order.indexOf(card.rarity);
+      if(r > best) best = r;
+      if(card.rarity==='ultra'||card.rarity==='secret') burst = true;
+    });
+    if(best >= 0) revealSound(order[best]);
+    if(burst) burstConfetti();
+    render();
+  };
+
   document.querySelectorAll('[data-keep]').forEach(el=>{
     el.onchange = ()=>{ opening.keep[+el.dataset.keep] = el.checked; render(); };
   });
