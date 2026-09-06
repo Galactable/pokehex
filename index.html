@@ -552,7 +552,7 @@ body {
    Applies to pack-reveal card faces (.cf-glyph) and dex tiles (.glyph). */
 .shiny-card .cf-glyph img,
 .shiny-card .glyph img{
-  filter: hue-rotate(150deg) saturate(1.25);
+  filter: hue-rotate(var(--shiny-hue, 150deg)) saturate(1.25);
 }
 
 /* ---------- white sparkle overlay for shiny (1-in-4096) card variants ---------- */
@@ -1653,6 +1653,17 @@ function toast(msg){
 }
 
 function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// Per-species shiny hue. A single fixed rotation made every shiny read blue:
+// sprite palettes cluster in the warm 20-60 band, so one constant shift maps
+// that narrow band onto an equally narrow cyan band. The golden angle spreads
+// sequential dex ids across the whole wheel instead, so adjacent tiles never
+// match. Deterministic from id, so a species always shows the same shiny.
+function shinyHue(id){
+  const DEAD = 22; // skip rotations near 0/360 - they'd look unshifted
+  const raw = (Number(id) * 137.508) % 360;
+  return Math.round(DEAD + raw * (360 - 2*DEAD) / 360);
+}
 
 function renderOpen(){
   return `
@@ -2790,7 +2801,7 @@ function renderDex(){
     ${genList.map(p=>{
       const o = owned[p.id];
       const color = TYPE_COLORS[p.type];
-      return `<div class="dexslot ${o?'owned':''} ${o && shinyIds.has(p.id) ? 'shiny-card' : ''}" style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};">
+      return `<div class="dexslot ${o?'owned':''} ${o && shinyIds.has(p.id) ? 'shiny-card' : ''}" style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};${o && shinyIds.has(p.id) ? `--shiny-hue:${shinyHue(p.id)}deg;` : ''}">
         <span class="num mono">#${String(p.id).padStart(3,'0')}</span>
         ${o && shinyIds.has(p.id) ? `<div class="shiny-sparkle-overlay"></div><span style="position:absolute;top:2px;right:4px;color:gold;font-size:12px;text-shadow:0 0 5px gold;z-index:3;" title="Shiny owned">★</span>` : ''}
         <div class="glyph">
@@ -2830,7 +2841,7 @@ function renderCardFace(card, flipped){
         <div class="card-inner">
           <div class="card-face card-back ${packTheme} ${shineTiers.includes(card.rarity)?'flame-aura':''}"><span>POKéHEX</span></div>
           <div class="card-face card-front ${card.shiny?'shiny-card':''} ${shineTiers.includes(card.rarity)?'shine flame-aura':''}"
-               style="--card-color:${rc.color};--type-color:${TYPE_COLORS[card.type]};">
+               style="--card-color:${rc.color};--type-color:${TYPE_COLORS[card.type]};${card.shiny ? `--shiny-hue:${shinyHue(card.id)}deg;` : ''}">
             ${card.shiny ? `<div class="shiny-sparkle-overlay"></div>` : ''}
             <div class="cf-top">
               <span class="cf-num mono">#${String(card.id).padStart(3,'0')}</span>
