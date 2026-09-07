@@ -1087,7 +1087,7 @@ sb.auth.onAuthStateChange(async (event, session)=>{
     // user just signed out - drop back to guest browsing of the Packs page, not the login screen
     authBusy = false;
     state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
-    profileStats = null; profileUsername = null; profileLoading = false; profileUsernameMsg = null;
+    profileStats = null; profileUsername = null; profileLoading = false;
     view = 'open';
     render();
   }
@@ -1314,9 +1314,7 @@ let state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, val
 let view = 'open';
 let profileStats = null;
 let profileUsername = null;
-let profileUsernameUpdatedAt = null;
 let profileLoading = false;
-let profileUsernameMsg = null;
 let opening = null;
 let wheelSpinning = false;
 let wheelResult = null;
@@ -2575,13 +2573,12 @@ async function loadProfileStats(retrying){
   try{
     const [{ data: statsData, error: statsErr }, { data: profileData, error: profileErr }] = await Promise.all([
       sb.rpc('get_player_stats'),
-      sb.from('profiles').select('username, username_updated_at').eq('user_id', authUser.id).maybeSingle()
+      sb.from('profiles').select('username').eq('user_id', authUser.id).maybeSingle()
     ]);
     if(statsErr) throw statsErr;
     if(profileErr) throw profileErr;
     profileStats = statsData;
     profileUsername = profileData ? profileData.username : null;
-    profileUsernameUpdatedAt = profileData && profileData.username_updated_at ? new Date(profileData.username_updated_at).getTime() : null;
   }catch(e){
     console.error('failed to load profile stats:', e && e.message, e);
     if(!retrying){
@@ -2642,11 +2639,6 @@ function renderProfile(){
   const ogPct   = Math.round((ogOwned / 151) * 1000) / 10;
   const g2Pct   = Math.round((g2Owned / 100) * 1000) / 10;
 
-  const cooldownMs = 7*24*60*60*1000;
-  const cooldownRemaining = profileUsernameUpdatedAt ? cooldownMs - (Date.now() - profileUsernameUpdatedAt) : 0;
-  const onCooldown = cooldownRemaining > 0;
-  const cooldownDays = Math.ceil(cooldownRemaining / (24*60*60*1000));
-
   return `
   <h2 class="disp">${esc(profileUsername || 'Profile')}</h2>
 
@@ -2680,17 +2672,6 @@ function renderProfile(){
   <div class="stat-row"><span>HEX Spent on Packs</span><span class="mono"><i class="hex-icon"></i>${fmtHex(s.hexSpentOnPacks)}</span></div>
   <div class="stat-row"><span>HEX Earned from Card Sales</span><span class="mono"><i class="hex-icon"></i>${fmtHex(s.hexEarnedFromCardSales)}</span></div>
   <div class="stat-row"><span>Total HEX Profit/Loss (incl. bonuses)</span><span class="mono" style="color:${profitLossColor};">${s.totalProfitLoss>=0?'+':''}${fmtHex(s.totalProfitLoss)}</span></div>
-
-  <div style="width:220px;max-width:100%;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:12px;margin:28px auto 0;">
-    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;">Change username</div>
-    <form id="profileUsernameForm" style="display:flex;gap:6px;align-items:center;">
-      <input type="text" id="profileUsernameInput" value="${esc(profileUsername||'')}" minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" required ${onCooldown?'disabled':''}
-        style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;" />
-      <button type="submit" class="sbtn keep" style="padding:5px 10px;font-size:11px;" ${onCooldown?'disabled':''}>Save</button>
-    </form>
-    <div id="profileUsernameStatus" style="font-size:11px;min-height:14px;margin-top:5px;${onCooldown?'color:var(--muted);':''}">${onCooldown?`Next change available in ${cooldownDays} day${cooldownDays===1?'':'s'}`:''}</div>
-    ${profileUsernameMsg ? `<div class="authmsg ${profileUsernameMsg.type}" style="margin-top:5px;font-size:11px;">${profileUsernameMsg.text}</div>` : ''}
-  </div>
   `;
 }
 
@@ -2973,53 +2954,6 @@ function wire(){
     window.scrollTo({top:0,behavior:'smooth'});
   });
 
-  const profileUsernameForm = document.getElementById('profileUsernameForm');
-  if(profileUsernameForm){
-    const input = document.getElementById('profileUsernameInput');
-    const status = document.getElementById('profileUsernameStatus');
-    let checkTimer = null;
-    input.oninput = ()=>{
-      clearTimeout(checkTimer);
-      const val = input.value.trim();
-      if(val === profileUsername){ status.textContent=''; return; }
-      if(val.length < 3){ status.textContent=''; return; }
-      if(!/^[a-zA-Z0-9_]{3,20}$/.test(val)){ status.textContent='Letters, numbers, underscores only.'; status.style.color='#ff4444'; return; }
-      status.textContent = 'Checking…'; status.style.color='var(--muted)';
-      checkTimer = setTimeout(async ()=>{
-        const available = await isUsernameAvailable(val, authUser.id);
-        if(input.value.trim() !== val) return;
-        if(available === true){ status.textContent='Available'; status.style.color='#39ff14'; }
-        else if(available === false){ status.textContent='Already taken'; status.style.color='#ff4444'; }
-        else { status.textContent=''; }
-      }, 400);
-    };
-    profileUsernameForm.onsubmit = async (e)=>{
-      e.preventDefault();
-      const val = input.value.trim();
-      if(val === profileUsername) return; // nothing changed
-      if(!/^[a-zA-Z0-9_]{3,20}$/.test(val)){
-        profileUsernameMsg = { type:'err', text:'3-20 characters: letters, numbers, underscores only.' };
-        render();
-        return;
-      }
-      const btn = profileUsernameForm.querySelector('button');
-      btn.disabled = true; btn.textContent = 'Saving…';
-      const { ok, error } = await saveUsername(val);
-      if(!ok){
-        profileUsernameMsg = { type:'err', text: (error && error.message && error.message.includes('duplicate'))
-          ? 'That username was just taken - try another.'
-          : (error && error.message && error.message.includes('cooldown'))
-          ? 'You can only change your username once every 7 days.'
-          : 'Could not save username - try again.' };
-        render();
-        return;
-      }
-      profileUsername = val;
-      profileUsernameUpdatedAt = Date.now();
-      profileUsernameMsg = { type:'ok', text:'Username updated.' };
-      render();
-    };
-  }
   document.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{
     const pack = PACKS.find(p=>p.id===b.dataset.buy);
     openPack(pack);
