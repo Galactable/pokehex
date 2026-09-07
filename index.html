@@ -1334,6 +1334,7 @@ let pnlError = null;
 let marketSearch = '';
 let marketHits = [];
 let marketScrollPending = false;
+let expandedTiers = new Set(); // tiers the user has manually expanded on the Market page - render() rebuilds the <details> markup on every state change, so this is what keeps a tier open across a liquidation
 // which generation tab the dex is showing. client-only, resets to 1 on reload.
 let dexGen = 1;
 let activeModal = null; // Confirmation modal state
@@ -2377,7 +2378,7 @@ function renderMarket(){
         const dupePrev = dupePreview(tier, now);
 
         return `
-          <details ${tiersWithHits.has(tier) ? 'open' : ''} style="margin-bottom:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px;">
+          <details data-tier="${tier}" ${(tiersWithHits.has(tier) || expandedTiers.has(tier)) ? 'open' : ''} style="margin-bottom:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px;">
             <summary style="font-family:'VT323',monospace; font-size:20px; color:${rc.color}; cursor:pointer; text-transform:uppercase; letter-spacing:0.04em; outline:none; display:flex; justify-content:space-between; align-items:center;">
               <span>${tierLabels[tier]} (${items.length})</span>
               <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--gold);">
@@ -3306,6 +3307,13 @@ function wire(){
 
   document.querySelectorAll('[data-dexgen]').forEach(btn=>{
     btn.onclick = () => { dexGen = Number(btn.dataset.dexgen); render(); };
+  });
+
+  document.querySelectorAll('details[data-tier]').forEach(d => {
+    d.ontoggle = () => {
+      if(d.open) expandedTiers.add(d.dataset.tier);
+      else expandedTiers.delete(d.dataset.tier);
+    };
   });
 
   const marketSearchForm = document.getElementById('marketSearchForm');
