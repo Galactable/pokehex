@@ -447,6 +447,18 @@ body {
   background:var(--line);overflow:hidden;
 }
 .badgeslot .badgebar i{display:block;height:100%;border-radius:2px;}
+/* Difficulty stars mirror .num in the opposite corner. Same 9px/absolute
+   treatment so the two corner labels read as a pair. letter-spacing is
+   negative because three stars at default tracking overrun a narrow tile. */
+.badgeslot .diff{
+  position:absolute;top:4px;right:6px;
+  font-size:9px;line-height:1;color:var(--muted);letter-spacing:-0.5px;
+}
+.badgeslot.owned .diff{color:var(--slot-color);}
+/* ELECTRIC (8 chars) is a Champion badge, so it carries three stars: at a fixed
+   9px that pair needs 62.4px inside a 60px tile on mobile and the two corner
+   labels overlap. Scale with the tile the way .nm does. */
+.badgeslot .num{font-size:clamp(6.5px, 10cqw, 9px);}
 
 /* ---------- opening overlay ---------- */
 .overlay{
@@ -1310,14 +1322,24 @@ function earnedBadgeCount(dex){
 
 // Badge grid. Lives on the Stats page. Locked badges stay visible but unlit --
 // a hidden goal is not a goal.
+//
+// Difficulty is rendered on the tile face, not only in the title tooltip:
+// tooltips do not exist on touch, and difficulty is the one thing that stops
+// a player misreading the bar. 10/15 on Marsh looks closer than 8/11 on Earth
+// and is hundreds of packs further away, because four of the missing Psychics
+// are secrets. Stars are ordinal so they survive at 8px where words would not.
+const BADGE_STARS = {'Gym Leader':1, 'Elite Four':2, 'Champion':3};
+
 function renderBadgeGrid(dex){
   return `<div class="dexgrid">
     ${BADGES.map(item=>{
       const pr = badgeProgress(item.id, dex);
       const color = TYPE_COLORS[item.type];
       const pct = pr.need ? Math.round((pr.have / pr.need) * 100) : 0;
+      const stars = BADGE_STARS[item.difficulty] || 0;
       return `<div class="dexslot badgeslot ${pr.owned?'owned':''}" style="--slot-color:${color};" title="${esc(item.name + ' - ' + item.difficulty + '. ' + item.desc)}">
         <span class="num mono" style="${pr.owned?`color:${color};`:''}">${esc(item.type.toUpperCase())}</span>
+        <span class="diff mono" aria-label="${esc(item.difficulty)}">${'&#9733;'.repeat(stars)}</span>
         <div class="glyph" style="display:flex;align-items:center;justify-content:center;">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="${pr.owned?`filter: drop-shadow(0 0 4px ${color});`:'opacity:0.35;'}"><polyline points="20 6 9 17 4 12"></polyline></svg>
         </div>
@@ -2874,6 +2896,7 @@ function renderProfile(){
   </div>
 
   <div class="section-label" style="margin-top:20px;">Badges <span class="mono" style="color:var(--muted);letter-spacing:0;">${earnedBadgeCount(state.dex || {})}/${BADGES.length}</span></div>
+  <div style="color:var(--muted);font-size:11px;margin:-6px 0 10px;">&#9733; Gym Leader &middot; &#9733;&#9733; Elite Four &middot; &#9733;&#9733;&#9733; Champion &mdash; difficulty is set by how rare the missing cards are, not how many.</div>
   ${renderBadgeGrid(state.dex || {})}
 
   <div class="section-label" style="margin-top:20px;">Packs Opened by Tier</div>
@@ -2939,9 +2962,10 @@ function renderHowTo(){
     <hr>
 
     <h3>Badges</h3>
-    <p>Eight gym badges in the Shop. They do nothing.</p>
-    <p>They cost between 2,500 and fifteen million HEX and they do <strong>nothing</strong>. No bonus. No multiplier. No secret unlock. They are a number going down so a different number can go up, and you will want them anyway, and that says more about you than it does about me.</p>
-    <p>The Earth Badge is fifteen million. See you in three months.</p>
+    <p>Sixteen badges, one per type. You get the Volcano Badge by holding every Fire card. The Cascade Badge by holding every Water card. All forty-six of them. There is no shortcut and there is no shop.</p>
+    <p>They still do <strong>nothing</strong>. No bonus, no multiplier, no secret unlock. What changed is that you can no longer buy your way out of earning one, which most people will find is worse.</p>
+    <p>They are also <strong>not permanent</strong>. A badge is a statement about what you're holding right now, so the moment you sell your last Poliwag the Cascade Badge goes out. Check what a card is doing for you before you liquidate it.</p>
+    <p>Progress is on the Stats page. Read it carefully. Marsh needs fifteen Psychics and four of them are secrets; Earth needs eleven Grounds and none of them are. Those two bars fill at wildly different speeds and neither bar mentions it.</p>
 
     <hr>
 
@@ -2954,7 +2978,7 @@ function renderHowTo(){
 
     <h3>That's It</h3>
     <p>Open packs. Watch the line. Hold when it's low, dump when it's high, never sell your last one, spin every hour.</p>
-    <p>251 cards. Eight useless badges. One market that doesn't care about you.</p>
+    <p>251 cards. Sixteen badges you can lose. One market that doesn't care about you.</p>
     <p>Good luck.</p>
 
     <div class="howto-sign">
