@@ -33,15 +33,6 @@
   --rare:#9d4edd;
   --ultra:#6bff5c;
   --secret:#f0d9ff;
-  /* Kanto Badge Colors */
-  --boulder-col:#9e9e9e;
-  --cascade-col:#00bcd4;
-  --thunder-col:#ffeb3b;
-  --rainbow-col:#e91e63;
-  --soul-col:#9c27b0;
-  --marsh-col:#ff5722;
-  --volcano-col:#f44336;
-  --earth-col:#795548;
 }
 body {
   margin: 0;
@@ -448,6 +439,14 @@ body {
   font-size:clamp(6.5px, 12.5cqw, 10px);
 }
 .dexslot .cnt{font-size:9px;margin-top:2px;color:var(--muted);}
+/* Badge progress bar. Sits inside the tile rather than under it so the grid
+   keeps a uniform aspect-ratio. Height is fixed px, not cqw: at 2px a
+   container-relative height rounds to 0 on narrow tiles and the bar vanishes. */
+.badgeslot .badgebar{
+  width:78%;height:3px;margin-top:4px;border-radius:2px;
+  background:var(--line);overflow:hidden;
+}
+.badgeslot .badgebar i{display:block;height:100%;border-radius:2px;}
 
 /* ---------- opening overlay ---------- */
 .overlay{
@@ -1258,16 +1257,84 @@ const PACKS = [
     weights:{common:5,uncommon:15,rare:45,ultra:27,secret:8},guaranteeTier:'ultra'}
 ];
 
-const SHOP_COLLECTIBLES = [
-  {id:'boulder', name:'Boulder Badge', price:2500, tier:'Early Game', desc:'Rock-solid token from Pewter Gym. A manageable first major milestone.', colorVar:'var(--boulder-col)'},
-  {id:'cascade', name:'Cascade Badge', price:10000, tier:'Early Game', desc:'Gleaming token from Cerulean Gym. Flowing with early accumulation.', colorVar:'var(--cascade-col)'},
-  {id:'thunder', name:'Thunder Badge', price:35000, tier:'Mid Game', desc:'Shocking prize from Lt. Surge. Demands dedicated mid-tier collection loops.', colorVar:'var(--thunder-col)'},
-  {id:'rainbow', name:'Rainbow Badge', price:120000, tier:'Mid Game', desc:'Colorful token from Erika. Blooming with robust mid-game presence.', colorVar:'var(--rainbow-col)'},
-  {id:'soul',    name:'Soul Badge',    price:450000, tier:'Late Game', desc:'Toxically elusive badge from Koga. Reaching deep into your long-term reserves.', colorVar:'var(--soul-col)'},
-  {id:'marsh',   name:'Marsh Badge',   price:1500000, tier:'Late Game', desc:'Psychic milestone from Sabrina. Mind-bending cost for serious completionists.', colorVar:'var(--marsh-col)'},
-  {id:'volcano', name:'Volcano Badge', price:5000000, tier:'Endgame', desc:'Blazing hot emblem from Blaine. A massive wealth sink for veteran players.', colorVar:'var(--volcano-col)'},
-  {id:'earth',   name:'Earth Badge',   price:15000000, tier:'Endgame', desc:'The ultimate token from Giovanni. Ultimate status symbol of a master collector.', colorVar:'var(--earth-col)'}
+// Badges are earned by completing a type, not bought.
+// Ownership is derived from state.dex at render time, so a badge is lost
+// if the last copy of a species is sold. Progress is computed client-side
+// for instant feedback; the server function get_collectibles() is the
+// authority wherever a badge grants something.
+//
+// SOURCE OF TRUTH WARNING: this array is mirrored by the `collectibles`
+// table in Supabase. id, name, criteria->>'type' and difficulty must match
+// there. Changing one alone fails silently -- the page just renders wrong.
+// Badge color is TYPE_COLORS[type]; there are no per-badge color vars.
+const BADGES = [
+  {id:'boulder', name:'Boulder Badge', type:'rock',     difficulty:'Gym Leader', desc:'Collect every Rock type.'},
+  {id:'cascade', name:'Cascade Badge', type:'water',    difficulty:'Champion',   desc:'Collect every Water type. The largest pool in the game.'},
+  {id:'thunder', name:'Thunder Badge', type:'electric', difficulty:'Champion',   desc:'Collect every Electric type.'},
+  {id:'rainbow', name:'Rainbow Badge', type:'grass',    difficulty:'Elite Four', desc:'Collect every Grass type.'},
+  {id:'soul',    name:'Soul Badge',    type:'poison',   difficulty:'Gym Leader', desc:'Collect every Poison type. No rares hide here.'},
+  {id:'marsh',   name:'Marsh Badge',   type:'psychic',  difficulty:'Champion',   desc:'Collect every Psychic type. Four secrets are in the way.'},
+  {id:'volcano', name:'Volcano Badge', type:'fire',     difficulty:'Champion',   desc:'Collect every Fire type. Four secrets are in the way.'},
+  {id:'earth',   name:'Earth Badge',   type:'ground',   difficulty:'Gym Leader', desc:'Collect every Ground type. No rares hide here.'},
+  {id:'zephyr',  name:'Zephyr Badge',  type:'dark',     difficulty:'Gym Leader', desc:'Collect every Dark type. Johto only.'},
+  {id:'hive',    name:'Hive Badge',    type:'bug',      difficulty:'Elite Four', desc:'Collect every Bug type.'},
+  {id:'plain',   name:'Plain Badge',   type:'normal',   difficulty:'Elite Four', desc:'Collect every Normal type.'},
+  {id:'fog',     name:'Fog Badge',     type:'ghost',    difficulty:'Gym Leader', desc:'Collect every Ghost type.'},
+  {id:'storm',   name:'Storm Badge',   type:'fighting', difficulty:'Gym Leader', desc:'Collect every Fighting type.'},
+  {id:'mineral', name:'Mineral Badge', type:'steel',    difficulty:'Gym Leader', desc:'Collect every Steel type. Small pool, expensive cards.'},
+  {id:'glacier', name:'Glacier Badge', type:'ice',      difficulty:'Elite Four', desc:'Collect every Ice type.'},
+  {id:'rising',  name:'Rising Badge',  type:'dragon',   difficulty:'Elite Four', desc:'Collect every Dragon type. No commons.'}
 ];
+
+// need counts are derived from POKEMON, never hardcoded, so expanding the
+// card pool cannot leave a badge permanently uncompletable.
+const BADGE_POOLS = BADGES.reduce((acc,b)=>{
+  acc[b.id] = POKEMON.filter(p=>p.type===b.type).map(p=>p.id);
+  return acc;
+}, {});
+
+// Returns {have, need, owned} for one badge, from current dex ownership.
+function badgeProgress(badgeId, dex){
+  const pool = BADGE_POOLS[badgeId] || [];
+  const d = dex || {};
+  let have = 0;
+  for (const id of pool) if (d[id]) have++;
+  return { have, need: pool.length, owned: pool.length > 0 && have === pool.length };
+}
+
+// Count of fully earned badges. Display only -- anything that grants
+// something must recompute server-side.
+function earnedBadgeCount(dex){
+  return BADGES.reduce((n,b)=>n + (badgeProgress(b.id, dex).owned ? 1 : 0), 0);
+}
+
+// Badge grid. Lives on the Stats page. Locked badges stay visible but unlit --
+// a hidden goal is not a goal.
+function renderBadgeGrid(dex){
+  return `<div class="dexgrid">
+    ${BADGES.map(item=>{
+      const pr = badgeProgress(item.id, dex);
+      const color = TYPE_COLORS[item.type];
+      const pct = pr.need ? Math.round((pr.have / pr.need) * 100) : 0;
+      return `<div class="dexslot badgeslot ${pr.owned?'owned':''}" style="--slot-color:${color};" title="${esc(item.name + ' - ' + item.difficulty + '. ' + item.desc)}">
+        <span class="num mono" style="${pr.owned?`color:${color};`:''}">${esc(item.type.toUpperCase())}</span>
+        <div class="glyph" style="display:flex;align-items:center;justify-content:center;">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="${pr.owned?`filter: drop-shadow(0 0 4px ${color});`:'opacity:0.35;'}"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
+        <div class="nm" style="${pr.owned?'':'color:var(--muted);'}">${esc(item.name.replace(/ Badge$/,''))}</div>
+        <span class="cnt mono" style="${pr.owned?`color:${color};`:''}">${pr.owned?'COMPLETE':`${pr.have}/${pr.need}`}</span>
+        <div class="badgebar"><i style="width:${pct}%;background:${color};"></i></div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// Purchasable collectibles. Empty by design -- gym badges are earned now.
+// Mirrors rows in the `collectibles` table with kind='purchasable', which the
+// DB requires to carry a price. buy_collectible / sell_collectible RPCs are
+// intact; the 60% refund rate is server-side and confirmed in the audit log.
+// Shape: {id, name, price, tier, desc, color}. color is a literal or var().
+const PURCHASABLE_COLLECTIBLES = [];
 
 const WHEEL_REWARDS = [
   {amt:2000,   weight:30},
@@ -2580,16 +2647,18 @@ function renderShopBonus(){
     `}
   </div>
 
-  <div class="section-label">Kanto Gym Badges</div>
-  <div style="color:var(--muted);font-size:11.5px;margin-bottom:12px;font-style:italic;">(Badges act as supreme collection flexes. Selling them back returns 60% value if you need emergency pack capital.)</div>
+  <div class="section-label">Collectibles</div>
+  <div style="color:var(--muted);font-size:11.5px;margin-bottom:12px;font-style:italic;">(Gym badges moved to Stats -- they are earned by completing a type, not bought. This shelf is reserved for purchasable collectibles.)</div>
   <div class="packgrid" style="margin-bottom:26px;">
-    ${SHOP_COLLECTIBLES.map(item=>{
+    ${PURCHASABLE_COLLECTIBLES.length === 0
+      ? `<div style="color:var(--muted);font-size:12px;padding:14px 2px;">Nothing in stock. Check back.</div>`
+      : PURCHASABLE_COLLECTIBLES.map(item=>{
       const owned = !!state.collectibles[item.id];
       const refundAmt = Math.round(item.price * 0.6);
       return `
-      <div class="packcard" style="border-color:${item.colorVar};">
-        <div style="font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">[${item.tier}]</div>
-        <div class="pack-name" style="color:${item.colorVar};">${esc(item.name)}</div>
+      <div class="packcard" style="border-color:${item.color};">
+        <div style="font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">[${esc(item.tier)}]</div>
+        <div class="pack-name" style="color:${item.color};">${esc(item.name)}</div>
         <div class="pack-desc">${esc(item.desc)}</div>
         <div class="pack-odds">Status: <b>${owned ? 'Unlocked (1/1)' : 'Locked (0/1)'}</b></div>
         <div class="pack-price">
@@ -2804,6 +2873,9 @@ function renderProfile(){
       </div>`).join('')}
   </div>
 
+  <div class="section-label" style="margin-top:20px;">Badges <span class="mono" style="color:var(--muted);letter-spacing:0;">${earnedBadgeCount(state.dex || {})}/${BADGES.length}</span></div>
+  ${renderBadgeGrid(state.dex || {})}
+
   <div class="section-label" style="margin-top:20px;">Packs Opened by Tier</div>
   ${packRows}
 
@@ -2898,9 +2970,6 @@ function renderDex(){
   // dex entry. Liquidate the shiny and the dex forgets it. Lifetime credit for
   // having pulled it lives in player_stats.shiny_pulls_count instead.
   const shinyIds = new Set((state.instances || []).filter(i => i.shiny).map(i => i.id));
-  const ownedCols = state.collectibles || {};
-  const totalBadges = SHOP_COLLECTIBLES.length;
-  const ownedBadgesCount = SHOP_COLLECTIBLES.filter(i => !!ownedCols[i.id]).length;
   // one pool, two views: ids 1-151 are Kanto, 152-251 are Johto
   const genRange = dexGen === 2 ? [152, 251] : [1, 151];
   const genList = POKEMON.filter(p => p.id >= genRange[0] && p.id <= genRange[1]);
@@ -2911,7 +2980,7 @@ function renderDex(){
   <div class="dexhead">
     <div class="dexhead-left">
       <h2 class="disp">Collection</h2>
-      <div class="dexcount mono">${Object.keys(owned).length}/251 Cards &middot; ${ownedBadgesCount}/${totalBadges} Badges</div>
+      <div class="dexcount mono">${Object.keys(owned).length}/251 Cards</div>
     </div>
     <div class="rarity-key">
       <div class="key-item"><span class="key-dot" style="--dot-color:var(--common)"></span>Common</div>
@@ -2940,19 +3009,6 @@ function renderDex(){
     }).join('')}
   </div>
 
-  <div class="section-label">Badges & Collectibles</div>
-  <div class="dexgrid">
-    ${SHOP_COLLECTIBLES.map(item=>{
-      const isOwned = !!ownedCols[item.id];
-      return `<div class="dexslot ${isOwned?'owned':''}" style="--slot-color:${item.colorVar};">
-        <span class="num mono">BADGE</span>
-        <div class="glyph" style="display:flex;align-items:center;justify-content:center;">
-          ${isOwned ? `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="${item.colorVar}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 4px ${item.colorVar});"><polyline points="20 6 9 17 4 12"></polyline></svg>` : ''}
-        </div>
-        ${isOwned?`<div class="nm">${esc(item.name)}</div><span class="cnt" style="color:${item.colorVar}">UNLOCKED</span>`:`<div class="nm" style="color:var(--muted)">???</div>`}
-      </div>`;
-    }).join('')}
-  </div>
   ${backToTopBtn()}
   `;
 }
@@ -3060,7 +3116,7 @@ function render(){
     </div>
     <div class="navrow" style="margin-bottom:8px;">
       <button class="navbtn ${view==='open'?'active':''}" data-nav="open">Packs</button>
-      <button class="navbtn ${view==='dex'?'active':''}" data-nav="dex">Dex and Badges</button>
+      <button class="navbtn ${view==='dex'?'active':''}" data-nav="dex">Dex</button>
       <button class="navbtn ${view==='market'?'active':''}" data-nav="market">Market</button>
     </div>
     <div class="navrow">
@@ -3105,11 +3161,13 @@ function wire(){
     openPack(pack);
   });
   document.querySelectorAll('[data-buycol]').forEach(b=>b.onclick=()=>{
-    const item = SHOP_COLLECTIBLES.find(i=>i.id===b.dataset.buycol);
+    const item = PURCHASABLE_COLLECTIBLES.find(i=>i.id===b.dataset.buycol);
+    if(!item){ console.error('buyCollectible: unknown collectible id', b.dataset.buycol); return; }
     buyCollectible(item);
   });
   document.querySelectorAll('[data-sellcol]').forEach(b=>b.onclick=()=>{
-    const item = SHOP_COLLECTIBLES.find(i=>i.id===b.dataset.sellcol);
+    const item = PURCHASABLE_COLLECTIBLES.find(i=>i.id===b.dataset.sellcol);
+    if(!item){ console.error('sellCollectible: unknown collectible id', b.dataset.sellcol); return; }
     sellCollectible(item);
   });
 
