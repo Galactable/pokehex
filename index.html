@@ -558,7 +558,6 @@ body {
    absence of the equipped outline already carry the state, and dimming the
    expensive art defeats the point of a full-size preview. */
 .cbtile.equipped .cb-swatch{outline:2px solid var(--foil1);outline-offset:2px;}
-.cb-name{font-size:12px;font-weight:600;text-align:center;line-height:1.2;}
 .cb-price{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
 .cb-btn{
   font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:5px 10px;border-radius:6px;
@@ -2799,7 +2798,6 @@ function renderCardBackShelf(){
       return `
       <div class="${cls}">
         <div class="cb-swatch card-face card-back back-${esc(r.id)}">${meta.wordmark===false?'':`<span>POKéHEX</span>`}</div>
-        <div class="cb-name">${esc(r.name)}</div>
         <div class="cb-price">${r.owned ? 'Owned' : `<i class="hex-icon" style="width:10px;height:12px;"></i>${fmtHex(r.price)}`}</div>
         ${btn}
       </div>`;
