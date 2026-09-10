@@ -554,7 +554,9 @@ body {
   width:130px;height:180px;border-radius:12px;border:1px solid var(--line);
   overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;
 }
-.cbtile.locked .cb-swatch{filter:grayscale(0.7) brightness(0.55);}
+/* Locked backs render at full strength: the price, the button label and the
+   absence of the equipped outline already carry the state, and dimming the
+   expensive art defeats the point of a full-size preview. */
 .cbtile.equipped .cb-swatch{outline:2px solid var(--foil1);outline-offset:2px;}
 .cb-name{font-size:12px;font-weight:600;text-align:center;line-height:1.2;}
 .cb-price{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
@@ -569,10 +571,113 @@ body {
 .cb-btn.on{background:var(--foil1);color:#05100a;border-color:var(--foil1);}
 
 /* --- individual backs. back-* only, never theme-* --- */
-/* PLACEHOLDER ART: deliberately crude so 3a is judged on behavior, not looks. */
-.card-back.back-obsidian{background:linear-gradient(135deg,#0a0a12,#241a3a 55%,#0a0a12);}
-.card-back.back-bloom{background:radial-gradient(circle at 50% 40%,#2b0f2e,#120616 70%);}
-.card-back.back-circuit{background:linear-gradient(#08120c,#08120c),repeating-linear-gradient(90deg,#0f2a18 0 2px,transparent 2px 14px);background-blend-mode:normal;}
+/* All art is layered on ::before/::after inside the face. Sizes are in % so a
+   back reads the same at 130x180 (shop tile), at card size, and at 46x64
+   (profile swatch). Ladder is expressed as MOTION AND DEPTH, not density:
+   cheap = static and flat, expensive = alive. */
+/* No `position` here: .card-face is already absolute in the reveal, and the
+   shop swatch relies on .cb-swatch's position:relative winning at equal
+   specificity. An attribute selector (0,2,0) would outrank it and collapse
+   every tile. Both contexts are already positioned, so ::before/::after
+   anchor correctly either way. */
+.card-back[class*="back-"]{overflow:hidden;isolation:isolate;}
+.card-back[class*="back-"]::before,
+.card-back[class*="back-"]::after{content:'';position:absolute;inset:0;pointer-events:none;}
+
+/* --- 60k Obsidian: static. Volcanic glass. Depth from layering only. --- */
+.card-back.back-obsidian{
+  background:
+    radial-gradient(120% 80% at 30% 12%, #2c2740 0%, transparent 55%),
+    linear-gradient(160deg,#14121d 0%,#07060b 60%,#100e18 100%);
+}
+.card-back.back-obsidian::before{
+  background:repeating-linear-gradient(115deg,rgba(255,255,255,.045) 0 1px,transparent 1px 9px);
+  opacity:.7;
+}
+.card-back.back-obsidian::after{
+  background:radial-gradient(90% 60% at 50% 118%, rgba(150,130,255,.22), transparent 60%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
+}
+
+/* ---- PIXEL TECHNIQUE ----
+   Hard-stop gradients only (no soft blends), px-quantised background-size, and
+   steps() timing so motion advances frame-by-frame like a sprite sheet rather
+   than sliding. image-rendering:pixelated keeps edges hard when the card is
+   scaled down to the 46x64 profile swatch. */
+.card-back[class*="back-"]{image-rendering:pixelated;}
+
+/* --- 200k Tidal: pixel rain over a stepped horizon. --- */
+.card-back.back-tidal{
+  background:
+    linear-gradient(#050a06 0 58%, #0b160e 58% 62%, #0e130f 62% 100%);
+}
+/* far layer: sparse, dim, slow */
+.card-back.back-tidal::before{
+  background-image:
+    repeating-linear-gradient(to bottom, rgba(57,255,20,.30) 0 3px, transparent 3px 16px),
+    repeating-linear-gradient(to bottom, rgba(57,255,20,.18) 0 2px, transparent 2px 22px);
+  background-size:11px 16px, 17px 22px;
+  background-position:0 0, 6px 0;
+  animation:cb-rain-far 1.4s steps(8) infinite;
+  opacity:.55;
+}
+/* near layer: denser, brighter, faster - parallax without transforms */
+.card-back.back-tidal::after{
+  background-image:
+    repeating-linear-gradient(to bottom, rgba(200,245,204,.55) 0 4px, transparent 4px 14px);
+  background-size:7px 14px;
+  animation:cb-rain-near .55s steps(7) infinite;
+  box-shadow:inset 0 -18px 20px -14px rgba(57,255,20,.35);
+}
+@keyframes cb-rain-far { to{ background-position:0 16px, 6px 22px; } }
+@keyframes cb-rain-near{ to{ background-position:0 14px; } }
+
+/* --- 1.75M: high-contrast green-on-purple pixel houndstooth, shine sweep,
+   and stepped sparkles. Cartoony and bright - no drip, no soft blends. --- */
+.card-back.back-singular{
+  background:
+    conic-gradient(from 90deg  at 25% 25%, #39ff14 0 25%, transparent 0 100%),
+    conic-gradient(from 180deg at 75% 75%, #39ff14 0 25%, transparent 0 100%),
+    linear-gradient(45deg,  transparent 0 37%, #39ff14 37% 63%, transparent 63% 100%),
+    linear-gradient(135deg, transparent 0 37%, #39ff14 37% 63%, transparent 63% 100%),
+    #6a1fb0;
+  background-size:16px 16px;
+}
+/* shine: unchanged - hard-edged band advanced in steps */
+.card-back.back-singular::before{
+  background:linear-gradient(105deg,
+    transparent 0 38%,
+    rgba(240,217,255,.00) 38% 40%,
+    rgba(240,217,255,.55) 40% 46%,
+    rgba(255,255,255,.92) 46% 50%,
+    rgba(240,217,255,.55) 50% 56%,
+    transparent 56% 100%);
+  background-size:260% 100%;
+  background-repeat:no-repeat;
+  animation:cb-shine 3.6s steps(26) infinite;
+  mix-blend-mode:screen;
+  z-index:2;
+}
+/* sparkles: 4px plus-shaped pixels that pop on and off in hard steps */
+.card-back.back-singular::after{
+  background-image:
+    radial-gradient(circle at 50% 50%, #f0d9ff 0 2px, transparent 2px),
+    radial-gradient(circle at 50% 50%, #baffb0 0 2px, transparent 2px),
+    radial-gradient(circle at 50% 50%, #fff 0 1.5px, transparent 1.5px);
+  background-size:37px 41px, 53px 47px, 29px 61px;
+  background-position:8px 6px, 24px 30px, 15px 44px;
+  animation:cb-twinkle 1.1s steps(3) infinite alternate;
+  z-index:1;
+}
+@keyframes cb-shine{ from{background-position:-160% 0;} to{background-position:160% 0;} }
+@keyframes cb-twinkle{ from{opacity:.25;} to{opacity:1;} }
+
+/* Five cards flip at once on a pack open. Honour the OS setting and freeze
+   every back to its first frame - the art still reads, it just stops moving. */
+@media (prefers-reduced-motion: reduce){
+  .card-back[class*="back-"]::before,
+  .card-back[class*="back-"]::after{animation:none !important;}
+}
 .card-front{
   transform:rotateY(180deg);
   background:linear-gradient(165deg,var(--surface2),var(--surface));
@@ -1380,12 +1485,6 @@ function renderBadgeGrid(dex){
   </div>`;
 }
 
-// Purchasable collectibles. Empty by design -- gym badges are earned now.
-// Mirrors rows in the `collectibles` table with kind='purchasable', which the
-// DB requires to carry a price. buy_collectible / sell_collectible RPCs are
-// intact; the 60% refund rate is server-side and confirmed in the audit log.
-// Shape: {id, name, price, tier, desc, color}. color is a literal or var().
-const PURCHASABLE_COLLECTIBLES = [];
 
 const WHEEL_REWARDS = [
   {amt:2000,   weight:30},
@@ -1410,8 +1509,8 @@ const WHEEL_COOLDOWN = 60*60*1000; // 1 hour
 // UPDATE with no client release. A row the client doesn't know about is skipped.
 const CARD_BACKS = [
   { id:'obsidian', wordmark:false },
-  { id:'bloom',    wordmark:false },
-  { id:'circuit',  wordmark:false }
+  { id:'tidal',    wordmark:false },
+  { id:'singular', wordmark:false }
 ];
 function cardBackById(id){ return CARD_BACKS.find(b => b.id === id) || null; }
 
@@ -1710,54 +1809,6 @@ async function finalizeOpening(){
     render();
   } finally {
     finalizeBusy = false;
-  }
-}
-
-let badgeBusy = false;
-async function buyCollectible(item){
-  if(!requireAuth()) return;
-  if(badgeBusy) return;
-  if(state.collectibles[item.id]) return toast("You already own this badge!");
-  if(state.hex < item.price) return toast("Not enough HEX! Keep grinding packs or spinning the wheel.");
-  badgeBusy = true;
-  try{
-    const { error } = await sb.rpc('buy_collectible', { p_item_id: item.id });
-    if(error){
-      toast(error.message.includes('insufficient') ? "Not enough HEX! Keep grinding packs or spinning the wheel."
-        : error.message.includes('owned') ? "You already own this badge!"
-        : "Couldn't complete that purchase - try again.");
-      return;
-    }
-    state.hex -= item.price;
-    state.collectibles[item.id] = 1;
-    saveState();
-    burstConfetti();
-    toast(`Purchased ${item.name}! Milestone unlocked.`);
-    render();
-  } finally {
-    badgeBusy = false;
-  }
-}
-
-async function sellCollectible(item){
-  if(!requireAuth()) return;
-  if(badgeBusy) return;
-  if(!state.collectibles[item.id]) return toast("You don't own this badge!");
-  badgeBusy = true;
-  try{
-    const { data, error } = await sb.rpc('sell_collectible', { p_item_id: item.id });
-    if(error){
-      toast("Couldn't sell that badge - try again.");
-      return;
-    }
-    delete state.collectibles[item.id];
-    state.hex += data.refund;
-    recordVaultValue();
-    saveState();
-    toast(`Sold ${item.name} for liquid capital: <i class="hex-icon"></i>${fmtHex(data.refund)}!`);
-    render();
-  } finally {
-    badgeBusy = false;
   }
 }
 
@@ -2793,29 +2844,6 @@ function renderShopBonus(){
 
   <div class="section-label">Collectibles</div>
   ${renderCardBackShelf()}
-  <div style="color:var(--muted);font-size:11.5px;margin-bottom:12px;font-style:italic;">(Gym badges moved to Stats -- they are earned by completing a type, not bought. This shelf is reserved for purchasable collectibles.)</div>
-  <div class="packgrid" style="margin-bottom:26px;">
-    ${PURCHASABLE_COLLECTIBLES.length === 0
-      ? `<div style="color:var(--muted);font-size:12px;padding:14px 2px;">Nothing in stock. Check back.</div>`
-      : PURCHASABLE_COLLECTIBLES.map(item=>{
-      const owned = !!state.collectibles[item.id];
-      const refundAmt = Math.round(item.price * 0.6);
-      return `
-      <div class="packcard" style="border-color:${item.color};">
-        <div style="font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">[${esc(item.tier)}]</div>
-        <div class="pack-name" style="color:${item.color};">${esc(item.name)}</div>
-        <div class="pack-desc">${esc(item.desc)}</div>
-        <div class="pack-odds">Status: <b>${owned ? 'Unlocked (1/1)' : 'Locked (0/1)'}</b></div>
-        <div class="pack-price">
-          <span class="price-tag mono"><i class="hex-icon"></i>${fmtHex(item.price)}</span>
-          ${owned ? 
-            `<button class="sellbtn" data-sellcol="${item.id}">Sell (<i class="hex-icon" style="width:10px;height:12px;"></i>${fmtHex(refundAmt)})</button>` :
-            `<button class="buybtn" data-buycol="${item.id}" ${(authUser && state.hex<item.price)?'disabled':''}>Purchase</button>`
-          }
-        </div>
-      </div>`;
-    }).join('')}
-  </div>
   ${backToTopBtn()}
   `;
 }
@@ -3356,18 +3384,6 @@ function wire(){
     }
   });
 
-  document.querySelectorAll('[data-buycol]').forEach(b=>b.onclick=()=>{
-    const item = PURCHASABLE_COLLECTIBLES.find(i=>i.id===b.dataset.buycol);
-    if(!item){ console.error('buyCollectible: unknown collectible id', b.dataset.buycol); return; }
-    buyCollectible(item);
-  });
-  document.querySelectorAll('[data-sellcol]').forEach(b=>b.onclick=()=>{
-    const item = PURCHASABLE_COLLECTIBLES.find(i=>i.id===b.dataset.sellcol);
-    if(!item){ console.error('sellCollectible: unknown collectible id', b.dataset.sellcol); return; }
-    sellCollectible(item);
-  });
-
-  // Modal Handlers
   document.querySelectorAll('[data-open-detail-modal]').forEach(tile => {
     tile.onclick = () => {
       activeModal = { type: 'detail', uid: tile.dataset.openDetailModal };
