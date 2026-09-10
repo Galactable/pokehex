@@ -1370,6 +1370,26 @@ const WHEEL_REWARDS = [
 ];
 const WHEEL_COOLDOWN = 60*60*1000; // 1 hour
 
+// ---------- card backs ----------
+// Purchasable card backs override the pack's tier back everywhere a back is
+// drawn. Deliberately a SEPARATE class namespace from theme-*: theme-* also
+// styles .packcard and .pack-visual (the pack wrapper art), which must stay
+// tied to the pack and must never be swapped by an equipped back.
+// wordmark:false suppresses the POKeHEX span for full-art backs.
+// Empty until the shop lands - resolveCardBack() falls through to pack themes.
+const CARD_BACKS = [];
+function cardBackById(id){ return CARD_BACKS.find(b => b.id === id) || null; }
+
+// Returns {cls, wordmark}. state.equippedBack is server-authoritative once the
+// column exists; undefined today, so live behavior is unchanged.
+function resolveCardBack(){
+  const eq = state.equippedBack ? cardBackById(state.equippedBack) : null;
+  if(eq) return { cls: 'back-' + eq.id, wordmark: eq.wordmark !== false };
+  const pid = (opening && opening.pack) ? opening.pack.id : null;
+  const cls = pid === 'basic' ? 'theme-basic' : (pid === 'whale' ? 'theme-whale' : '');
+  return { cls, wordmark: true };
+}
+
 const MARKET_EPOCH = Date.parse('2024-01-01T00:00:00Z');
 const MARKET_WAVES = [
   { periodMs: 5    * 60*60*1000, amp: 0.35, phase: 1.1 }, // long supercycle (~5h)
@@ -3041,13 +3061,13 @@ function renderCardFace(card, flipped){
   const rc = RARITY[card.rarity];
   const shineTiers = ['ultra','secret'];
   const isAlreadyOwned = !!state.dex[card.id];
-  const packTheme = (opening && opening.pack) ? (opening.pack.id==='basic'?'theme-basic':(opening.pack.id==='whale'?'theme-whale':'')) : '';
+  const cardBack = resolveCardBack();
   return `
     <div class="card-slot-wrapper">
       <div class="already-owned-badge" style="visibility: ${flipped && isAlreadyOwned ? 'visible' : 'hidden'};">ALREADY OWNED</div>
       <div class="card-slot ${flipped?'flipped':''}" data-flip>
         <div class="card-inner">
-          <div class="card-face card-back ${packTheme} ${shineTiers.includes(card.rarity)?'flame-aura':''}"><span>POKéHEX</span></div>
+          <div class="card-face card-back ${cardBack.cls} ${shineTiers.includes(card.rarity)?'flame-aura':''}">${cardBack.wordmark ? `<span>POKéHEX</span>` : ''}</div>
           <div class="card-face card-front ${card.shiny?'shiny-card':''} ${shineTiers.includes(card.rarity)?'shine flame-aura':''}"
                style="--card-color:${rc.color};--type-color:${TYPE_COLORS[card.type]};${card.shiny ? `--shiny-hue:${shinyHue(card.id)}deg;` : ''}">
             ${card.shiny ? `<div class="shiny-sparkle-overlay"></div>` : ''}
