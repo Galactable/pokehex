@@ -544,6 +544,35 @@ body {
   display:flex;align-items:center;justify-content:center;
 }
 .card-back span{font-family:'VT323',monospace;font-weight:400;color:var(--foil1);font-size:13px;letter-spacing:0.1em;opacity:0.8;}
+
+/* ---------- card back shelf (shop) ---------- */
+/* Tiles are full card size so the swatch IS the preview - no separate
+   preview mode to get out of sync with the real reveal. */
+.cbshelf{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,max-content));gap:16px;justify-content:center;margin-bottom:26px;}
+.cbtile{display:flex;flex-direction:column;align-items:center;gap:6px;width:130px;}
+.cb-swatch{
+  width:130px;height:180px;border-radius:12px;border:1px solid var(--line);
+  overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;
+}
+.cbtile.locked .cb-swatch{filter:grayscale(0.7) brightness(0.55);}
+.cbtile.equipped .cb-swatch{outline:2px solid var(--foil1);outline-offset:2px;}
+.cb-name{font-size:12px;font-weight:600;text-align:center;line-height:1.2;}
+.cb-price{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
+.cb-btn{
+  font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:5px 10px;border-radius:6px;
+  border:1px solid var(--line);background:var(--surface2);color:var(--text);cursor:pointer;
+  min-height:30px;width:100%;
+}
+.cb-btn:disabled{opacity:0.45;cursor:not-allowed;}
+.cb-btn.buy{border-color:var(--gold);color:var(--gold);}
+.cb-btn.equip{border-color:var(--foil1);color:var(--foil1);}
+.cb-btn.on{background:var(--foil1);color:#05100a;border-color:var(--foil1);}
+
+/* --- individual backs. back-* only, never theme-* --- */
+/* PLACEHOLDER ART: deliberately crude so 3a is judged on behavior, not looks. */
+.card-back.back-obsidian{background:linear-gradient(135deg,#0a0a12,#241a3a 55%,#0a0a12);}
+.card-back.back-bloom{background:radial-gradient(circle at 50% 40%,#2b0f2e,#120616 70%);}
+.card-back.back-circuit{background:linear-gradient(#08120c,#08120c),repeating-linear-gradient(90deg,#0f2a18 0 2px,transparent 2px 14px);background-blend-mode:normal;}
 .card-front{
   transform:rotateY(180deg);
   background:linear-gradient(165deg,var(--surface2),var(--surface));
@@ -1376,9 +1405,35 @@ const WHEEL_COOLDOWN = 60*60*1000; // 1 hour
 // styles .packcard and .pack-visual (the pack wrapper art), which must stay
 // tied to the pack and must never be swapped by an equipped back.
 // wordmark:false suppresses the POKeHEX span for full-art backs.
-// Empty until the shop lands - resolveCardBack() falls through to pack themes.
-const CARD_BACKS = [];
+// Render metadata ONLY. Name, price and ownership come from get_card_backs so
+// there is no client/DB price to drift out of sync - retuning the ladder is an
+// UPDATE with no client release. A row the client doesn't know about is skipped.
+const CARD_BACKS = [
+  { id:'obsidian', wordmark:false },
+  { id:'bloom',    wordmark:false },
+  { id:'circuit',  wordmark:false }
+];
 function cardBackById(id){ return CARD_BACKS.find(b => b.id === id) || null; }
+
+// Shop shelf payload from get_card_backs: [{id,name,price,owned}]. Null until
+// loaded; the shelf renders a loading line rather than an empty shop.
+let cardBackShelf = null;
+let cardBackBusy  = null;   // id mid-request, so the button can disable itself
+
+async function loadCardBacks(){
+  if(!authUser) return;
+  try{
+    const { data, error } = await sb.rpc('get_card_backs', { p_user_id: authUser.id });
+    if(error) throw error;
+    cardBackShelf = (data && data.backs) || [];
+    // server is authoritative for what's equipped
+    state.equippedBack = (data && data.equipped) || null;
+  }catch(e){
+    console.error('get_card_backs failed:', e && e.message, e);
+    cardBackShelf = [];
+    toast('Could not load card backs.');
+  }
+}
 
 // Returns {cls, wordmark}. state.equippedBack is server-authoritative once the
 // column exists; undefined today, so live behavior is unchanged.
@@ -1480,7 +1535,7 @@ async function loadState(){
 
     const { data, error } = await sb
       .from('game_states_v2')
-      .select('hex, dex, instances, collectibles, last_spin_at, value_history, long_history, favorite_uids')
+      .select('hex, dex, instances, collectibles, last_spin_at, value_history, long_history, favorite_uids, equipped_back')
       .eq('user_id', authUser.id)
       .maybeSingle();
     if(error) throw error;
@@ -1498,7 +1553,8 @@ async function loadState(){
         // a favorite is not protected from selling, so every reader must
         // treat a uid that no longer resolves as an empty slot. order is
         // meaningful: index 0 is slot 1.
-        favoriteUids: Array.isArray(data.favorite_uids) ? data.favorite_uids : []
+        favoriteUids: Array.isArray(data.favorite_uids) ? data.favorite_uids : [],
+        equippedBack: data.equipped_back || null
       };
     } else {
       // shouldn't happen given ensure_game_state() above, but fail safe
@@ -2655,7 +2711,53 @@ function renderMarket(){
   `;
 }
 
+// Card backs shelf. Every tile draws the real back at full card size, so the
+// tile IS the preview - there is no separate preview path that could drift
+// from what the reveal actually renders.
+function renderCardBackShelf(){
+  if(!authUser){
+    return `<div style="color:var(--muted);font-size:12px;padding:10px 2px 18px;">Sign in to browse card backs.</div>`;
+  }
+  if(cardBackShelf === null){
+    return `<div style="color:var(--muted);font-size:12px;padding:10px 2px 18px;">Loading card backs…</div>`;
+  }
+  // server rows the client has no art for are skipped, so a DB seed can land
+  // before the CSS ships without rendering a blank tile.
+  const rows = cardBackShelf.filter(r => cardBackById(r.id));
+  if(rows.length === 0){
+    return `<div style="color:var(--muted);font-size:12px;padding:10px 2px 18px;">No card backs available yet.</div>`;
+  }
+
+  return `
+  <div style="color:var(--muted);font-size:11.5px;margin:10px 0 12px;font-style:italic;">Card backs are permanent. They replace the pack's back on every card you flip, and sit beside your name on your profile.</div>
+  <div class="cbshelf">
+    ${rows.map(r=>{
+      const meta      = cardBackById(r.id);
+      const isEquip   = state.equippedBack === r.id;
+      const busy      = cardBackBusy === r.id;
+      const tooPoor   = state.hex < r.price;
+      const cls       = `cbtile ${r.owned?'owned':'locked'} ${isEquip?'equipped':''}`;
+      let btn;
+      if(!r.owned){
+        btn = `<button class="cb-btn buy" data-buyback="${esc(r.id)}" ${(busy||tooPoor)?'disabled':''}>${busy?'…':(tooPoor?'Locked':'Purchase')}</button>`;
+      } else if(isEquip){
+        btn = `<button class="cb-btn equip on" data-equipback="" ${busy?'disabled':''}>${busy?'…':'Equipped'}</button>`;
+      } else {
+        btn = `<button class="cb-btn equip" data-equipback="${esc(r.id)}" ${busy?'disabled':''}>${busy?'…':'Equip'}</button>`;
+      }
+      return `
+      <div class="${cls}">
+        <div class="cb-swatch card-face card-back back-${esc(r.id)}">${meta.wordmark===false?'':`<span>POKéHEX</span>`}</div>
+        <div class="cb-name">${esc(r.name)}</div>
+        <div class="cb-price">${r.owned ? 'Owned' : `<i class="hex-icon" style="width:10px;height:12px;"></i>${fmtHex(r.price)}`}</div>
+        ${btn}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
 function renderShopBonus(){
+  if(authUser && cardBackShelf === null) loadCardBacks().then(()=>{ if(view==='shop') render(); });
   const stripItems = [];
   for(let rep=0; rep<12; rep++){
     WHEEL_REWARDS.forEach(r=>{
@@ -2690,6 +2792,7 @@ function renderShopBonus(){
   </div>
 
   <div class="section-label">Collectibles</div>
+  ${renderCardBackShelf()}
   <div style="color:var(--muted);font-size:11.5px;margin-bottom:12px;font-style:italic;">(Gym badges moved to Stats -- they are earned by completing a type, not bought. This shelf is reserved for purchasable collectibles.)</div>
   <div class="packgrid" style="margin-bottom:26px;">
     ${PURCHASABLE_COLLECTIBLES.length === 0
@@ -2887,7 +2990,12 @@ function renderProfile(){
   const g2Pct   = Math.round((g2Owned / 100) * 1000) / 10;
 
   return `
-  <h2 class="disp">${esc(profileUsername || 'Profile')}</h2>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    ${state.equippedBack && cardBackById(state.equippedBack)
+      ? `<div class="cb-swatch card-face card-back back-${esc(state.equippedBack)}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;"></div>`
+      : ''}
+    <h2 class="disp" style="margin:0;">${esc(profileUsername || 'Profile')}</h2>
+  </div>
 
   <div class="section-label">Collection</div>
   <div class="stat-row"><span>% of Complete OG Collection</span><span class="mono">${ogPct}% (${ogOwned}/151)</span></div>
@@ -3204,6 +3312,50 @@ function wire(){
     const pack = PACKS.find(p=>p.id===b.dataset.buy);
     openPack(pack);
   });
+  document.querySelectorAll('[data-buyback]').forEach(b=>b.onclick=async ()=>{
+    const id = b.dataset.buyback;
+    if(cardBackBusy) return;
+    cardBackBusy = id; render();
+    try{
+      const { data, error } = await sb.rpc('buy_card_back', { p_id: id });
+      if(error) throw error;
+      if(data.status === 'bought'){
+        state.hex = data.hex;
+        const row = (cardBackShelf||[]).find(r=>r.id===id);
+        if(row) row.owned = true;
+        toast('Card back unlocked.');
+      } else if(data.status === 'insufficient'){
+        toast('Not enough HEX for that back.');
+      } else if(data.status === 'already_owned'){
+        const row = (cardBackShelf||[]).find(r=>r.id===id);
+        if(row) row.owned = true;
+      }
+    }catch(e){
+      console.error('buy_card_back failed:', e && e.message, e);
+      toast('Purchase failed - nothing was charged.');
+    }finally{
+      cardBackBusy = null; render();
+    }
+  });
+
+  document.querySelectorAll('[data-equipback]').forEach(b=>b.onclick=async ()=>{
+    const id = b.dataset.equipback || null;   // empty string = unequip
+    if(cardBackBusy) return;
+    cardBackBusy = id || state.equippedBack; render();
+    try{
+      const { data, error } = await sb.rpc('equip_card_back', { p_id: id });
+      if(error) throw error;
+      if(data.status === 'equipped')        state.equippedBack = data.id;
+      else if(data.status === 'unequipped') state.equippedBack = null;
+      else if(data.status === 'not_owned')  toast('You do not own that back.');
+    }catch(e){
+      console.error('equip_card_back failed:', e && e.message, e);
+      toast('Could not change your card back.');
+    }finally{
+      cardBackBusy = null; render();
+    }
+  });
+
   document.querySelectorAll('[data-buycol]').forEach(b=>b.onclick=()=>{
     const item = PURCHASABLE_COLLECTIBLES.find(i=>i.id===b.dataset.buycol);
     if(!item){ console.error('buyCollectible: unknown collectible id', b.dataset.buycol); return; }
@@ -3494,7 +3646,9 @@ function wire(){
       const preservedLastSpinAt = state.lastSpinAt;
       // reset wipes instances, so any favorite_uid still stored server-side can
       // no longer resolve. cleared locally rather than via the RPC - see notes.
-      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[], favoriteUids:[] };
+      // equipped_back is a permanent purchase and is NOT cleared by reset_game_state,
+      // so carry it across rather than falling back to the pack theme until refresh.
+      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[], favoriteUids:[], equippedBack: state.equippedBack || null };
       saveState();
       resetConfirmOpen = false;
     } finally {
