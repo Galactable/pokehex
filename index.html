@@ -33,6 +33,22 @@
   --rare:#9d4edd;
   --ultra:#6bff5c;
   --secret:#f0d9ff;
+
+  /* ---- pack wrapper geometry (see pack-shape-preview) ---- */
+  --pack-w:152px;   /* pack width  */
+  --pack-h:268px;   /* pack height */
+  --tooth:6px;      /* width of one crimp tooth */
+  --crimp:4px;      /* how deep the teeth bite in */
+  --band:8px;       /* extra height of the pressed-foil crimp band */
+  --seam:1px;       /* thickness of the purple tear guide */
+  --dash:7px;       /* dash length on the tear guide */
+  --gap:5px;        /* gap between dashes */
+  --rag:6px;        /* depth of the ragged torn edge */
+  --lift:7px;       /* gap between stacked cards - MUST scale with the pack */
+  --edge:var(--line); /* theme line colour, overridden per pack theme */
+  --tear-top:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%2020%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%200%20H200%20V13.0%20L198%2013.0%20L191%2014.1%20L187%2012.1%20L182%2013.0%20L174%2013.6%20L167%2012.3%20L163%2011.5%20L157%2010.5%20L151%2010.6%20L146%2010.8%20L136%2011.8%20L132%2012.0%20L127%2013.0%20L121%2013.0%20L113%2013.0%20L106%2013.0%20L102%2014.4%20L97%2013.8%20L87%209.0%20L80%208.8%20L72%207.6%20L65%208.4%20L55%207.0%20L51%207.9%20L44%207.0%20L40%205.9%20L34%2013.0%20L28%2014.1%20L22%207.0%20L14%207.0%20L10%206.3%20L0%2010.0%20Z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fsvg%3E");
+  --tear-bot:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%2020%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%2020%20H200%20V13.0%20L198%2013.0%20L191%2014.1%20L187%2012.1%20L182%2013.0%20L174%2013.6%20L167%2012.3%20L163%2011.5%20L157%2010.5%20L151%2010.6%20L146%2010.8%20L136%2011.8%20L132%2012.0%20L127%2013.0%20L121%2013.0%20L113%2013.0%20L106%2013.0%20L102%2014.4%20L97%2013.8%20L87%209.0%20L80%208.8%20L72%207.6%20L65%208.4%20L55%207.0%20L51%207.9%20L44%207.0%20L40%205.9%20L34%2013.0%20L28%2014.1%20L22%207.0%20L14%207.0%20L10%206.3%20L0%2010.0%20Z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fsvg%3E");
+  --tear-line:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%2020%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0.0%2010.0%20L10.0%206.3%20L14.0%207.0%20L22.0%207.0%20L28.0%2014.1%20L34.0%2013.0%20L40.0%205.9%20L44.0%207.0%20L51.0%207.9%20L55.0%207.0%20L65.0%208.4%20L72.0%207.6%20L80.0%208.8%20L87.0%209.0%20L97.0%2013.8%20L102.0%2014.4%20L106.0%2013.0%20L113.0%2013.0%20L121.0%2013.0%20L127.0%2013.0%20L132.0%2012.0%20L136.0%2011.8%20L146.0%2010.8%20L151.0%2010.6%20L157.0%2010.5%20L163.0%2011.5%20L167.0%2012.3%20L174.0%2013.6%20L182.0%2013.0%20L187.0%2012.1%20L191.0%2014.1%20L198.0%2013.0%20L200.0%2013.0%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%20vector-effect%3D%22non-scaling-stroke%22%2F%3E%3C%2Fsvg%3E");
 }
 body {
   margin: 0;
@@ -241,6 +257,34 @@ body {
   content:'';position:absolute;inset:0;opacity:0.08;pointer-events:none;
   background:var(--pack-glow,linear-gradient(135deg,var(--foil1),var(--foil2)));
 }
+/* Only the shop tiles get the two-column layout - .packcard is also the vault's
+   card tile, so the class itself must keep its original block behaviour. */
+.packcard.shop{display:flex;align-items:center;gap:16px;}
+.packcard.shop .pack-info{flex:1;min-width:0;}
+/* The pack and its Open button share the right column, so the button reads as
+   belonging to the pack rather than floating beside the price. */
+.pack-mini{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:12px;}
+.pack-mini .buybtn{width:100%;}
+/* The mini wrapper reuses .pack-visual wholesale, so themes, crimp and symbol
+   colours follow automatically. Only the geometry changes - and because the
+   420px rule scales var(--pack-w), the mini shrinks on phones for free. */
+.pack-visual.mini{
+  --pack-w:60px;--pack-h:106px;--lift:2.8px;
+  cursor:inherit;filter:drop-shadow(0 6px 14px rgba(0,0,0,0.6));
+}
+.pack-visual.mini .pack-top{height:calc(var(--crimp) + 11px);}
+.pack-visual.mini .pack-top::before,.pack-visual.mini .pack-body::before{
+  height:calc(var(--crimp) + 4px);
+}
+.pack-visual.mini .sym{padding:6% 0;}
+.pack-visual.mini .sym svg{
+  width:74%;stroke-width:3.2;
+  filter:drop-shadow(0 0 3px currentColor) drop-shadow(0 0 7px currentColor);
+}
+/* The dashed guide says "rip here", which is meaningless on a shop tile - you
+   tap Open, you do not tear this one. It only appears on the opening overlay. */
+.pack-visual.mini .tear{display:none;}
+
 .pack-name{font-family:'VT323',monospace;font-weight:400;font-size:19px;margin:0 0 4px;}
 .pack-desc{color:var(--muted);font-size:12.5px;margin:0 0 14px;line-height:1.4;min-height:34px;}
 .pack-odds{font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.6;}
@@ -276,7 +320,9 @@ body {
 .packcard.theme-basic .pack-name{color:var(--foil1);text-shadow:0 0 6px rgba(57,255,20,0.5);}
 .packcard.theme-basic::after{background:linear-gradient(135deg,var(--foil1),#0a0a0a);opacity:0.12;}
 
-.pack-visual.theme-basic{background:linear-gradient(160deg,#050605,#0b0f0a);border-color:var(--foil1);}
+.pack-visual.theme-basic{--edge:var(--foil1);}
+.pack-visual.theme-basic .pack-top,.pack-visual.theme-basic .pack-body{background:linear-gradient(160deg,#050605,#0b0f0a);}
+.pack-visual.theme-basic .sym{color:var(--foil1);}
 .pack-visual.theme-basic .mark{color:var(--foil1);text-shadow:0 0 8px rgba(57,255,20,0.6);}
 
 .card-back.theme-basic{background:repeating-linear-gradient(45deg,#050505,#050505 8px,#150a24 8px,#150a24 16px);}
@@ -288,16 +334,18 @@ body {
 .packcard.theme-whale .pack-name{color:var(--luxe-gold2);text-shadow:0 0 8px rgba(212,175,55,0.6);}
 .packcard.theme-whale::after{background:linear-gradient(135deg,var(--luxe-gold),var(--luxe-gold2));opacity:0.14;}
 
-.pack-visual.theme-whale{background:linear-gradient(160deg,#1a1408,#0d0a04);border-color:var(--luxe-gold);}
+.pack-visual.theme-whale{--edge:var(--luxe-gold);}
+.pack-visual.theme-whale .pack-top,.pack-visual.theme-whale .pack-body{background:linear-gradient(160deg,#1a1408,#0d0a04);}
+.pack-visual.theme-whale .sym{color:var(--luxe-gold2);}
 .pack-visual.theme-whale .mark{color:var(--luxe-gold2);text-shadow:0 0 10px rgba(212,175,55,0.7);}
-.pack-visual.theme-whale .sheen{background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,0.25) 35%,rgba(212,175,55,0.5) 45%,rgba(245,207,107,0.4) 55%,transparent 70%);}
 
 .card-back.theme-whale{background:repeating-linear-gradient(45deg,#1a1408,#1a1408 8px,#0d0a04 8px,#0d0a04 16px);}
 .card-back.theme-whale span{color:var(--luxe-gold2);text-shadow:0 0 6px rgba(212,175,55,0.6);}
 
 /* Diamond Pack - white/light-grey border instead of the default green */
 .packcard.theme-diamond:hover{border-color:#e6e6e6;box-shadow:0 0 16px rgba(230,230,230,0.25);}
-.pack-visual.theme-diamond{border-color:#e6e6e6;}
+.pack-visual.theme-diamond{--edge:#e6e6e6;}
+.pack-visual.theme-diamond .sym{color:#e6e6e6;}
 
 /* ---------- dex ---------- */
 .dexhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px;}
@@ -467,38 +515,251 @@ body {
   z-index:50;padding:20px;
 }
 .pack-stage{display:flex;flex-direction:column;align-items:center;gap:22px;}
-.pack-visual{
-  width:170px;height:240px;border-radius:16px;position:relative;cursor:pointer;
-  background:linear-gradient(160deg,#1a1a36,#0d0d1e);
-  border:1px solid var(--line);
-  box-shadow:0 20px 60px rgba(0,0,0,0.6);
-  display:flex;align-items:center;justify-content:center;
-  transition:transform .4s cubic-bezier(.34,1.56,.64,1);
-  overflow:hidden;
-}
-.pack-visual .sheen{
-  position:absolute;inset:0;
-  background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,0.18) 35%,rgba(57,255,20,0.35) 45%,rgba(157,78,221,0.3) 55%,transparent 70%);
-  background-size:250% 250%;animation:sheenmove 3.2s linear infinite;
-}
+/* sheenmove is still used by the LCD glass sheen further down; the pack's own
+   sheen was dropped but this keyframe must stay. */
 @keyframes sheenmove{0%{background-position:0% 0%;}100%{background-position:100% 100%;}}
+
+/* The pack is a crimped foil wrapper in two pieces, so the top can tear away.
+   .pack-visual is a FRAME only - no background, no border, no overflow:hidden.
+   The outer shadow is a drop-shadow filter so it follows the toothed
+   silhouette instead of a rectangle. Themes paint .pack-top/.pack-body. */
+.pack-visual{
+  container-type:inline-size;
+  width:var(--pack-w);height:var(--pack-h);position:relative;cursor:pointer;
+  display:flex;flex-direction:column;
+  filter:drop-shadow(0 18px 34px rgba(0,0,0,0.75));
+}
+.pack-top,.pack-body{
+  position:relative;overflow:hidden;
+  background:linear-gradient(160deg,#1a1a36,#0d0d1e);
+  /* An inset ring cannot follow a masked edge - the mask cuts it away and the
+     teeth end up unlined. The crimp instead reads as a PRESSED FOIL BAND that
+     the teeth are cut out of; the theme line survives on the left and right,
+     which the mask never touches. */
+  border-left:1px solid var(--edge);
+  border-right:1px solid var(--edge);
+}
+.pack-top::before,.pack-body::before{
+  z-index:1;content:'';position:absolute;left:0;right:0;
+  height:calc(var(--crimp) + var(--band));
+  background:
+    /* pressed ridges running across the crimp, one per tooth so the ribs line
+       up with the zigzag instead of drifting against it */
+    repeating-linear-gradient(90deg,
+      rgba(255,255,255,0.085) 0 0.5px,
+      transparent 0.5px calc(var(--tooth)/3),
+      rgba(0,0,0,0.22) calc(var(--tooth)/3) calc(var(--tooth)/3 + 0.5px),
+      transparent calc(var(--tooth)/3 + 0.5px) calc(var(--tooth)/1.5)),
+    color-mix(in srgb,var(--edge) 26%,transparent);
+  pointer-events:none;
+}
+.pack-top::before{top:0;box-shadow:inset 0 -1px 0 color-mix(in srgb,var(--edge) 55%,transparent);}
+.pack-body::before{bottom:0;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--edge) 55%,transparent);}
+
+/* teeth cut into the top edge of the top piece. A conic-gradient mask keeps the
+   teeth a fixed pixel size, so the crimp does not shrink at the mobile size the
+   way a percentage clip-path would. */
+.pack-top{
+  height:calc(var(--crimp) + 30px);
+  -webkit-mask:
+    repeating-conic-gradient(from -45deg at bottom,#0000 0deg 90deg,#000 90deg 180deg)
+      top left/var(--tooth) var(--crimp) repeat-x,
+    linear-gradient(#000,#000) bottom left/100% calc(100% - var(--crimp)) no-repeat;
+  mask:
+    repeating-conic-gradient(from -45deg at bottom,#0000 0deg 90deg,#000 90deg 180deg)
+      top left/var(--tooth) var(--crimp) repeat-x,
+    linear-gradient(#000,#000) bottom left/100% calc(100% - var(--crimp)) no-repeat;
+}
+.pack-body{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  -webkit-mask:
+    repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
+      bottom left/var(--tooth) var(--crimp) repeat-x,
+    linear-gradient(#000,#000) top left/100% calc(100% - var(--crimp)) no-repeat;
+  mask:
+    repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
+      bottom left/var(--tooth) var(--crimp) repeat-x,
+    linear-gradient(#000,#000) top left/100% calc(100% - var(--crimp)) no-repeat;
+}
+
+/* A dashed "tear here" guide in the buy-button purple. The glow is a filter,
+   not a box-shadow, so it follows each dash instead of haloing the whole strip
+   into one solid bar and filling the gaps back in. */
+.pack-visual .tear{
+  height:var(--seam);position:relative;z-index:3;background:transparent;
+  background-image:repeating-linear-gradient(90deg,
+    var(--foil2) 0 var(--dash), transparent var(--dash) calc(var(--dash) + var(--gap)));
+  animation:tearpulse 1.9s ease-in-out infinite;
+}
+@keyframes tearpulse{
+  0%,100%{filter:drop-shadow(0 0 3px rgba(157,78,221,0.7));opacity:0.72;}
+  50%    {filter:drop-shadow(0 0 9px rgba(157,78,221,1)) drop-shadow(0 0 3px rgba(157,78,221,0.9));opacity:1;}
+}
+
+/* The pack should read as STUFFED. All of this is percentage-based so it holds
+   at the overlay size, the 82% mobile size and the 60px shop mini alike:
+   .bulge paints the shadow gutters where the foil wraps around the stack and
+   the creases above and below it; .bulge::before is the card block itself,
+   pressing a soft shadow into the foil around it with a highlight along its
+   top edge. It is a separate element rather than a ::after on .pack-body,
+   because .pack-body::after is taken by the torn-fibre line during the rip. */
+.pack-visual .bulge{
+  position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(118% 66% at 50% 45%, rgba(255,255,255,0.085) 0%, rgba(255,255,255,0.035) 46%, transparent 72%),
+    linear-gradient(90deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 14%, rgba(0,0,0,0) 86%, rgba(0,0,0,0.5) 100%),
+    linear-gradient(180deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0) 13%, rgba(0,0,0,0) 85%, rgba(0,0,0,0.48) 100%);
+}
+.pack-visual .bulge::before{
+  content:'';position:absolute;left:8%;right:8%;top:17%;bottom:6%;
+  /* uneven corners - foil pulled over a stack does not wrap to a clean radius */
+  border-radius:7px 5px 8px 6px;
+  /* A tight shadow rather than a soft one: the foil is STRAINED over the stack,
+     so it pinches hard at the block edge instead of fading smoothly into it. */
+  /* FIVE cards. The front card is this block and sits LOWEST; the four behind
+     it are negative-Y copies rising above it, each a dark edge with a lit lip.
+     Zero blur is what makes them read as discrete cards, not a gradient. */
+  /* Every offset is a multiple of --lift. Hardcoded pixels made the stack look
+     right at 152px and far too loose on the 60px shop mini - the block is sized
+     in percentages, so the gaps between cards have to scale with it too. */
+  box-shadow:
+    0 calc(var(--lift)*-1) 0 rgba(0,0,0,0.55),    0 calc(var(--lift)*-0.47) 0 rgba(255,255,255,0.14),
+    0 calc(var(--lift)*-2) 0 rgba(0,0,0,0.55),    0 calc(var(--lift)*-1.47) 0 rgba(255,255,255,0.13),
+    0 calc(var(--lift)*-3) 0 rgba(0,0,0,0.55),    0 calc(var(--lift)*-2.47) 0 rgba(255,255,255,0.12),
+    0 calc(var(--lift)*-4) 0 rgba(0,0,0,0.55),    0 calc(var(--lift)*-3.47) 0 rgba(255,255,255,0.11),
+    0 calc(var(--lift)*-1.3) calc(var(--lift)*2.7) 1px rgba(0,0,0,0.55),
+    0 calc(var(--lift)*-0.7) calc(var(--lift)*5.3) calc(var(--lift)*2) rgba(0,0,0,0.32),
+    inset 0 1px 0 rgba(255,255,255,0.1),
+    inset 0 -2px 3px rgba(0,0,0,0.4);
+  background:radial-gradient(90% 60% at 50% 40%, rgba(255,255,255,0.055), transparent 70%);
+}
+/* Vacuum strain. Creases in shrink-wrap radiate OUT from the object, so these
+   are spokes from the stack's centre rather than parallel wrinkles. The mask
+   holds them off the stack itself - the foil is tight there and only creases
+   in the slack around it. */
+.pack-visual .bulge::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-conic-gradient(from 4deg at 50% 42%,
+    transparent 0 3.4deg,
+    rgba(255,255,255,0.055) 3.4deg 4deg,
+    transparent 4deg 6.8deg,
+    rgba(0,0,0,0.16) 6.8deg 7.3deg,
+    transparent 7.3deg 11deg);
+  /* The creases are SHORT - they only pull in the tight band of foil right
+     around the stack, then die out. A mask band, not a fade to the pack edge. */
+  -webkit-mask:radial-gradient(66% 52% at 50% 42%,
+    transparent 0 64%, #000 74%, #000 84%, transparent 96%);
+  mask:radial-gradient(66% 52% at 50% 42%,
+    transparent 0 64%, #000 74%, #000 84%, transparent 96%);
+  mix-blend-mode:overlay;opacity:0.95;
+}
+
+/* Pack symbols are inline SVG in the markup rather than data-URI backgrounds,
+   because the stroke has to follow the theme colour - currentColor stops at the
+   edge of a data-URI, which would mean three hardcoded copies of the palette. */
+.pack-visual .sym{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  width:100%;min-height:0;padding:8% 0 2%;z-index:2;position:relative;
+}
+.pack-visual .sym svg{
+  width:68%;height:auto;overflow:visible;
+  fill:none;stroke:currentColor;stroke-width:2.4;
+  stroke-linecap:round;stroke-linejoin:round;
+  filter:drop-shadow(0 0 5px currentColor) drop-shadow(0 0 12px currentColor);
+  opacity:0.92;
+}
+
+/* Sized in cqw against the pack's own width, so the name fits on one line at
+   any pack size or viewport; a fixed px size wraps "Diamond Pack" the moment
+   the pack narrows. Side padding is a percentage so the clear margin scales
+   with the pack instead of collapsing, and leaves room for the glow. */
 .pack-visual .mark{
   font-family:'VT323',monospace;
   font-weight:400;
-  font-size:22px;
+  font-size:9.5cqw;
+  line-height:1;
+  white-space:nowrap;
   color:var(--text);
-  letter-spacing:0.05em;
-  z-index:1;
+  letter-spacing:0.04em;
+  z-index:2;
+  position:relative;
   text-align:center;
-  padding:0 12px;
+  padding:0 10% calc(var(--crimp) + var(--band) + 7px);
 }
-.pack-visual.ripping{animation:ripshake .35s ease;}
-@keyframes ripshake{
-  0%,100%{transform:translateX(0) rotate(0);}
-  20%{transform:translateX(-6px) rotate(-2deg);}
-  40%{transform:translateX(6px) rotate(2deg);}
-  60%{transform:translateX(-4px) rotate(-1deg) scale(1.03);}
-  80%{transform:translateX(4px) rotate(1deg) scale(1.06);}
+
+/* ---- the rip ----
+   A repeating zigzag reads as a machine cut, not a tear - it has a period. The
+   torn edge is ONE hand-irregular polyline drawn as an SVG mask: a shallow,
+   mostly-clean tear with occasional deeper pulls and notches, no period. Both
+   pieces mask against the SAME polyline from opposite sides, so they would
+   still fit back together, and a pale line traces the exposed fibres. */
+.pack-visual.ripping .pack-top{
+  -webkit-mask:
+    repeating-conic-gradient(from -45deg at bottom,#0000 0deg 90deg,#000 90deg 180deg)
+      top left/var(--tooth) var(--crimp) repeat-x,
+    linear-gradient(#000,#000) left 0 top var(--crimp)/100% calc(100% - var(--crimp) - var(--rag)) no-repeat,
+    var(--tear-top) bottom left/100% var(--rag) no-repeat;
+  mask:
+    repeating-conic-gradient(from -45deg at bottom,#0000 0deg 90deg,#000 90deg 180deg)
+      top left/var(--tooth) var(--crimp) repeat-x,
+    linear-gradient(#000,#000) left 0 top var(--crimp)/100% calc(100% - var(--crimp) - var(--rag)) no-repeat,
+    var(--tear-top) bottom left/100% var(--rag) no-repeat;
+  animation:ripaway .62s cubic-bezier(.32,.06,.24,1) forwards;
+  transform-origin:90% 100%;
+}
+.pack-visual.ripping .pack-body{
+  -webkit-mask:
+    var(--tear-bot) top left/100% var(--rag) no-repeat,
+    linear-gradient(#000,#000) left 0 top var(--rag)/100% calc(100% - var(--rag) - var(--crimp)) no-repeat,
+    repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
+      bottom left/var(--tooth) var(--crimp) repeat-x;
+  mask:
+    var(--tear-bot) top left/100% var(--rag) no-repeat,
+    linear-gradient(#000,#000) left 0 top var(--rag)/100% calc(100% - var(--rag) - var(--crimp)) no-repeat,
+    repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
+      bottom left/var(--tooth) var(--crimp) repeat-x;
+  animation:ripjolt .62s ease-out;
+}
+.pack-visual.ripping .pack-top::after,.pack-visual.ripping .pack-body::after{
+  content:'';position:absolute;left:0;right:0;height:var(--rag);z-index:5;pointer-events:none;
+  background:var(--tear-line) center/100% 100% no-repeat;
+  opacity:0.5;mix-blend-mode:screen;
+}
+.pack-visual.ripping .pack-top::after{bottom:0;}
+.pack-visual.ripping .pack-body::after{top:0;}
+@keyframes ripaway{
+  0%   {transform:translate(0,0) rotate(0deg);opacity:1;}
+  12%  {transform:translate(0,4px) rotate(0deg);opacity:1;}
+  34%  {transform:translate(-4px,-6px) rotate(-5deg);opacity:1;}
+  100% {transform:translate(-54px,-150px) rotate(-38deg);opacity:0;}
+}
+@keyframes ripjolt{
+  0%{transform:translateY(0);}
+  16%{transform:translateY(3px);}
+  34%{transform:translateY(-4px) rotate(0.6deg);}
+  55%{transform:translateY(2px) rotate(-0.3deg);}
+  100%{transform:translateY(0);}
+}
+.pack-visual .flare{
+  position:absolute;left:50%;top:0;transform:translate(-50%,-40%) scale(0.2);
+  width:130%;aspect-ratio:1;border-radius:50%;opacity:0;z-index:1;pointer-events:none;
+  background:radial-gradient(circle,rgba(255,255,255,0.95) 0%,var(--edge) 32%,transparent 68%);
+}
+.pack-visual.ripping .flare{animation:ripflare .62s ease-out forwards;}
+@keyframes ripflare{
+  0%  {opacity:0;transform:translate(-50%,-40%) scale(0.15);}
+  30% {opacity:0.95;transform:translate(-50%,-40%) scale(0.75);}
+  100%{opacity:0;transform:translate(-50%,-40%) scale(1.5);}
+}
+.pack-visual.ripping .tear{animation:tearsnap .3s ease-out forwards;}
+@keyframes tearsnap{
+  0%{opacity:1;filter:drop-shadow(0 0 16px rgba(157,78,221,1));}
+  100%{opacity:0;filter:drop-shadow(0 0 0 rgba(157,78,221,0));}
+}
+@media (prefers-reduced-motion:reduce){
+  .pack-visual .tear{animation:none;opacity:0.9;}
+  .pack-visual.ripping .pack-top{animation-duration:.01s;}
+  .pack-visual.ripping .pack-body,.pack-visual.ripping .flare{animation:none;}
 }
 .pack-hint{color:var(--muted);font-size:13px;letter-spacing:0.04em;text-align:center;}
 
@@ -1118,8 +1379,19 @@ body {
   max-width:920px;
   margin:24px auto 0;
   display:flex;
-  justify-content:flex-end;
+  align-items:center;
+  justify-content:space-between;
 }
+/* The row renders even when signed out so the sound toggle is always reachable;
+   space-between then puts it hard left with SIGN OUT on the right. */
+.mutebtn{
+  background:transparent;border:none;cursor:pointer;padding:4px 2px;
+  color:var(--foil1);line-height:0;opacity:0.75;
+}
+.mutebtn:hover{opacity:1;filter:drop-shadow(0 0 6px rgba(57,255,20,0.6));}
+.mutebtn svg{width:19px;height:19px;fill:none;stroke:currentColor;
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.mutebtn.is-muted{color:var(--muted);}
 .signoutbtn{
   display:inline-block;
   width:auto;
@@ -1175,7 +1447,9 @@ html,body{ max-width:100%; overflow-x:hidden; }
      gap so Most Valuable Pull and Favorite Card still sit in one row */
   .stats-card-empty{ width:104px; min-height:144px; }
   .stats-card-display{ gap:14px; }
-  .pack-visual{ width:140px; height:198px; }
+  .pack-visual{ width:calc(var(--pack-w)*0.82); height:calc(var(--pack-h)*0.82); --lift:5.7px; }
+  .pack-visual.mini{ --lift:2.8px; }
+  .packcard.shop{ gap:12px; }
   .dexgrid{ grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); }
 }
 </style>
@@ -2020,9 +2294,18 @@ function spinStatusText(){
 }
 function fmtHex(n){ return n.toLocaleString('en-US'); }
 
+// Sound on/off. Persisted so the choice survives a reload, and read once at
+// start-up rather than on every note.
+let muted = false;
+try{ muted = localStorage.getItem('pokehex_muted') === '1'; }catch(e){}
+function setMuted(v){
+  muted = v;
+  try{ localStorage.setItem('pokehex_muted', v ? '1' : '0'); }catch(e){}
+}
 let actx;
 function ac(){ actx = actx || new (window.AudioContext||window.webkitAudioContext)(); return actx; }
 function tone(freq,dur,type,gain,delay){
+  if(muted) return;
   try{
     const c = ac(); const t0 = c.currentTime+(delay||0);
     const osc = c.createOscillator(); const g = c.createGain();
@@ -2034,11 +2317,103 @@ function tone(freq,dur,type,gain,delay){
     osc.start(t0); osc.stop(t0+dur+0.02);
   }catch(e){}
 }
-function ripSound(){ tone(120,0.25,'sawtooth',0.06); tone(400,0.15,'square',0.03,0.05); }
-function revealSound(rarity){
+// Noise is what a tear and a card flip actually are - neither is a pitch, so
+// neither can be built from tone(). One shared buffer is reused for every
+// burst; regenerating white noise per sound is wasteful and sounds identical.
+let noiseBuf;
+function noiseBuffer(c){
+  if(noiseBuf) return noiseBuf;
+  const n = Math.floor(c.sampleRate*0.5);
+  noiseBuf = c.createBuffer(1,n,c.sampleRate);
+  const d = noiseBuf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i] = Math.random()*2-1;
+  return noiseBuf;
+}
+// dur seconds of filtered noise, sweeping the band from f0 to f1.
+// `swell` is the fraction of dur at which the sound peaks. Left off it attacks
+// in 8ms and decays, which is a hit. Set near 0.7 and it crescendos instead -
+// that difference is what separates a drum from a tearing sound.
+function noise(dur,f0,f1,gain,q,delay,swell){
+  if(muted) return;
+  try{
+    const c = ac(); const t0 = c.currentTime+(delay||0);
+    const src = c.createBufferSource(); src.buffer = noiseBuffer(c); src.loop = true;
+    const bp = c.createBiquadFilter(); bp.type='bandpass';
+    bp.Q.setValueAtTime(q||1.6,t0);
+    bp.frequency.setValueAtTime(f0,t0);
+    bp.frequency.exponentialRampToValueAtTime(Math.max(60,f1),t0+dur);
+    const g = c.createGain();
+    const peak = t0 + (swell ? dur*swell : 0.008);
+    g.gain.setValueAtTime(0.0001,t0);
+    g.gain.linearRampToValueAtTime(gain||0.05,peak);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+    g.gain.setValueAtTime(0,t0+dur);   // true silence, not an asymptote
+    src.connect(bp); bp.connect(g); g.connect(c.destination);
+    src.start(t0); src.stop(t0+dur+0.01);
+  }catch(e){}
+}
+// A short tone that bends in pitch. A bubble pop is a rising bend, not a hit.
+function blip(f0,f1,dur,gain,delay,type){
+  if(muted) return;
+  try{
+    const c = ac(); const t0 = c.currentTime+(delay||0);
+    const osc = c.createOscillator(); const g = c.createGain();
+    osc.type = type||'sine';
+    osc.frequency.setValueAtTime(f0,t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(40,f1),t0+dur);
+    g.gain.setValueAtTime(0.0001,t0);
+    g.gain.linearRampToValueAtTime(gain||0.03,t0+0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+    osc.connect(g); g.connect(c.destination);
+    osc.start(t0); osc.stop(t0+dur+0.02);
+  }catch(e){}
+}
+
+// Variant A from the blend picker: variant 1's low sparse grains with variant
+// 6's acceleration - the gaps shrink from ~44ms to ~15ms as the tear runs, so
+// it gets away from you rather than ticking evenly. S is the speed setting
+// picked in the harness (158%); every time and length scales from it, so the
+// whole rip can be slowed or sped up by changing one number.
+// FIZZ is the bright layer riding on each grain. This is the knob that decides
+// crinkle vs rattle - set it to 0 for the pure low version.
+function ripSound(){
+  const S = 0.633, FIZZ = 0.66;
+  let t = 0, step = 0.070;
+  for(let i=0;i<9;i++){
+    const f = 430 - i*14 + ((i*97)%110);       // low, wandering, never bright
+    noise(0.022*S, f, f*0.68, 0.090 - i*0.003, 1.8, t*S);
+    noise(0.013*S, 2500+i*210, 2000+i*150, FIZZ*(0.008+i*0.0009), 2.4, t*S);
+    t += step; step *= 0.88;
+  }
+  noise(0.40*S, 250, 195, 0.016, 0.8, 0, 0.45);  // quiet bed underneath
+}
+
+// A bubble pop through paper: a soft rising bend with a breath of air around
+// it. Every percussive layer is gone - no contact burst, no low body sines.
+// Those were the drum. `vary` detunes a dealt run so five do not sound like one.
+function flipSound(delay,vary){
+  const d = delay||0, v = vary||1;
+  noise(0.10,1300*v,520*v,0.016,1.2,d,0.45);   // breath, swelling not hitting
+  blip(300*v,560*v,0.055,0.03,d+0.02);          // the pop
+  blip(600*v,880*v,0.03,0.012,d+0.022);         // paper edge, faint
+}
+// Shiny fanfare: a fast major arpeggio on squares, then the octave held with
+// a fifth above it and a sparkle tail. Squares rather than triangles because
+// the rarity chimes are triangles - this has to cut through one, not blend
+// into it. Kept under half a second so it lands before the next card.
+function shinySound(delay){
+  const d = delay||0;
+  [[523.25,0],[659.25,0.05],[783.99,0.10],[1046.50,0.15]]
+    .forEach(([f,t])=>tone(f,0.10,'square',0.021,d+t));
+  tone(1046.50,0.30,'square',0.025,d+0.215);
+  tone(1567.98,0.32,'square',0.013,d+0.225);
+  blip(1900,2700,0.20,0.0085,d+0.24,'triangle');
+}
+function revealSound(rarity,delay){
+  const d = delay||0;
   const base = {common:440,uncommon:520,rare:600,ultra:820,secret:980}[rarity]||440;
-  tone(base,0.18,'triangle',0.07);
-  if(rarity==='ultra'||rarity==='secret'){ tone(base*1.5,0.3,'triangle',0.06,0.08); tone(base*2,0.4,'sine',0.05,0.16); }
+  tone(base,0.18,'triangle',0.07,d);
+  if(rarity==='ultra'||rarity==='secret'){ tone(base*1.5,0.3,'triangle',0.06,d+0.08); tone(base*2,0.4,'sine',0.05,d+0.16); }
 }
 
 function burstConfetti(){
@@ -2087,14 +2462,23 @@ function renderOpen(){
   <div class="section-label">Choose a pack</div>
   <div class="packgrid">
     ${PACKS.map(p=>`
-      <div class="packcard ${p.id==='basic'?'theme-basic':(p.id==='whale'?'theme-whale':(p.id==='diamond'?'theme-diamond':''))}" data-pack="${p.id}">
-        <div class="pack-name">${esc(p.name)}</div>
-        <div class="pack-desc">${esc(p.desc)}</div>
-        <div class="pack-odds">
-          <b>${p.cards}</b> cards &middot; secret odds <b>${p.weights.secret}%</b>${p.guaranteeTier?` &middot; guaranteed ${p.guaranteeTier.toUpperCase()}+`:''}
+      <div class="packcard shop ${p.id==='basic'?'theme-basic':(p.id==='whale'?'theme-whale':(p.id==='diamond'?'theme-diamond':''))}" data-pack="${p.id}">
+        <div class="pack-info">
+          <div class="pack-name">${esc(p.name)}</div>
+          <div class="pack-desc">${esc(p.desc)}</div>
+          <div class="pack-odds">
+            <b>${p.cards}</b> cards &middot; secret odds <b>${p.weights.secret}%</b>${p.guaranteeTier?` &middot; guaranteed ${p.guaranteeTier.toUpperCase()}+`:''}
+          </div>
+          <div class="pack-price">
+            <span class="price-tag mono"><i class="hex-icon"></i>${p.price}</span>
+          </div>
         </div>
-        <div class="pack-price">
-          <span class="price-tag mono"><i class="hex-icon"></i>${p.price}</span>
+        <div class="pack-mini">
+          <div class="pack-visual mini ${p.id==='basic'?'theme-basic':(p.id==='whale'?'theme-whale':(p.id==='diamond'?'theme-diamond':''))}" aria-hidden="true">
+            <div class="pack-top"></div>
+            <div class="tear"></div>
+            <div class="pack-body"><div class="bulge"></div><div class="sym">${packSymbol(p.id)}</div></div>
+          </div>
           <button class="buybtn" data-buy="${p.id}" ${(authUser && state.hex<p.price)?'disabled':''}>Open</button>
         </div>
       </div>
@@ -3421,6 +3805,14 @@ function renderCardFace(card, flipped){
   `;
 }
 
+// Pack wrapper symbols. Inline SVG rather than a data-URI background so the
+// stroke can inherit the theme colour through currentColor.
+function packSymbol(id){
+  if(id==='diamond') return `<svg viewBox="0 0 100 100" aria-hidden="true"><g transform="translate(50 60) scale(1.24) translate(-50 -60)" stroke-width="1.95"><path d="M32 30 L68 30 L88 48 L50 90 L12 48 Z"/><path d="M12 48 L88 48"/><path d="M32 30 L38 48 M68 30 L62 48"/><path d="M38 48 L50 90 M62 48 L50 90"/><path d="M32 30 L50 48 L68 30" opacity=".6"/></g></svg>`;
+  if(id==='whale')   return `<svg viewBox="-2 -4 114 108" aria-hidden="true"><path d="M12 58 C14 38 34 28 54 30 C68 31 78 38 84 47 C86 50 88 52 90 52 L104 40 L100 58 L104 76 L90 64 C88 64 86 66 84 68 C76 78 62 82 48 80 C28 77 11 70 12 58 Z"/><path d="M14 63 C30 74 52 76 70 70" opacity=".7"/><path d="M44 62 C50 70 56 72 62 71" opacity=".7"/><circle cx="30" cy="52" r="2.6" fill="currentColor" stroke="none"/><path d="M33 29 C32 23 32 18 33 13" opacity=".95"/><path d="M33 29 C27 22 20 17 13 13 M33 29 C31 21 31 12 33 3 M33 29 C39 22 46 17 53 13 M33 29 C28 20 24 12 21 5 M33 29 C38 20 43 13 47 6" opacity=".85"/><circle cx="10" cy="11" r="1.9" fill="currentColor" stroke="none" opacity=".9"/><circle cx="33" cy="1" r="1.9" fill="currentColor" stroke="none" opacity=".9"/><circle cx="56" cy="11" r="1.9" fill="currentColor" stroke="none" opacity=".9"/><circle cx="19" cy="3" r="1.5" fill="currentColor" stroke="none" opacity=".8"/><circle cx="49" cy="4" r="1.5" fill="currentColor" stroke="none" opacity=".8"/></svg>`;
+  return `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 5 L91 27.5 L91 72.5 L50 95 L9 72.5 L9 27.5 Z"/><path d="M50 20 L78 35 L78 65 L50 80 L22 65 L22 35 Z" opacity=".55"/><path d="M50 36 L62 43 L62 57 L50 64 L38 57 L38 43 Z"/></svg>`;
+}
+
 function renderOpening(){
   if(!opening) return '';
   const {pack, cards, stage} = opening;
@@ -3430,8 +3822,14 @@ function renderOpening(){
       <button class="closex" data-close>&times;</button>
       <div class="pack-stage">
         <div class="pack-visual ${stage==='ripping'?'ripping':''} ${pack.id==='basic'?'theme-basic':(pack.id==='whale'?'theme-whale':(pack.id==='diamond'?'theme-diamond':''))}" data-rip>
-          <div class="sheen"></div>
-          <div class="mark">${esc(pack.name)}</div>
+          <div class="pack-top"></div>
+          <div class="tear"></div>
+          <div class="pack-body">
+            <div class="bulge"></div>
+            <div class="flare"></div>
+            <div class="sym">${packSymbol(pack.id)}</div>
+            <div class="mark">${esc(pack.name)}</div>
+          </div>
         </div>
         <div class="pack-hint">tap the pack to rip it open</div>
       </div>
@@ -3504,14 +3902,37 @@ function render(){
       ${view==='open'?renderOpen():(view==='market'?renderMarket():(view==='shop'?renderShopBonus():(view==='profile'?renderProfile():(view==='howto'?renderHowTo():renderDex()))))}
       <div class="footer-actions"><button class="reset-link" data-reset>[burn everything]</button><img class="sigil" alt="" title="dev by dungeon" src="data:image/png;base64,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"><span class="reset-link" style="cursor:default;text-decoration:none;">[dev by dungeon]</span></div>
     </div>
-    ${authUser ? `<div class="signoutbtn-row"><button class="signoutbtn" data-signout title="${authUser.email}">SIGN OUT</button></div>` : ''}
+    <div class="signoutbtn-row">
+      <button class="mutebtn ${muted?'is-muted':''}" data-mute aria-pressed="${muted}" title="${muted?'Sound off':'Sound on'}" aria-label="${muted?'Turn sound on':'Turn sound off'}">${speakerIcon(muted)}</button>
+      ${authUser ? `<button class="signoutbtn" data-signout title="${authUser.email}">SIGN OUT</button>` : ''}
+    </div>
     ${opening?renderOpening():''}
     ${renderResetConfirmModal()}
   `;
   wire();
 }
 
+function speakerIcon(off){
+  const body = '<path d="M3 9v6h4l5 4V5L7 9H3Z"/>';
+  return '<svg viewBox="0 0 24 24" aria-hidden="true">' + body + (off
+    ? '<path d="M16 9.5l5 5M21 9.5l-5 5"/>'
+    : '<path d="M15.8 8.4a5 5 0 0 1 0 7.2"/><path d="M18.4 5.8a8.6 8.6 0 0 1 0 12.4"/>')
+    + '</svg>';
+}
+
 function wire(){
+  const muteBtn = document.querySelector('[data-mute]');
+  if(muteBtn) muteBtn.onclick = ()=>{
+    setMuted(!muted);
+    muteBtn.classList.toggle('is-muted', muted);
+    muteBtn.innerHTML = speakerIcon(muted);
+    muteBtn.setAttribute('aria-pressed', String(muted));
+    muteBtn.title = muted ? 'Sound off' : 'Sound on';
+    muteBtn.setAttribute('aria-label', muted ? 'Turn sound on' : 'Turn sound off');
+    // a short confirmation tone when switching back on, so the control proves
+    // itself without needing to open a pack
+    if(!muted) flipSound();
+  };
   const signoutBtn = document.querySelector('[data-signout]');
   if(signoutBtn) signoutBtn.onclick = ()=>{ signOut(); };
   const createAccountBtn = document.querySelector('[data-createaccount]');
@@ -3753,7 +4174,7 @@ function wire(){
   if(rip) rip.onclick = ()=>{
     if(opening.stage!=='closed') return;
     opening.stage='ripping'; ripSound(); render();
-    setTimeout(()=>{ opening.stage='revealing'; render(); },380);
+    setTimeout(()=>{ opening.stage='revealing'; render(); },620);
   };
   document.querySelectorAll('.reveal-row [data-flip]').forEach((el,i)=>{
     el.onclick = ()=>{
@@ -3771,7 +4192,9 @@ function wire(){
       }
       opening.flipped.push(i);
       const card = opening.cards[i];
-      revealSound(card.rarity);
+      flipSound();
+      revealSound(card.rarity,0.05);
+      if(card.shiny) shinySound(0.16);
       if(card.rarity==='ultra'||card.rarity==='secret') burstConfetti();
       render();
     };
@@ -3782,15 +4205,24 @@ function wire(){
     // only rather than stacking five, and fires confetti once if any card in
     // the pack is ultra/secret - the same effects, not five copies of them.
     const order = ['common','uncommon','rare','ultra','secret'];
-    let best = -1, burst = false;
+    let best = -1, burst = false, shiny = false; const flips = [];
     opening.cards.forEach((card,i)=>{
       if(opening.flipped.includes(i)) return;
+      flips.push(i);
+      if(card.shiny) shiny = true;
       opening.flipped.push(i);
       const r = order.indexOf(card.rarity);
       if(r > best) best = r;
       if(card.rarity==='ultra'||card.rarity==='secret') burst = true;
     });
-    if(best >= 0) revealSound(order[best]);
+    // A dealt run: same plop per card, evenly spaced and slightly detuned by
+    // position so five in a row sound like five cards rather than one sound
+    // repeated. The rarity chime still lands once, after the last card.
+    flips.forEach((n,k)=>flipSound(k*0.105, 1 + ((k%3)-1)*0.045));
+    const after = (flips.length-1)*0.105 + 0.14;
+    if(best >= 0) revealSound(order[best], after);
+    // one fanfare for the whole pack, however many shinies are in it
+    if(shiny) shinySound(after + 0.12);
     if(burst) burstConfetti();
     render();
   };
