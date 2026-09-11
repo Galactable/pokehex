@@ -43,13 +43,11 @@
   --seam:1px;       /* thickness of the purple tear guide */
   --dash:7px;       /* dash length on the tear guide */
   --gap:5px;        /* gap between dashes */
-  --rag:6px;        /* depth of the ragged torn edge */
+  --rag:10px;       /* depth of the ragged torn edge */
   --lift:7px;       /* gap between stacked cards - MUST scale with the pack */
   --edge:var(--line); /* theme line colour, overridden per pack theme */
-  --tear-top:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%2020%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%200%20H200%20V13.0%20L198%2013.0%20L191%2014.1%20L187%2012.1%20L182%2013.0%20L174%2013.6%20L167%2012.3%20L163%2011.5%20L157%2010.5%20L151%2010.6%20L146%2010.8%20L136%2011.8%20L132%2012.0%20L127%2013.0%20L121%2013.0%20L113%2013.0%20L106%2013.0%20L102%2014.4%20L97%2013.8%20L87%209.0%20L80%208.8%20L72%207.6%20L65%208.4%20L55%207.0%20L51%207.9%20L44%207.0%20L40%205.9%20L34%2013.0%20L28%2014.1%20L22%207.0%20L14%207.0%20L10%206.3%20L0%2010.0%20Z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fsvg%3E");
-  --tear-bot:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%2020%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%2020%20H200%20V13.0%20L198%2013.0%20L191%2014.1%20L187%2012.1%20L182%2013.0%20L174%2013.6%20L167%2012.3%20L163%2011.5%20L157%2010.5%20L151%2010.6%20L146%2010.8%20L136%2011.8%20L132%2012.0%20L127%2013.0%20L121%2013.0%20L113%2013.0%20L106%2013.0%20L102%2014.4%20L97%2013.8%20L87%209.0%20L80%208.8%20L72%207.6%20L65%208.4%20L55%207.0%20L51%207.9%20L44%207.0%20L40%205.9%20L34%2013.0%20L28%2014.1%20L22%207.0%20L14%207.0%20L10%206.3%20L0%2010.0%20Z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fsvg%3E");
-  --tear-bot2:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%2020%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%2020%20H200%20V3.0%20L198%203.0%20L194%203.0%20L186%201.6%20L180%203.0%20L176%201.7%20L171%203.2%20L163%203.0%20L158%202.8%20L155%203.9%20L150%2017.0%20L142%2017.2%20L134%2016.9%20L128%202.1%20L124%202.0%20L118%2018.1%20L113%203.5%20L107%205.4%20L104%207.4%20L98%2013.6%20L92%2018.0%20L89%2017.0%20L86%2017.5%20L81%2013.6%20L77%2016.9%20L71%2017.0%20L67%2017.0%20L59%2018.4%20L55%203.0%20L51%203.0%20L48%205.8%20L40%2011.0%20L36%2017.0%20L32%2015.7%20L29%2017.0%20L23%2018.2%20L20%208.3%20L16%202.7%20L8%2016.9%20L0%2010.0%20Z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fsvg%3E");
-  --tear-line2:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%2020%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%2010.0%20L8%2016.9%20L16%202.7%20L20%208.3%20L23%2018.2%20L29%2017.0%20L32%2015.7%20L36%2017.0%20L40%2011.0%20L48%205.8%20L51%203.0%20L55%203.0%20L59%2018.4%20L67%2017.0%20L71%2017.0%20L77%2016.9%20L81%2013.6%20L86%2017.5%20L89%2017.0%20L92%2018.0%20L98%2013.6%20L104%207.4%20L107%205.4%20L113%203.5%20L118%2018.1%20L124%202.0%20L128%202.1%20L134%2016.9%20L142%2017.2%20L150%2017.0%20L155%203.9%20L158%202.8%20L163%203.0%20L171%203.2%20L176%201.7%20L180%203.0%20L186%201.6%20L194%203.0%20L198%203.0%20L200%203.0%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222%22%20vector-effect%3D%22non-scaling-stroke%22%2F%3E%3C%2Fsvg%3E");
+  --tear-top:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%2020%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%200%20H200%20V3.0%20L198%203.0%20L194%203.0%20L186%201.6%20L180%203.0%20L176%201.7%20L171%203.2%20L163%203.0%20L158%202.8%20L155%203.9%20L150%2017.0%20L142%2017.2%20L134%2016.9%20L128%202.1%20L124%202.0%20L118%2018.1%20L113%203.5%20L107%205.4%20L104%207.4%20L98%2013.6%20L92%2018.0%20L89%2017.0%20L86%2017.5%20L81%2013.6%20L77%2016.9%20L71%2017.0%20L67%2017.0%20L59%2018.4%20L55%203.0%20L51%203.0%20L48%205.8%20L40%2011.0%20L36%2017.0%20L32%2015.7%20L29%2017.0%20L23%2018.2%20L20%208.3%20L16%202.7%20L8%2016.9%20L0%2010.0%20Z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fsvg%3E");
+  --tear-bot:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%2020%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%2020%20H200%20V3.0%20L198%203.0%20L194%203.0%20L186%201.6%20L180%203.0%20L176%201.7%20L171%203.2%20L163%203.0%20L158%202.8%20L155%203.9%20L150%2017.0%20L142%2017.2%20L134%2016.9%20L128%202.1%20L124%202.0%20L118%2018.1%20L113%203.5%20L107%205.4%20L104%207.4%20L98%2013.6%20L92%2018.0%20L89%2017.0%20L86%2017.5%20L81%2013.6%20L77%2016.9%20L71%2017.0%20L67%2017.0%20L59%2018.4%20L55%203.0%20L51%203.0%20L48%205.8%20L40%2011.0%20L36%2017.0%20L32%2015.7%20L29%2017.0%20L23%2018.2%20L20%208.3%20L16%202.7%20L8%2016.9%20L0%2010.0%20Z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fsvg%3E");
   --tear-line:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%2020%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0.0%2010.0%20L10.0%206.3%20L14.0%207.0%20L22.0%207.0%20L28.0%2014.1%20L34.0%2013.0%20L40.0%205.9%20L44.0%207.0%20L51.0%207.9%20L55.0%207.0%20L65.0%208.4%20L72.0%207.6%20L80.0%208.8%20L87.0%209.0%20L97.0%2013.8%20L102.0%2014.4%20L106.0%2013.0%20L113.0%2013.0%20L121.0%2013.0%20L127.0%2013.0%20L132.0%2012.0%20L136.0%2011.8%20L146.0%2010.8%20L151.0%2010.6%20L157.0%2010.5%20L163.0%2011.5%20L167.0%2012.3%20L174.0%2013.6%20L182.0%2013.0%20L187.0%2012.1%20L191.0%2014.1%20L198.0%2013.0%20L200.0%2013.0%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%20vector-effect%3D%22non-scaling-stroke%22%2F%3E%3C%2Fsvg%3E");
 }
 body {
@@ -769,6 +767,30 @@ body {
   top:calc(var(--crimp) + 30px);
 }
 .pack-visual.scrub .pack-body{margin-top:calc(var(--seam) * -1);}
+/* Whatever the edges do, lifting the top piece exposes the space behind it -
+   and with nothing back there, that space is the page, which reads as a black
+   line. This is the INSIDE of the pack: a lit strip sitting behind both pieces
+   at the seam, so anything the tear exposes shows pack interior rather than a
+   hole. Sized in --rag so it tracks the tear depth. */
+.pack-visual.scrub::before{
+  content:'';position:absolute;z-index:0;pointer-events:none;
+  left:1px; right:1px;
+  /* reaches well above the seam: the top piece pivots, so the wedge it opens is
+     tallest at the far corner and easily clears a narrow band */
+  top:calc(var(--crimp) + 30px - var(--rag) - 20px);
+  height:calc(var(--rag) * 2 + 40px);
+  /* Bright, not dark. An opening in a lit pack that is DARKER than the foil
+     around it reads as a black gap no matter how it is shaded - the only thing
+     that stops it looking like a hole is light coming out of it. */
+  background:
+    radial-gradient(140% 95% at 50% 100%,
+      rgba(255,255,255,0.72) 0%,
+      color-mix(in srgb, var(--edge) 92%, #ffffff) 28%,
+      color-mix(in srgb, var(--edge) 60%, #0a0a0a) 62%,
+      rgba(6,6,6,0) 100%);
+  filter:blur(1px);
+  opacity:calc(max(0, var(--p) - 0.55) * 2.2);
+}
 /* The gesture zone: as wide as the pack plus half a pack either side, and only
    the top ~39% vertically - you tear across the top, not the belly.
    Binding this to the pack itself meant the drag had to BEGIN inside a 152px
@@ -825,47 +847,47 @@ body {
    the piece is still in place, so switching the body at the same moment left
    both edges ragged with nothing between them: the same black line, visible
    only on tap because a drag has already rotated the piece clear. */
+/* Both pieces tear against the SAME polyline from opposite sides, so the edges
+   are complementary and interlock with nothing between them. And like the top
+   piece, the body is only torn in the SWEPT region - tearing it full width
+   meant its notches were exposed even on an intact pack, which is the line
+   that was showing at rest. */
 .pack-visual.scrub .pack-body{
+  --swept:calc(var(--p) * 100%);
+  --left:calc((1 - var(--p)) * 100%);
   -webkit-mask:
-    linear-gradient(#000,#000) top left/100% calc(100% - var(--crimp)) no-repeat,
+    var(--tear-bot) top left/var(--swept) var(--rag) no-repeat,
+    linear-gradient(#000,#000) top right/var(--left) var(--rag) no-repeat,
+    linear-gradient(#000,#000) left 0 top var(--rag)/100% calc(100% - var(--rag) - var(--crimp)) no-repeat,
     repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
       bottom left/var(--tooth) var(--crimp) repeat-x;
   mask:
-    linear-gradient(#000,#000) top left/100% calc(100% - var(--crimp)) no-repeat,
+    var(--tear-bot) top left/var(--swept) var(--rag) no-repeat,
+    linear-gradient(#000,#000) top right/var(--left) var(--rag) no-repeat,
+    linear-gradient(#000,#000) left 0 top var(--rag)/100% calc(100% - var(--rag) - var(--crimp)) no-repeat,
     repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
       bottom left/var(--tooth) var(--crimp) repeat-x;
   animation:none;
+}
+/* mirrored when the tear runs right-to-left */
+.pack-visual.scrub.rtl .pack-body{
+  -webkit-mask:
+    var(--tear-bot) top right/var(--swept) var(--rag) no-repeat,
+    linear-gradient(#000,#000) top left/var(--left) var(--rag) no-repeat,
+    linear-gradient(#000,#000) left 0 top var(--rag)/100% calc(100% - var(--rag) - var(--crimp)) no-repeat,
+    repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
+      bottom left/var(--tooth) var(--crimp) repeat-x;
+  mask:
+    var(--tear-bot) top right/var(--swept) var(--rag) no-repeat,
+    linear-gradient(#000,#000) top left/var(--left) var(--rag) no-repeat,
+    linear-gradient(#000,#000) left 0 top var(--rag)/100% calc(100% - var(--rag) - var(--crimp)) no-repeat,
+    repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
+      bottom left/var(--tooth) var(--crimp) repeat-x;
 }
 /* The top crease of the stuffing is a hard dark edge meant to sit BEHIND the
    top piece - the foil creasing over the stack. Once the top flies off it is
    exposed, so it goes when the pack opens. */
 .pack-visual.scrub.gone .bulge{--creaseA:0;}
-.pack-visual.scrub.torn .pack-body::after{
-  content:'';position:absolute;left:0;right:0;top:0;height:10px;z-index:6;
-  pointer-events:none;
-  background:var(--tear-line2) center/100% 100% no-repeat;
-  opacity:0.7;mix-blend-mode:screen;
-}
-/* The body's ragged edge. At 3px against the shallow main polyline the teeth
-   were under a pixel deep - a clean line, which is what you saw. This uses a
-   MUCH more jagged polyline of its own (deep pulls and notches, not gentle
-   wander) at 8px, with the fibres traced over it so the notches read as torn
-   material rather than as holes punched in the page. */
-.pack-visual.scrub.torn .pack-body{
-  --rag:10px;
-  --tear-bot:var(--tear-bot2);
-  -webkit-mask:
-    var(--tear-bot) top left/100% var(--rag) no-repeat,
-    linear-gradient(#000,#000) left 0 top var(--rag)/100% calc(100% - var(--rag) - var(--crimp)) no-repeat,
-    repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
-      bottom left/var(--tooth) var(--crimp) repeat-x;
-  mask:
-    var(--tear-bot) top left/100% var(--rag) no-repeat,
-    linear-gradient(#000,#000) left 0 top var(--rag)/100% calc(100% - var(--rag) - var(--crimp)) no-repeat,
-    repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
-      bottom left/var(--tooth) var(--crimp) repeat-x;
-}
-
 /* spring back when released short of the threshold */
 .pack-visual.scrub.settling .pack-top,
 .pack-visual.scrub.settling .pack-body{transition:transform .28s cubic-bezier(.2,.9,.3,1);}
@@ -875,7 +897,16 @@ body {
   transform:translate(calc(var(--dir) * 46px), -140px) rotate(calc(var(--dir) * -36deg));
   opacity:0;
 }
-.pack-visual.scrub .flare{opacity:calc(var(--p) * 0.9);transform:translate(-50%,-40%) scale(calc(0.3 + var(--p)*0.8));animation:none;}
+/* The flare is a BURST at the end, not a light that rises through the whole
+   tear. Ramping it with --p lit the body brightly while the top piece - which
+   is near-black foil - was still lying across it, and that contrast is the
+   "black line": not a gap, the piece itself silhouetted against a glow. It now
+   stays dark until the tear is nearly through. */
+.pack-visual.scrub .flare{
+  opacity:calc(max(0, var(--p) - 0.72) * 3.2);
+  transform:translate(-50%,-40%) scale(calc(0.3 + var(--p)*0.8));
+  animation:none;
+}
 .pack-visual.scrub .tear{opacity:calc(1 - var(--p));}
 
 @media (prefers-reduced-motion:reduce){
@@ -4080,8 +4111,6 @@ function wireTear(){
     let n=0; for(let k=fired+1;k<TEAR_GRAINS.length;k++) tearGrain(k,(n++)*0.022);
     pack.classList.add('settling'); setP(1);
     setTimeout(()=>pack.classList.add('gone'), 90);
-    // the body's ragged edge waits until the top piece has left frame
-    setTimeout(()=>pack.classList.add('torn'), 320);
     setTimeout(()=>{ opening.stage='revealing'; render(); }, 470);
   }
   zone.addEventListener('pointerdown', e=>{
