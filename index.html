@@ -608,7 +608,7 @@ body {
   background:
     radial-gradient(118% 66% at 50% 45%, rgba(255,255,255,0.085) 0%, rgba(255,255,255,0.035) 46%, transparent 72%),
     linear-gradient(90deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 14%, rgba(0,0,0,0) 86%, rgba(0,0,0,0.5) 100%),
-    linear-gradient(180deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0) 13%, rgba(0,0,0,0) 85%, rgba(0,0,0,0.48) 100%);
+    linear-gradient(180deg, rgba(0,0,0,var(--creaseA,0.42)) 0%, rgba(0,0,0,0) 13%, rgba(0,0,0,0) 85%, rgba(0,0,0,0.48) 100%);
 }
 .pack-visual .bulge::before{
   content:'';position:absolute;left:8%;right:8%;top:17%;bottom:6%;
@@ -756,6 +756,117 @@ body {
   0%{opacity:1;filter:drop-shadow(0 0 16px rgba(157,78,221,1));}
   100%{opacity:0;filter:drop-shadow(0 0 0 rgba(157,78,221,0));}
 }
+.pack-visual.scrub{touch-action:none;user-select:none;-webkit-user-select:none;}
+/* The black line was a real gap, not a shadow. .tear is a 1px element sitting
+   IN FLOW between the two pieces, so the moment the top lifts you see straight
+   through that 1px to the page behind. In scrub mode the guide is lifted out of
+   flow and painted over the seam instead, so the pieces sit flush and there is
+   nothing to see through. The -3px lift is gone for the same reason. */
+.pack-visual.scrub .tear{
+  position:absolute; left:0; right:0; height:var(--seam); z-index:4;
+  top:calc(var(--crimp) + 30px);
+}
+.pack-visual.scrub .pack-body{margin-top:calc(var(--seam) * -1);}
+/* The gesture zone: as wide as the pack plus half a pack either side, and only
+   the top ~39% vertically - you tear across the top, not the belly.
+   Binding this to the pack itself meant the drag had to BEGIN inside a 152px
+   target, which is backwards; you start a tear beside the pack, not on it. */
+.packwrap{position:relative;}
+.tearzone{
+  position:absolute; left:-50%; width:200%; top:0; height:39%;
+  z-index:10; touch-action:none; user-select:none; -webkit-user-select:none;
+}
+
+/* --p is tear progress 0..1, driven by the drag. The torn edge exists only in
+   the swept region; the rest of the seam is still intact, which is what makes
+   this a scrub rather than a play/not-play animation. */
+.pack-visual.scrub .pack-top{
+  --swept:calc(var(--p) * 100%);
+  --left:calc((1 - var(--p)) * 100%);
+  -webkit-mask:
+    repeating-conic-gradient(from -45deg at bottom,#0000 0deg 90deg,#000 90deg 180deg)
+      top left/var(--tooth) var(--crimp) repeat-x,
+    linear-gradient(#000,#000) left 0 top var(--crimp)/100% calc(100% - var(--crimp) - var(--rag)) no-repeat,
+    var(--tear-top) bottom left/var(--swept) var(--rag) no-repeat,
+    linear-gradient(#000,#000) bottom right/var(--left) var(--rag) no-repeat;
+  mask:
+    repeating-conic-gradient(from -45deg at bottom,#0000 0deg 90deg,#000 90deg 180deg)
+      top left/var(--tooth) var(--crimp) repeat-x,
+    linear-gradient(#000,#000) left 0 top var(--crimp)/100% calc(100% - var(--crimp) - var(--rag)) no-repeat,
+    var(--tear-top) bottom left/var(--swept) var(--rag) no-repeat,
+    linear-gradient(#000,#000) bottom right/var(--left) var(--rag) no-repeat;
+  transform-origin:100% 100%;
+  transform:rotate(calc(var(--p) * -13deg));
+  animation:none;
+}
+.pack-visual.scrub.rtl .pack-top{
+  -webkit-mask:
+    repeating-conic-gradient(from -45deg at bottom,#0000 0deg 90deg,#000 90deg 180deg)
+      top left/var(--tooth) var(--crimp) repeat-x,
+    linear-gradient(#000,#000) left 0 top var(--crimp)/100% calc(100% - var(--crimp) - var(--rag)) no-repeat,
+    var(--tear-top) bottom right/var(--swept) var(--rag) no-repeat,
+    linear-gradient(#000,#000) bottom left/var(--left) var(--rag) no-repeat;
+  mask:
+    repeating-conic-gradient(from -45deg at bottom,#0000 0deg 90deg,#000 90deg 180deg)
+      top left/var(--tooth) var(--crimp) repeat-x,
+    linear-gradient(#000,#000) left 0 top var(--crimp)/100% calc(100% - var(--crimp) - var(--rag)) no-repeat,
+    var(--tear-top) bottom right/var(--swept) var(--rag) no-repeat,
+    linear-gradient(#000,#000) bottom left/var(--left) var(--rag) no-repeat;
+  transform-origin:0 100%;
+  transform:rotate(calc(var(--p) * 13deg));
+}
+/* While tearing, the BODY keeps a straight, solid top edge. Cutting its torn
+   edge in at the same time opened a wedge of nothing between the two pieces -
+   physically right, but on screen that void is just the page showing through,
+   which is the black line. The body only gets its ragged edge once the top has
+   actually FLOWN - not when it starts to. On a tap the tear jumps to 100% while
+   the piece is still in place, so switching the body at the same moment left
+   both edges ragged with nothing between them: the same black line, visible
+   only on tap because a drag has already rotated the piece clear. */
+.pack-visual.scrub .pack-body{
+  -webkit-mask:
+    linear-gradient(#000,#000) top left/100% calc(100% - var(--crimp)) no-repeat,
+    repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
+      bottom left/var(--tooth) var(--crimp) repeat-x;
+  mask:
+    linear-gradient(#000,#000) top left/100% calc(100% - var(--crimp)) no-repeat,
+    repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
+      bottom left/var(--tooth) var(--crimp) repeat-x;
+  animation:none;
+}
+/* The top crease of the stuffing is a hard dark edge meant to sit BEHIND the
+   top piece - the foil creasing over the stack. Once the top flies off it is
+   exposed, so it goes when the pack opens. */
+.pack-visual.scrub.gone .bulge{--creaseA:0;}
+/* Kept for reference but deliberately NOT applied: cutting the body's ragged
+   top edge means its notches have nothing behind them, so they render as a
+   dark sawtooth strip. The body keeps a straight top for the last moments of
+   the animation, then render() swaps the whole overlay to the reveal anyway. */
+.pack-visual.scrub.torn .pack-body{
+  -webkit-mask:
+    var(--tear-bot) top left/100% var(--rag) no-repeat,
+    linear-gradient(#000,#000) left 0 top var(--rag)/100% calc(100% - var(--rag) - var(--crimp)) no-repeat,
+    repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
+      bottom left/var(--tooth) var(--crimp) repeat-x;
+  mask:
+    var(--tear-bot) top left/100% var(--rag) no-repeat,
+    linear-gradient(#000,#000) left 0 top var(--rag)/100% calc(100% - var(--rag) - var(--crimp)) no-repeat,
+    repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
+      bottom left/var(--tooth) var(--crimp) repeat-x;
+}
+
+/* spring back when released short of the threshold */
+.pack-visual.scrub.settling .pack-top,
+.pack-visual.scrub.settling .pack-body{transition:transform .28s cubic-bezier(.2,.9,.3,1);}
+.pack-visual.scrub.settling{transition:none;}
+.pack-visual.scrub.gone .pack-top{
+  transition:transform .34s cubic-bezier(.3,.05,.25,1), opacity .34s ease;
+  transform:translate(calc(var(--dir) * 46px), -140px) rotate(calc(var(--dir) * -36deg));
+  opacity:0;
+}
+.pack-visual.scrub .flare{opacity:calc(var(--p) * 0.9);transform:translate(-50%,-40%) scale(calc(0.3 + var(--p)*0.8));animation:none;}
+.pack-visual.scrub .tear{opacity:calc(1 - var(--p));}
+
 @media (prefers-reduced-motion:reduce){
   .pack-visual .tear{animation:none;opacity:0.9;}
   .pack-visual.ripping .pack-top{animation-duration:.01s;}
@@ -3821,7 +3932,9 @@ function renderOpening(){
     <div class="overlay">
       <button class="closex" data-close>&times;</button>
       <div class="pack-stage">
-        <div class="pack-visual ${stage==='ripping'?'ripping':''} ${pack.id==='basic'?'theme-basic':(pack.id==='whale'?'theme-whale':(pack.id==='diamond'?'theme-diamond':''))}" data-rip>
+        <div class="packwrap">
+        <div class="tearzone" data-tearzone></div>
+        <div class="pack-visual scrub ${pack.id==='basic'?'theme-basic':(pack.id==='whale'?'theme-whale':(pack.id==='diamond'?'theme-diamond':''))}" data-rip style="--p:0;--dir:1">
           <div class="pack-top"></div>
           <div class="tear"></div>
           <div class="pack-body">
@@ -3831,7 +3944,8 @@ function renderOpening(){
             <div class="mark">${esc(pack.name)}</div>
           </div>
         </div>
-        <div class="pack-hint">tap the pack to rip it open</div>
+        </div>
+        <div class="pack-hint">swipe across the top to rip it open, or tap</div>
       </div>
     </div>`;
   }
@@ -3879,7 +3993,7 @@ function render(){
       <div class="brand">
         <div>
           <h1>POKéHEX</h1>
-          <span>rip packs &middot; fill your dex <br>risk fake currency &middot; 0.7.0 beta </span>
+          <span>rip packs &middot; fill your dex <br>risk fake currency &middot; 0.8.0 beta </span>
         </div>
       </div>
       ${authUser
@@ -3910,6 +4024,86 @@ function render(){
     ${renderResetConfirmModal()}
   `;
   wire();
+}
+
+// Drag-to-tear. The pack no longer plays a canned animation: --p is tear
+// progress 0..1 driven by the gesture, and the CSS masks follow it, so the tear
+// can be scrubbed, held, dragged back, or flicked. Crucially nothing here calls
+// render() until the tear completes - a re-render mid-drag would rebuild the
+// overlay and drop the pointer capture.
+const TEAR_GRAINS=[0.04,0.14,0.25,0.36,0.47,0.60,0.74,0.88];
+function tearGrain(i,delay){
+  const d = delay||0;
+  const f = 430 - i*14 + ((i*97)%110);
+  noise(0.022*0.633, f, f*0.68, 0.090 - i*0.003, 1.8, d);
+  noise(0.013*0.633, 2500+i*210, 2000+i*150, 0.66*(0.008+i*0.0009), 2.4, d);
+}
+function wireTear(){
+  const pack = document.querySelector('[data-rip]');
+  const zone = document.querySelector('[data-tearzone]');
+  if(!pack || !zone) return;
+  let p=0, dragging=false, moved=false, startX=0, dir=1, fired=-1, done=false;
+  const THRESH=0.55;
+
+  function setP(v){
+    p = Math.max(0, Math.min(1, v));
+    pack.style.setProperty('--p', p.toFixed(4));
+    // A flick crosses several thresholds in one pointermove; firing them all at
+    // that instant is a burst, not a tear, so they are spread on the audio clock.
+    const crossed=[];
+    while(fired+1 < TEAR_GRAINS.length && p >= TEAR_GRAINS[fired+1]){ fired++; crossed.push(fired); }
+    if(crossed.length){
+      const gap = crossed.length > 4 ? 0.012 : 0.020;
+      crossed.forEach((g,k)=>tearGrain(g,k*gap));
+    }
+    if(p < 0.02) fired = -1;
+  }
+  function inPack(x,y){
+    const r = pack.getBoundingClientRect();
+    return x>=r.left && x<=r.right && y>=r.top && y<=r.bottom;
+  }
+  function open(){
+    if(done) return;
+    done = true;
+    pack.style.setProperty('--dir', dir);
+    let n=0; for(let k=fired+1;k<TEAR_GRAINS.length;k++) tearGrain(k,(n++)*0.022);
+    pack.classList.add('settling'); setP(1);
+    setTimeout(()=>pack.classList.add('gone'), 90);
+    setTimeout(()=>{ opening.stage='revealing'; render(); }, 470);
+  }
+  zone.addEventListener('pointerdown', e=>{
+    if(done || opening.stage!=='closed') return;
+    dragging=true; moved=false; startX=e.clientX;
+    zone.setPointerCapture(e.pointerId);
+    pack.classList.remove('settling');
+  });
+  zone.addEventListener('pointermove', e=>{
+    if(!dragging) return;
+    const dx = e.clientX - startX;
+    if(Math.abs(dx) > 6){
+      moved = true;
+      if(p < 0.05){ dir = dx < 0 ? -1 : 1;
+        pack.classList.toggle('rtl', dir < 0);
+        pack.style.setProperty('--dir', dir); }
+    }
+    setP(Math.abs(dx) / (pack.getBoundingClientRect().width * 0.85));
+  });
+  function release(e){
+    if(!dragging) return;
+    dragging=false;
+    if(p >= THRESH) open();
+    else if(!moved && e && inPack(e.clientX,e.clientY)) open();
+    else { pack.classList.add('settling'); setP(0);
+           setTimeout(()=>pack.classList.remove('settling'),300); }
+  }
+  zone.addEventListener('pointerup', release);
+  zone.addEventListener('pointercancel', release);
+  // the zone only covers the top of the pack, so a tap lower down needs its own
+  // listener or it reaches nothing at all
+  pack.addEventListener('click', ()=>{
+    if(done || dragging || p > 0.05 || opening.stage!=='closed') return;
+    open();
+  });
 }
 
 function speakerIcon(off){
@@ -4170,12 +4364,7 @@ function wire(){
     };
   }
 
-  const rip = document.querySelector('[data-rip]');
-  if(rip) rip.onclick = ()=>{
-    if(opening.stage!=='closed') return;
-    opening.stage='ripping'; ripSound(); render();
-    setTimeout(()=>{ opening.stage='revealing'; render(); },620);
-  };
+  wireTear();
   document.querySelectorAll('.reveal-row [data-flip]').forEach((el,i)=>{
     el.onclick = ()=>{
       if(opening.flipped.includes(i)){
