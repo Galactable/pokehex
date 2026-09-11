@@ -48,7 +48,6 @@
   --edge:var(--line); /* theme line colour, overridden per pack theme */
   --tear-top:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%2020%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%200%20H200%20V3.0%20L198%203.0%20L194%203.0%20L186%201.6%20L180%203.0%20L176%201.7%20L171%203.2%20L163%203.0%20L158%202.8%20L155%203.9%20L150%2017.0%20L142%2017.2%20L134%2016.9%20L128%202.1%20L124%202.0%20L118%2018.1%20L113%203.5%20L107%205.4%20L104%207.4%20L98%2013.6%20L92%2018.0%20L89%2017.0%20L86%2017.5%20L81%2013.6%20L77%2016.9%20L71%2017.0%20L67%2017.0%20L59%2018.4%20L55%203.0%20L51%203.0%20L48%205.8%20L40%2011.0%20L36%2017.0%20L32%2015.7%20L29%2017.0%20L23%2018.2%20L20%208.3%20L16%202.7%20L8%2016.9%20L0%2010.0%20Z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fsvg%3E");
   --tear-bot:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%2020%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0%2020%20H200%20V3.0%20L198%203.0%20L194%203.0%20L186%201.6%20L180%203.0%20L176%201.7%20L171%203.2%20L163%203.0%20L158%202.8%20L155%203.9%20L150%2017.0%20L142%2017.2%20L134%2016.9%20L128%202.1%20L124%202.0%20L118%2018.1%20L113%203.5%20L107%205.4%20L104%207.4%20L98%2013.6%20L92%2018.0%20L89%2017.0%20L86%2017.5%20L81%2013.6%20L77%2016.9%20L71%2017.0%20L67%2017.0%20L59%2018.4%20L55%203.0%20L51%203.0%20L48%205.8%20L40%2011.0%20L36%2017.0%20L32%2015.7%20L29%2017.0%20L23%2018.2%20L20%208.3%20L16%202.7%20L8%2016.9%20L0%2010.0%20Z%22%20fill%3D%22%23000%22%2F%3E%3C%2Fsvg%3E");
-  --tear-line:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%2020%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M0.0%2010.0%20L10.0%206.3%20L14.0%207.0%20L22.0%207.0%20L28.0%2014.1%20L34.0%2013.0%20L40.0%205.9%20L44.0%207.0%20L51.0%207.9%20L55.0%207.0%20L65.0%208.4%20L72.0%207.6%20L80.0%208.8%20L87.0%209.0%20L97.0%2013.8%20L102.0%2014.4%20L106.0%2013.0%20L113.0%2013.0%20L121.0%2013.0%20L127.0%2013.0%20L132.0%2012.0%20L136.0%2011.8%20L146.0%2010.8%20L151.0%2010.6%20L157.0%2010.5%20L163.0%2011.5%20L167.0%2012.3%20L174.0%2013.6%20L182.0%2013.0%20L187.0%2012.1%20L191.0%2014.1%20L198.0%2013.0%20L200.0%2013.0%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%20vector-effect%3D%22non-scaling-stroke%22%2F%3E%3C%2Fsvg%3E");
 }
 body {
   margin: 0;
@@ -601,8 +600,7 @@ body {
    .bulge paints the shadow gutters where the foil wraps around the stack and
    the creases above and below it; .bulge::before is the card block itself,
    pressing a soft shadow into the foil around it with a highlight along its
-   top edge. It is a separate element rather than a ::after on .pack-body,
-   because .pack-body::after is taken by the torn-fibre line during the rip. */
+   top edge. */
 .pack-visual .bulge{
   position:absolute;inset:0;pointer-events:none;z-index:0;
   background:
@@ -687,75 +685,6 @@ body {
   padding:0 10% calc(var(--crimp) + var(--band) + 7px);
 }
 
-/* ---- the rip ----
-   A repeating zigzag reads as a machine cut, not a tear - it has a period. The
-   torn edge is ONE hand-irregular polyline drawn as an SVG mask: a shallow,
-   mostly-clean tear with occasional deeper pulls and notches, no period. Both
-   pieces mask against the SAME polyline from opposite sides, so they would
-   still fit back together, and a pale line traces the exposed fibres. */
-.pack-visual.ripping .pack-top{
-  -webkit-mask:
-    repeating-conic-gradient(from -45deg at bottom,#0000 0deg 90deg,#000 90deg 180deg)
-      top left/var(--tooth) var(--crimp) repeat-x,
-    linear-gradient(#000,#000) left 0 top var(--crimp)/100% calc(100% - var(--crimp) - var(--rag)) no-repeat,
-    var(--tear-top) bottom left/100% var(--rag) no-repeat;
-  mask:
-    repeating-conic-gradient(from -45deg at bottom,#0000 0deg 90deg,#000 90deg 180deg)
-      top left/var(--tooth) var(--crimp) repeat-x,
-    linear-gradient(#000,#000) left 0 top var(--crimp)/100% calc(100% - var(--crimp) - var(--rag)) no-repeat,
-    var(--tear-top) bottom left/100% var(--rag) no-repeat;
-  animation:ripaway .62s cubic-bezier(.32,.06,.24,1) forwards;
-  transform-origin:90% 100%;
-}
-.pack-visual.ripping .pack-body{
-  -webkit-mask:
-    var(--tear-bot) top left/100% var(--rag) no-repeat,
-    linear-gradient(#000,#000) left 0 top var(--rag)/100% calc(100% - var(--rag) - var(--crimp)) no-repeat,
-    repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
-      bottom left/var(--tooth) var(--crimp) repeat-x;
-  mask:
-    var(--tear-bot) top left/100% var(--rag) no-repeat,
-    linear-gradient(#000,#000) left 0 top var(--rag)/100% calc(100% - var(--rag) - var(--crimp)) no-repeat,
-    repeating-conic-gradient(from 135deg at top,#0000 0deg 90deg,#000 90deg 180deg)
-      bottom left/var(--tooth) var(--crimp) repeat-x;
-  animation:ripjolt .62s ease-out;
-}
-.pack-visual.ripping .pack-top::after,.pack-visual.ripping .pack-body::after{
-  content:'';position:absolute;left:0;right:0;height:var(--rag);z-index:5;pointer-events:none;
-  background:var(--tear-line) center/100% 100% no-repeat;
-  opacity:0.5;mix-blend-mode:screen;
-}
-.pack-visual.ripping .pack-top::after{bottom:0;}
-.pack-visual.ripping .pack-body::after{top:0;}
-@keyframes ripaway{
-  0%   {transform:translate(0,0) rotate(0deg);opacity:1;}
-  12%  {transform:translate(0,4px) rotate(0deg);opacity:1;}
-  34%  {transform:translate(-4px,-6px) rotate(-5deg);opacity:1;}
-  100% {transform:translate(-54px,-150px) rotate(-38deg);opacity:0;}
-}
-@keyframes ripjolt{
-  0%{transform:translateY(0);}
-  16%{transform:translateY(3px);}
-  34%{transform:translateY(-4px) rotate(0.6deg);}
-  55%{transform:translateY(2px) rotate(-0.3deg);}
-  100%{transform:translateY(0);}
-}
-.pack-visual .flare{
-  position:absolute;left:50%;top:0;transform:translate(-50%,-40%) scale(0.2);
-  width:130%;aspect-ratio:1;border-radius:50%;opacity:0;z-index:1;pointer-events:none;
-  background:radial-gradient(circle,rgba(255,255,255,0.95) 0%,var(--edge) 32%,transparent 68%);
-}
-.pack-visual.ripping .flare{animation:ripflare .62s ease-out forwards;}
-@keyframes ripflare{
-  0%  {opacity:0;transform:translate(-50%,-40%) scale(0.15);}
-  30% {opacity:0.95;transform:translate(-50%,-40%) scale(0.75);}
-  100%{opacity:0;transform:translate(-50%,-40%) scale(1.5);}
-}
-.pack-visual.ripping .tear{animation:tearsnap .3s ease-out forwards;}
-@keyframes tearsnap{
-  0%{opacity:1;filter:drop-shadow(0 0 16px rgba(157,78,221,1));}
-  100%{opacity:0;filter:drop-shadow(0 0 0 rgba(157,78,221,0));}
-}
 .pack-visual.scrub{touch-action:none;user-select:none;-webkit-user-select:none;}
 /* The black line was a real gap, not a shadow. .tear is a 1px element sitting
    IN FLOW between the two pieces, so the moment the top lifts you see straight
@@ -766,7 +695,12 @@ body {
   position:absolute; left:0; right:0; height:var(--seam); z-index:4;
   top:calc(var(--crimp) + 30px);
 }
-.pack-visual.scrub .pack-body{margin-top:calc(var(--seam) * -1);}
+/* The body slides 4px UP under the top piece rather than 1px. Every version of
+   this line has lived at the exact row where the two pieces meet, so instead of
+   working out which layer is showing through a 1px join, there is no longer a
+   1px join to show through - the pieces overlap by a margin no rounding can
+   close. */
+.pack-visual.scrub .pack-body{margin-top:calc(var(--seam) * -1 - 3px);}
 /* Whatever the edges do, lifting the top piece exposes the space behind it -
    and with nothing back there, that space is the page, which reads as a black
    line. This is the INSIDE of the pack: a lit strip sitting behind both pieces
@@ -774,23 +708,39 @@ body {
    hole. Sized in --rag so it tracks the tear depth. */
 .pack-visual.scrub::before{
   content:'';position:absolute;z-index:0;pointer-events:none;
+  /* Backs the WHOLE pack, not just a band at the seam. A mask edge is
+     anti-aliased, so the torn boundary is a row of PARTIALLY transparent
+     pixels - a hairline that no amount of repositioning removes, because it is
+     the edge itself. Backing every interior pixel means those half-transparent
+     pixels blend onto foil instead of onto the page. It stops at the crimp top
+     and bottom so the teeth keep their silhouette. */
+  /* Starts just BELOW the seam. Spanning the whole pack meant this layer's own
+     top edge sat at the join between the two pieces, and a 1px sliver of it
+     showed there even at rest - the thin line, which is this layer, not a hole.
+     Everything the tear exposes is below the seam anyway, so nothing above it
+     needs backing. */
   left:1px; right:1px;
-  /* reaches well above the seam: the top piece pivots, so the wedge it opens is
-     tallest at the far corner and easily clears a narrow band */
-  top:calc(var(--crimp) + 30px - var(--rag) - 20px);
-  height:calc(var(--rag) * 2 + 40px);
-  /* Bright, not dark. An opening in a lit pack that is DARKER than the foil
-     around it reads as a black gap no matter how it is shaded - the only thing
-     that stops it looking like a hole is light coming out of it. */
-  background:
-    radial-gradient(140% 95% at 50% 100%,
-      rgba(255,255,255,0.72) 0%,
-      color-mix(in srgb, var(--edge) 92%, #ffffff) 28%,
-      color-mix(in srgb, var(--edge) 60%, #0a0a0a) 62%,
-      rgba(6,6,6,0) 100%);
-  filter:blur(1px);
-  opacity:calc(max(0, var(--p) - 0.55) * 2.2);
+  top:calc(var(--crimp) + 30px + 2px);
+  height:calc(100% - var(--crimp) * 2 - 30px);
+  /* OPAQUE, and present from the very start. Fading this in with --p left the
+     torn region genuinely see-through for most of the tear - which is why the
+     dark band changed with the page's scroll position: it was the page behind
+     the overlay showing through the pack. An interior you can see through is
+     not an interior. The tint brightens as the tear opens; the opacity never
+     moves. */
+  /* A PLAIN opaque colour first, so this layer is never transparent even if
+     the tint below is not understood. The tint used calc() inside color-mix,
+     which several browsers reject - and a rejected background declaration
+     leaves the element with no background at all, i.e. a see-through strip.
+     That is why the line tracked the page's scroll position. */
+  background-color:#060606;
+  background-image:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--edge) 20%, #070707) 0%,
+      color-mix(in srgb, var(--edge) 9%, #060606) 55%,
+      #050505 100%);
 }
+
 /* The gesture zone: as wide as the pack plus half a pack either side, and only
    the top ~39% vertically - you tear across the top, not the belly.
    Binding this to the pack itself meant the drag had to BEGIN inside a 152px
@@ -806,7 +756,7 @@ body {
    this a scrub rather than a play/not-play animation. */
 .pack-visual.scrub .pack-top{
   --swept:calc(var(--p) * 100%);
-  --left:calc((1 - var(--p)) * 100%);
+  --left:calc((1 - var(--p)) * 100% + 2px);
   -webkit-mask:
     repeating-conic-gradient(from -45deg at bottom,#0000 0deg 90deg,#000 90deg 180deg)
       top left/var(--tooth) var(--crimp) repeat-x,
@@ -821,6 +771,11 @@ body {
     linear-gradient(#000,#000) bottom right/var(--left) var(--rag) no-repeat;
   transform-origin:100% 100%;
   transform:rotate(calc(var(--p) * -13deg));
+  /* Fades over the last stretch of the tear. Even held back, the flare blooms
+     while the piece is still lying across the body, and near-black foil over a
+     lit body is the silhouette that reads as a black band. Letting the piece
+     go translucent as it finishes means there is nothing left to silhouette. */
+  opacity:calc(1 - max(0, var(--p) - 0.80) * 4.4);
   animation:none;
 }
 .pack-visual.scrub.rtl .pack-top{
@@ -839,14 +794,6 @@ body {
   transform-origin:0 100%;
   transform:rotate(calc(var(--p) * 13deg));
 }
-/* While tearing, the BODY keeps a straight, solid top edge. Cutting its torn
-   edge in at the same time opened a wedge of nothing between the two pieces -
-   physically right, but on screen that void is just the page showing through,
-   which is the black line. The body only gets its ragged edge once the top has
-   actually FLOWN - not when it starts to. On a tap the tear jumps to 100% while
-   the piece is still in place, so switching the body at the same moment left
-   both edges ragged with nothing between them: the same black line, visible
-   only on tap because a drag has already rotated the piece clear. */
 /* Both pieces tear against the SAME polyline from opposite sides, so the edges
    are complementary and interlock with nothing between them. And like the top
    piece, the body is only torn in the SWEPT region - tearing it full width
@@ -854,7 +801,7 @@ body {
    that was showing at rest. */
 .pack-visual.scrub .pack-body{
   --swept:calc(var(--p) * 100%);
-  --left:calc((1 - var(--p)) * 100%);
+  --left:calc((1 - var(--p)) * 100% + 2px);
   -webkit-mask:
     var(--tear-bot) top left/var(--swept) var(--rag) no-repeat,
     linear-gradient(#000,#000) top right/var(--left) var(--rag) no-repeat,
@@ -897,13 +844,21 @@ body {
   transform:translate(calc(var(--dir) * 46px), -140px) rotate(calc(var(--dir) * -36deg));
   opacity:0;
 }
+/* Light bursting out of the torn mouth. This is the flare's base appearance -
+   its size, shape and colour. The scrub rule below only drives WHEN it shows. */
+.pack-visual .flare{
+  position:absolute;left:50%;top:0;transform:translate(-50%,-40%) scale(0.2);
+  width:130%;aspect-ratio:1;border-radius:50%;opacity:0;z-index:1;pointer-events:none;
+  background:radial-gradient(circle,rgba(255,255,255,0.95) 0%,var(--edge) 32%,transparent 68%);
+}
+
 /* The flare is a BURST at the end, not a light that rises through the whole
    tear. Ramping it with --p lit the body brightly while the top piece - which
    is near-black foil - was still lying across it, and that contrast is the
    "black line": not a gap, the piece itself silhouetted against a glow. It now
    stays dark until the tear is nearly through. */
 .pack-visual.scrub .flare{
-  opacity:calc(max(0, var(--p) - 0.72) * 3.2);
+  opacity:calc(max(0, var(--p) - 0.86) * 7);
   transform:translate(-50%,-40%) scale(calc(0.3 + var(--p)*0.8));
   animation:none;
 }
@@ -911,8 +866,6 @@ body {
 
 @media (prefers-reduced-motion:reduce){
   .pack-visual .tear{animation:none;opacity:0.9;}
-  .pack-visual.ripping .pack-top{animation-duration:.01s;}
-  .pack-visual.ripping .pack-body,.pack-visual.ripping .flare{animation:none;}
 }
 .pack-hint{color:var(--muted);font-size:13px;letter-spacing:0.04em;text-align:center;}
 
@@ -2522,25 +2475,6 @@ function blip(f0,f1,dur,gain,delay,type){
   }catch(e){}
 }
 
-// Variant A from the blend picker: variant 1's low sparse grains with variant
-// 6's acceleration - the gaps shrink from ~44ms to ~15ms as the tear runs, so
-// it gets away from you rather than ticking evenly. S is the speed setting
-// picked in the harness (158%); every time and length scales from it, so the
-// whole rip can be slowed or sped up by changing one number.
-// FIZZ is the bright layer riding on each grain. This is the knob that decides
-// crinkle vs rattle - set it to 0 for the pure low version.
-function ripSound(){
-  const S = 0.633, FIZZ = 0.66;
-  let t = 0, step = 0.070;
-  for(let i=0;i<9;i++){
-    const f = 430 - i*14 + ((i*97)%110);       // low, wandering, never bright
-    noise(0.022*S, f, f*0.68, 0.090 - i*0.003, 1.8, t*S);
-    noise(0.013*S, 2500+i*210, 2000+i*150, FIZZ*(0.008+i*0.0009), 2.4, t*S);
-    t += step; step *= 0.88;
-  }
-  noise(0.40*S, 250, 195, 0.016, 0.8, 0, 0.45);  // quiet bed underneath
-}
-
 // A bubble pop through paper: a soft rising bend with a breath of air around
 // it. Every percussive layer is gone - no contact burst, no low body sines.
 // Those were the drum. `vary` detunes a dealt run so five do not sound like one.
@@ -3969,7 +3903,7 @@ function packSymbol(id){
 function renderOpening(){
   if(!opening) return '';
   const {pack, cards, stage} = opening;
-  if(stage==='closed' || stage==='ripping'){
+  if(stage==='closed'){
     return `
     <div class="overlay">
       <button class="closex" data-close>&times;</button>
