@@ -1575,16 +1575,16 @@ html,body{ max-width:100%; overflow-x:hidden; }
 }
 .skill-row .sk-name{flex:0 0 74px;}
 .skill-row .sk-lv{
-  flex:0 0 auto;font-family:'JetBrains Mono',monospace;font-size:12px;
-  color:var(--text);min-width:22px;text-align:right;
+  flex:0 0 26px;font-family:'JetBrains Mono',monospace;font-size:12px;
+  color:var(--text);text-align:right;
 }
 /* the level you are climbing toward, on the far side of the bar, so the bar
    visibly spans FROM one level TO the next rather than floating unanchored */
 .skill-row .sk-lv-next{
-  flex:0 0 auto;font-family:'JetBrains Mono',monospace;font-size:12px;
-  color:var(--muted);min-width:22px;text-align:left;
+  flex:0 0 26px;font-family:'JetBrains Mono',monospace;font-size:12px;
+  color:var(--muted);text-align:left;
 }
-.skill-row .sk-barwrap{flex:1 1 auto;min-width:40px;max-width:320px;}
+.skill-row .sk-barwrap{flex:1 1 auto;min-width:40px;}
 /* display:block is load-bearing - a span defaults to inline, and an inline box
    IGNORES width and height, so the track collapses to zero and the fill inside
    has nothing to fill. */
@@ -1618,8 +1618,8 @@ html,body{ max-width:100%; overflow-x:hidden; }
   box-shadow:inset 1px 0 0 var(--line);
 }
 .skill-row .sk-xp{
-  flex:0 0 auto;font-family:'JetBrains Mono',monospace;font-size:10px;
-  color:var(--muted);min-width:62px;text-align:right;
+  flex:0 0 88px;font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--muted);text-align:right;white-space:nowrap;
 }
 /* 24px box: the tap target has to clear the finger-size floor on mobile, where
    most players are, even though the glyph itself is small */
@@ -1640,15 +1640,16 @@ html,body{ max-width:100%; overflow-x:hidden; }
 }
 .skill-note b{color:var(--text);font-weight:600;}
 .skill-summary{
-  display:flex;gap:16px;flex-wrap:wrap;align-items:baseline;
-  padding:8px 2px 10px;
+  display:flex;gap:22px;flex-wrap:wrap;align-items:baseline;
+  justify-content:center;text-align:center;
+  padding:10px 2px 12px;
 }
 .skill-summary .lab{color:var(--muted);font-size:11px;letter-spacing:0.5px;}
 .skill-summary .val{
   font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--foil1);
 }
 .skill-summary .val.alt{color:var(--gold);}
-.skillmap{max-width:340px;margin:4px auto 0;}
+.skillmap{max-width:340px;margin:0 auto 14px;}
 .skillmap svg{width:100%;height:auto;display:block;overflow:visible;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
