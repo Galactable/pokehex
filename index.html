@@ -1584,15 +1584,38 @@ html,body{ max-width:100%; overflow-x:hidden; }
   flex:0 0 auto;font-family:'JetBrains Mono',monospace;font-size:12px;
   color:var(--muted);min-width:22px;text-align:left;
 }
-.skill-row .sk-barwrap{flex:1 1 auto;min-width:40px;}
+.skill-row .sk-barwrap{flex:1 1 auto;min-width:40px;max-width:320px;}
+/* display:block is load-bearing - a span defaults to inline, and an inline box
+   IGNORES width and height, so the track collapses to zero and the fill inside
+   has nothing to fill. */
+/* --xp-near is deliberately OFF-palette. A level-up-imminent signal has to
+   stand out from the green/violet the rest of the page lives in, and the
+   theme's --gold is a lavender, which reads as "purple bar" rather than
+   "about to pop". Scoped here, not added to :root, so nothing else sees it. */
+.skill-row{--xp-near:#ffc93c;}
+/* display:block is load-bearing - a span defaults to inline, and an inline box
+   IGNORES width and height, so the track collapses to zero. */
 .skill-row .sk-bar{
-  width:100%;height:7px;border-radius:4px;background:var(--line);overflow:hidden;
+  display:block;
+  width:100%;height:8px;border-radius:4px;overflow:hidden;
   border:1px solid var(--line);
+  /* the gradient spans the WHOLE track, so the colour at the fill's leading
+     edge reports actual progress. Green to violet over the first three
+     quarters, then violet to amber over the last quarter only - so amber
+     means "nearly there" and cannot appear before 75%. Painting the gradient
+     on the fill instead would make the tip the same colour at 5% as at 95%,
+     which tells the player nothing. */
+  background:linear-gradient(90deg,
+    var(--foil1) 0%,
+    var(--foil2) 75%,
+    var(--xp-near) 100%);
 }
+/* not a bar - a MASK. it covers the UNFILLED remainder with the well colour,
+   revealing the track gradient from the left. */
 .skill-row .sk-bar i{
-  display:block;height:100%;border-radius:4px;
-  background:linear-gradient(90deg,var(--foil1),var(--gold),var(--foil2));
-  box-shadow:0 0 6px rgba(157,78,221,0.45);
+  display:block;height:100%;margin-left:0;
+  background:var(--surface2);
+  box-shadow:inset 1px 0 0 var(--line);
 }
 .skill-row .sk-xp{
   flex:0 0 auto;font-family:'JetBrains Mono',monospace;font-size:10px;
@@ -3842,7 +3865,7 @@ function renderSkillsSection(){
         <span class="sk-ico"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${m.icon}</svg></span>
         <span class="sk-name">${esc(m.label)}</span>
         <span class="sk-lv">${lv}</span>
-        <span class="sk-barwrap"><span class="sk-bar"><i style="width:${pct.toFixed(1)}%;"></i></span></span>
+        <span class="sk-barwrap"><span class="sk-bar"><i style="margin-left:${pct.toFixed(1)}%;width:${(100 - pct).toFixed(1)}%;"></i></span></span>
         <span class="sk-lv-next">${maxed ? '&#9733;' : lv + 1}</span>
         <span class="sk-xp">${maxed ? 'MAX' : fmtHex(Number(next) - xp) + ' to go'}</span>
         <button class="sk-info ${open ? 'on' : ''}" data-skill-info="${m.key}"
