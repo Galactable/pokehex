@@ -1558,6 +1558,75 @@ html,body{ max-width:100%; overflow-x:hidden; }
   .packcard.shop{ gap:12px; }
   .dexgrid{ grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); }
 }
+
+/* ---------- Skills & XP (profile page) ----------
+   Bars and rows follow .stat-row's rhythm so the section reads as part of the
+   page rather than bolted on. The hexagon map is inline SVG generated in JS,
+   NOT a data-URI: it is data-driven and must follow --foil1/--foil2, and a
+   data-URI would freeze both the colors and the shape. */
+.skill-row{
+  display:flex;align-items:center;gap:10px;
+  padding:7px 2px;border-bottom:1px solid var(--line);font-size:13px;
+}
+.skill-row:last-of-type{border-bottom:none;}
+.skill-row .sk-ico{
+  width:18px;height:18px;flex:0 0 auto;color:var(--foil1);
+  display:flex;align-items:center;justify-content:center;
+}
+.skill-row .sk-name{flex:0 0 74px;}
+.skill-row .sk-lv{
+  flex:0 0 auto;font-family:'JetBrains Mono',monospace;font-size:12px;
+  color:var(--text);min-width:22px;text-align:right;
+}
+/* the level you are climbing toward, on the far side of the bar, so the bar
+   visibly spans FROM one level TO the next rather than floating unanchored */
+.skill-row .sk-lv-next{
+  flex:0 0 auto;font-family:'JetBrains Mono',monospace;font-size:12px;
+  color:var(--muted);min-width:22px;text-align:left;
+}
+.skill-row .sk-barwrap{flex:1 1 auto;min-width:40px;}
+.skill-row .sk-bar{
+  width:100%;height:7px;border-radius:4px;background:var(--line);overflow:hidden;
+  border:1px solid var(--line);
+}
+.skill-row .sk-bar i{
+  display:block;height:100%;border-radius:4px;
+  background:linear-gradient(90deg,var(--foil1),var(--gold),var(--foil2));
+  box-shadow:0 0 6px rgba(157,78,221,0.45);
+}
+.skill-row .sk-xp{
+  flex:0 0 auto;font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--muted);min-width:62px;text-align:right;
+}
+/* 24px box: the tap target has to clear the finger-size floor on mobile, where
+   most players are, even though the glyph itself is small */
+.skill-row .sk-info{
+  flex:0 0 auto;width:24px;height:24px;border-radius:50%;
+  border:1px solid var(--gold);background:transparent;color:var(--gold);
+  font-size:11px;line-height:1;cursor:pointer;padding:0;
+  font-family:'JetBrains Mono',monospace;
+}
+.skill-row .sk-info:hover,.skill-row .sk-info.on{
+  color:var(--bg);background:var(--gold);border-color:var(--gold);
+}
+/* inline panel, not a tooltip: a hover tooltip never surfaces on touch, so it
+   would be invisible to most players and to desktop-only testing */
+.skill-note{
+  padding:8px 10px;margin:0 0 2px;border-left:2px solid var(--foil2);
+  background:var(--surface2);color:var(--muted);font-size:12px;line-height:1.5;
+}
+.skill-note b{color:var(--text);font-weight:600;}
+.skill-summary{
+  display:flex;gap:16px;flex-wrap:wrap;align-items:baseline;
+  padding:8px 2px 10px;
+}
+.skill-summary .lab{color:var(--muted);font-size:11px;letter-spacing:0.5px;}
+.skill-summary .val{
+  font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--foil1);
+}
+.skill-summary .val.alt{color:var(--gold);}
+.skillmap{max-width:340px;margin:4px auto 0;}
+.skillmap svg{width:100%;height:auto;display:block;overflow:visible;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -1801,7 +1870,7 @@ sb.auth.onAuthStateChange(async (event, session)=>{
     // user just signed out - drop back to guest browsing of the Packs page, not the login screen
     authBusy = false;
     state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
-    profileStats = null; profileUsername = null; profileLoading = false;
+    profileStats = null; profileUsername = null; profileSkills = null; profileLoading = false;
     view = 'open';
     render();
   }
@@ -2157,6 +2226,10 @@ let state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, val
 let view = 'open';
 let profileStats = null;
 let profileUsername = null;
+let profileSkills = null;
+// which skill's info panel is open; null = none. one at a time, so the page
+// never grows by six panels at once.
+let skillInfoFor = null;
 let profileLoading = false;
 let opening = null;
 let wheelSpinning = false;
@@ -3614,14 +3687,27 @@ async function loadProfileStats(retrying){
   profileLoading = true;
   render();
   try{
-    const [{ data: statsData, error: statsErr }, { data: profileData, error: profileErr }] = await Promise.all([
+    const [{ data: statsData, error: statsErr }, { data: profileData, error: profileErr }, { data: skillsData, error: skillsErr }] = await Promise.all([
       sb.rpc('get_player_stats'),
-      sb.from('profiles').select('username').eq('user_id', authUser.id).maybeSingle()
+      sb.from('profiles').select('username').eq('user_id', authUser.id).maybeSingle(),
+      // skills are the newest and least-proven RPC on this page, so this call
+      // is wrapped to RESOLVE on failure rather than reject. a rejection here
+      // would fail the whole Promise.all and blank the entire stats page over
+      // the one section that can degrade on its own.
+      sb.rpc('get_player_skills', { p_user_id: authUser.id }).then(r => r, e => ({ data: null, error: e }))
     ]);
     if(statsErr) throw statsErr;
     if(profileErr) throw profileErr;
     profileStats = statsData;
     profileUsername = profileData ? profileData.username : null;
+    // deliberately NOT thrown: the skills section renders its own failure state
+    if(skillsErr){
+      console.error('get_player_skills failed:', skillsErr && skillsErr.message, skillsErr);
+      profileSkills = null;
+    } else {
+      // returns table(...) so postgrest hands back an array; always one row
+      profileSkills = (Array.isArray(skillsData) ? skillsData[0] : skillsData) || null;
+    }
   }catch(e){
     console.error('failed to load profile stats:', e && e.message, e);
     if(!retrying){
@@ -3636,6 +3722,144 @@ async function loadProfileStats(retrying){
     profileLoading = false;
     render();
   }
+}
+
+// ---------- Skills & XP ----------
+// Six skills, level 1-99 on the real RSC table. Every number here comes from
+// get_player_skills: levels and band bounds are computed SERVER-side by
+// xp_to_level/level_to_xp, so the client never carries the 99 thresholds and
+// cannot drift from the server's idea of a level.
+const SKILL_META = [
+  { key:'attack',   label:'Attack',
+    icon:'<polyline points="7.9,14.6 17.5,5 17.5,2.5 15,2.5 5.4,12.1"/><line x1="9.2" y1="15.8" x2="4.2" y2="10.8"/><line x1="6.7" y1="13.3" x2="3.3" y2="16.7"/>',
+    note:'Earned when you <b>sell a card at reveal</b> instead of keeping it. A flat rate per card, so it rewards volume rather than value.' },
+  { key:'strength', label:'Strength',
+    icon:'<polygon points="10,2.2 16.8,6.1 16.8,13.9 10,17.8 3.2,13.9 3.2,6.1"/><polygon points="10,14.6 6.0,7.7 14.0,7.7"/>',
+    note:'The <b>nerve</b> skill - strength of will, not of arm. Earned on every pack you open, scaled by how big a share of your balance you just risked on it. The same pack pays far more when it costs you most of what you have than when you are rich, so this is the one skill that favors the broke.' },
+  { key:'defense',  label:'Defense',
+    icon:'<path d="M10 2.5 3.5 5v5c0 4 6.5 7.5 6.5 7.5S16.5 14 16.5 10V5z"/><path d="M10 2.5 3.5 5v5c0 4 6.5 7.5 6.5 7.5z" fill="currentColor" stroke="none"/><path d="M10 2.5v15"/>',
+    note:'Earned when you sell a card you have <b>held onto</b>, scaled by how long you held it. Nothing accrues while you hold - it pays out on the sale. The slowest skill by design, and the only one whose XP costs you a card.' },
+  { key:'magic',    label:'Magic',
+    icon:'<polygon points="10,2.2 15.8,12.2 4.2,12.2"/><circle cx="10" cy="8.9" r="1.4" fill="currentColor" stroke="none"/><circle cx="6.2" cy="16.2" r="1.05" fill="currentColor" stroke="none"/><circle cx="10" cy="16.2" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.8" cy="16.2" r="1.05" fill="currentColor" stroke="none"/>',
+    note:'Earned when you <b>liquidate</b> cards, scaled by rarity. Bulk liquidation pays the full rate per card, so selling a hundred at once is worth exactly the same as selling them one by one.' },
+  { key:'prayer',   label:'Prayer',
+    icon:'<path d="M10 2.2c.6 3.9 1.9 5.2 5.8 5.8-3.9.6-5.2 1.9-5.8 5.8-.6-3.9-1.9-5.2-5.8-5.8 3.9-.6 5.2-1.9 5.8-5.8z"/><path d="M15.4 13.2c.3 1.9.9 2.5 2.8 2.8-1.9.3-2.5.9-2.8 2.8-.3-1.9-.9-2.5-2.8-2.8 1.9-.3 2.5-.9 2.8-2.8z"/>',
+    note:'The luck skill. Earned from <b>every wheel spin</b>, and a much larger amount for <b>every shiny you pull</b> - whether you keep it or sell it.' },
+  { key:'agility',  label:'Agility',
+    icon:'<path d="M3 14.5 7 10l3 2 7-7M13 5.5h4v4"/>',
+    note:'Earned only when you sell <b>above the market average</b>, scaled by how far above. Selling into a dip earns nothing. This is the one skill you cannot grind - you can only time it.' }
+];
+
+// Hexagon skill map. Six skills, six axes - the shape is a hexagon by
+// construction. Radius is sqrt(level/99), NOT level/99: at a linear scale a
+// mid-game player renders as a small blob in the middle and the lean, which is
+// the whole point of the chart, is unreadable. sqrt lifts the middle while
+// preserving order exactly, and the rings are labelled so the curve is visible
+// rather than hidden.
+function renderSkillMap(sk){
+  const N = 6, W = 340, H = 330, R = 108, DEPTH = 13;
+  const cx = W/2, cy = H/2 - 4;
+  const levels = SKILL_META.map(m => Math.max(1, sk[m.key + '_level'] || 1));
+  const pt = (i, f, dy) => {
+    const a = -Math.PI/2 + i * 2*Math.PI/N;
+    return [cx + Math.cos(a)*R*f, cy + Math.sin(a)*R*f + (dy||0)];
+  };
+  const poly = (fs, dy) => fs.map((f,i)=>pt(i,f,dy).map(v=>v.toFixed(1)).join(',')).join(' ');
+  const fr = levels.map(l => Math.sqrt(l/99));
+  const rings = [10,25,50,75,99];
+  let s = '';
+  // ids are namespaced: a bare id="g" in a 276KB single-file document is a
+  // collision waiting to happen, and svg ids are document-global
+  s += '<defs>'
+     + '<linearGradient id="skmap-face" x1="0" y1="0" x2="0.3" y2="1">'
+     +   '<stop offset="0%" stop-color="var(--foil1)" stop-opacity="0.62"/>'
+     +   '<stop offset="100%" stop-color="var(--foil2)" stop-opacity="0.62"/></linearGradient>'
+     + '<linearGradient id="skmap-wall" x1="0" y1="0" x2="0" y2="1">'
+     +   '<stop offset="0%" stop-color="var(--foil2)" stop-opacity="0.85"/>'
+     +   '<stop offset="100%" stop-color="var(--foil2)" stop-opacity="0.10"/></linearGradient>'
+     + '<filter id="skmap-glow" x="-50%" y="-50%" width="200%" height="200%">'
+     +   '<feGaussianBlur stdDeviation="3.5" result="b"/>'
+     +   '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
+     + '</defs>';
+  rings.forEach(v=>{
+    const rf = Math.sqrt(v/99);
+    s += `<polygon points="${poly(Array(N).fill(rf))}" fill="none" stroke="var(--line)" stroke-width="1"/>`;
+  });
+  for(let i=0;i<N;i++){
+    const [x,y] = pt(i,1);
+    s += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`;
+  }
+  rings.forEach(v=>{
+    const rf = Math.sqrt(v/99);
+    s += `<text x="${cx+3}" y="${(cy-R*rf+10).toFixed(1)}" font-family="'JetBrains Mono',monospace" font-size="8" fill="var(--muted)" opacity="0.7">${v}</text>`;
+  });
+  // side walls painted back-to-front so the solid reads as a plate rather than
+  // a shelf; without the sort the near faces are overdrawn by the far ones
+  const top = fr.map((f,i)=>pt(i,f)), bot = fr.map((f,i)=>pt(i,f,DEPTH));
+  const order = [0,1,2,3,4,5].sort((a,b)=>
+    (top[b][1]+top[(b+1)%N][1]) - (top[a][1]+top[(a+1)%N][1]));
+  order.forEach(i=>{
+    const j=(i+1)%N;
+    s += `<polygon points="${top[i][0].toFixed(1)},${top[i][1].toFixed(1)} ${top[j][0].toFixed(1)},${top[j][1].toFixed(1)} ${bot[j][0].toFixed(1)},${bot[j][1].toFixed(1)} ${bot[i][0].toFixed(1)},${bot[i][1].toFixed(1)}" fill="url(#skmap-wall)"/>`;
+  });
+  s += `<polygon points="${poly(fr)}" fill="url(#skmap-face)" stroke="var(--foil1)" stroke-width="2" filter="url(#skmap-glow)"/>`;
+  fr.forEach((f,i)=>{
+    const [x,y]=pt(i,f);
+    s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="var(--foil1)"/>`;
+  });
+  SKILL_META.forEach((m,i)=>{
+    const a = -Math.PI/2 + i*2*Math.PI/N;
+    const lx = cx + Math.cos(a)*(R+27), ly = cy + Math.sin(a)*(R+27);
+    const anch = Math.cos(a) > 0.3 ? 'start' : (Math.cos(a) < -0.3 ? 'end' : 'middle');
+    s += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anch}" font-family="'JetBrains Mono',monospace" font-size="10" fill="var(--muted)">${esc(m.label.slice(0,3).toUpperCase())}</text>`;
+    s += `<text x="${lx.toFixed(1)}" y="${(ly+13).toFixed(1)}" text-anchor="${anch}" font-family="'JetBrains Mono',monospace" font-size="12" fill="var(--text)">${levels[i]}</text>`;
+  });
+  return `<div class="skillmap"><svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${s}</svg></div>`;
+}
+
+function renderSkillsSection(){
+  // the section degrades on its own: loadProfileStats deliberately does not
+  // throw on a skills failure, so the rest of the stats page is unaffected
+  if(!profileSkills){
+    return `<div class="section-label" style="margin-top:20px;">Skills</div>`
+         + `<div style="color:var(--muted);padding:12px 0;font-size:13px;">Your skills could not be loaded just now. The rest of your stats are unaffected - try reloading.</div>`;
+  }
+  const sk = profileSkills;
+  const rows = SKILL_META.map(m=>{
+    const lv   = sk[m.key + '_level'] || 1;
+    const xp   = Number(sk[m.key + '_xp'] || 0);
+    const base = Number(sk[m.key + '_level_xp'] || 0);
+    const next = sk[m.key + '_next_xp'];
+    // next_xp is null at 99 by design - a maxed skill has no next band, and a
+    // fabricated ceiling would mean dividing by a made-up number
+    const maxed = next === null || next === undefined;
+    const into  = xp - base;
+    const span  = maxed ? 0 : Number(next) - base;
+    const pct   = maxed ? 100 : Math.max(0, Math.min(100, (into / span) * 100));
+    const open  = skillInfoFor === m.key;
+    return `
+      <div class="skill-row">
+        <span class="sk-ico"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${m.icon}</svg></span>
+        <span class="sk-name">${esc(m.label)}</span>
+        <span class="sk-lv">${lv}</span>
+        <span class="sk-barwrap"><span class="sk-bar"><i style="width:${pct.toFixed(1)}%;"></i></span></span>
+        <span class="sk-lv-next">${maxed ? '&#9733;' : lv + 1}</span>
+        <span class="sk-xp">${maxed ? 'MAX' : fmtHex(Number(next) - xp) + ' to go'}</span>
+        <button class="sk-info ${open ? 'on' : ''}" data-skill-info="${m.key}"
+          aria-expanded="${open ? 'true' : 'false'}"
+          title="How to train ${esc(m.label)}">i</button>
+      </div>
+      ${open ? `<div class="skill-note">${m.note}</div>` : ''}`;
+  }).join('');
+  return `
+    <div class="section-label" style="margin-top:20px;">Skills</div>
+    <div class="skill-summary">
+      <span><span class="lab">TRAINER</span> <span class="val">${sk.trainer_level}</span></span>
+      <span><span class="lab">TOTAL LEVEL</span> <span class="val alt">${sk.total_level}</span></span>
+      <span><span class="lab">TOTAL XP</span> <span class="val alt">${fmtHex(Number(sk.total_xp))}</span></span>
+    </div>
+    ${renderSkillMap(sk)}
+    ${rows}`;
 }
 
 function renderProfile(){
@@ -3690,6 +3914,8 @@ function renderProfile(){
       : ''}
     <h2 class="disp" style="margin:0;">${esc(profileUsername || 'Profile')}</h2>
   </div>
+
+  ${renderSkillsSection()}
 
   <div class="section-label">Collection</div>
   <div class="stat-row"><span>% of Complete OG Collection</span><span class="mono">${ogPct}% (${ogOwned}/151)</span></div>
@@ -4196,6 +4422,16 @@ function wire(){
     btn.onclick = (e) => {
       e.stopPropagation();
       favPickerFor = null;
+      render();
+    };
+  });
+
+  document.querySelectorAll('[data-skill-info]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      // one panel at a time; clicking the open one closes it
+      const k = btn.dataset.skillInfo;
+      skillInfoFor = (skillInfoFor === k) ? null : k;
       render();
     };
   });
