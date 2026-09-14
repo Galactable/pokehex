@@ -4173,11 +4173,11 @@ function renderProfile(){
   const genRows = GENS.map(g => {
     const total = g.hi - g.lo + 1;
     const owned = dexIds.filter(n => n >= g.lo && n <= g.hi).length;
-    const pct   = Math.round((owned / total) * 1000) / 10;
+    const pct   = ((owned / total) * 100).toFixed(1);
     return `<div class="stat-row"><span>% of ${g.label}</span><span class="mono">${pct}% (${owned}/${total})</span></div>`;
   }).join('');
   const dexOwned = dexIds.filter(n => n >= 1 && n <= DEX_TOTAL).length;
-  const dexPct   = Math.round((dexOwned / DEX_TOTAL) * 1000) / 10;
+  const dexPct   = ((dexOwned / DEX_TOTAL) * 100).toFixed(1);
 
   return `
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
