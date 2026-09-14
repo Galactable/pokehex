@@ -360,6 +360,11 @@ body {
 .key-item{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--muted);font-weight:500;}
 .key-dot{width:8px;height:8px;border-radius:50%;background:var(--dot-color, var(--muted));}
 
+.dexfbtn{font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:5px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--muted);}
+.dexfbtn.on{border-color:var(--foil1);background:rgba(57,255,20,0.12);color:var(--foil1);}
+.dexfsel{font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:5px 8px;border-radius:6px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--text);}
+.dexfbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:7px 10px;border:1px solid var(--foil1);border-radius:6px;background:rgba(57,255,20,0.07);color:var(--foil1);}
+
 .dexgrid{
   display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px;
 }
@@ -2412,6 +2417,23 @@ let expandedTiers = new Set(); // tiers the user has manually expanded on the Ma
 let expandedSpecies = new Set(); // same idea one level down: "<tier>:<dexId>" keys for species stacks the user has opened, so liquidating one copy doesn't collapse the stack you were working in
 // which generation tab the dex is showing. client-only, resets to 1 on reload.
 let dexGen = 1;
+// Dex filters. These survive a gen-tab switch (that is the point - retyping a
+// filter for every tab is worse than the filter itself) but are cleared on
+// leaving the Dex page, so nobody comes back tomorrow to a half-empty grid and
+// reports missing cards. dexSearch is submitted, not live-typed: render()
+// rebuilds innerHTML, so filtering per keystroke would drop input focus.
+// Search spans ALL gens and overrides the tab; type and shiny stay inside it.
+let dexHideEmpty = false;
+let dexTypeFilter = '';
+let dexShinyOnly = false;
+let dexSearch = '';
+const titleType = t => t.charAt(0).toUpperCase() + t.slice(1);
+function dexFiltersActive(){
+  return dexHideEmpty || !!dexTypeFilter || dexShinyOnly || !!dexSearch;
+}
+function resetDexFilters(){
+  dexHideEmpty = false; dexTypeFilter = ''; dexShinyOnly = false; dexSearch = '';
+}
 
 // One pool, five views. Every gen boundary in the client reads from here, so
 // adding a generation is a single edit to this array plus the POKEMON rows.
@@ -4246,6 +4268,16 @@ function renderDex(){
   const genRange = [genDef.lo, genDef.hi];
   const genList = POKEMON.filter(p => p.id >= genRange[0] && p.id <= genRange[1]);
   const genOwned = genList.filter(p => owned[p.id]).length;
+
+  // A search looks across every generation and ignores the tab - typing a Gen 1
+  // name while sitting on the Gen 5 tab returning nothing would read as broken.
+  const q = dexSearch.trim().toLowerCase();
+  let list = q ? POKEMON.slice() : genList;
+  if(q) list = list.filter(p => p.name.toLowerCase().includes(q) || String(p.id) === q || String(p.id).padStart(3,'0') === q);
+  if(dexTypeFilter) list = list.filter(p => p.type === dexTypeFilter);
+  if(dexShinyOnly)  list = list.filter(p => shinyIds.has(p.id));
+  if(dexHideEmpty)  list = list.filter(p => owned[p.id]);
+  const shownOwned = list.filter(p => owned[p.id]).length;
   const tabBtn = (g, label) => `<button data-dexgen="${g}" style="font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 10px; border-radius:6px; cursor:pointer; border:1px solid ${dexGen===g?'var(--foil1)':'var(--line)'}; background:${dexGen===g?'rgba(57,255,20,0.12)':'transparent'}; color:${dexGen===g?'var(--foil1)':'var(--muted)'};">${label}</button>`;
 
   return `
@@ -4266,8 +4298,34 @@ function renderDex(){
     ${GENS.map(g => tabBtn(g.n, g.label)).join('')}
     <span class="mono" style="font-size:10px;color:var(--muted);">${genOwned}/${genList.length}</span>
   </div>
+
+  <form id="dexSearchForm" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+    <input type="text" id="dexSearchInput" value="${esc(dexSearch)}" placeholder="Search all gens by name or number..." autocomplete="off"
+      style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;" />
+    <button type="submit" class="sbtn keep" style="padding:7px 12px;font-size:11px;">Find</button>
+  </form>
+
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+    <button data-dexfilter="empty" class="dexfbtn ${dexHideEmpty?'on':''}">${dexHideEmpty?'&#10003; ':''}Hide Empty</button>
+    <button data-dexfilter="shiny" class="dexfbtn ${dexShinyOnly?'on':''}">${dexShinyOnly?'&#10003; ':''}Shiny Only</button>
+    <select id="dexTypeSelect" class="dexfsel">
+      <option value="">All Types</option>
+      ${Object.keys(TYPE_COLORS).map(t => `<option value="${t}" ${dexTypeFilter===t?'selected':''}>${titleType(t)}</option>`).join('')}
+    </select>
+  </div>
+
+  ${dexFiltersActive() ? `<div class="dexfbar">
+    <span class="mono" style="font-size:11px;">
+      Filtered${q?` &middot; "${esc(dexSearch)}" across all gens`:''}${dexTypeFilter?` &middot; ${titleType(dexTypeFilter)}`:''}${dexShinyOnly?' &middot; shiny only':''}${dexHideEmpty?' &middot; owned only':''}
+      &mdash; showing ${list.length} slot${list.length===1?'':'s'} (${shownOwned} owned)
+    </span>
+    <button data-dexfilter="clear" class="sbtn sell" style="padding:5px 10px;font-size:11px;">Clear Filters</button>
+  </div>` : ''}
+
+  ${list.length === 0 ? `<div class="mono" style="color:var(--muted);font-size:12px;padding:24px 2px;">Nothing matches those filters.</div>` : ''}
+
   <div class="dexgrid" style="margin-bottom:24px;">
-    ${genList.map(p=>{
+    ${list.map(p=>{
       const o = owned[p.id];
       const color = TYPE_COLORS[p.type];
       return `<div class="dexslot ${o?'owned':''} ${o && shinyIds.has(p.id) ? 'shiny-card' : ''}" style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};${o && shinyIds.has(p.id) ? `--shiny-hue:${shinyHue(p.id)}deg;` : ''}">
@@ -4538,6 +4596,8 @@ function wire(){
     renderAuth();
   };
   document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{
+    // filters are per-visit, not per-session: leaving the Dex clears them
+    if(b.dataset.nav !== 'dex') resetDexFilters();
     view=b.dataset.nav;
     if(view==='profile' && authUser) loadProfileStats();
     if(view==='market' && authUser && !pnlSeries && !pnlLoading) loadPnlSeries();
@@ -4903,6 +4963,31 @@ function wire(){
 
   document.querySelectorAll('[data-dexgen]').forEach(btn=>{
     btn.onclick = () => { dexGen = Number(btn.dataset.dexgen); render(); };
+  });
+
+  const dexSearchForm = document.getElementById('dexSearchForm');
+  if(dexSearchForm){
+    dexSearchForm.onsubmit = (e)=>{
+      e.preventDefault();
+      const input = document.getElementById('dexSearchInput');
+      dexSearch = input ? input.value : '';
+      render();
+    };
+  }
+
+  const dexTypeSelect = document.getElementById('dexTypeSelect');
+  if(dexTypeSelect){
+    dexTypeSelect.onchange = ()=>{ dexTypeFilter = dexTypeSelect.value; render(); };
+  }
+
+  document.querySelectorAll('[data-dexfilter]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const f = btn.dataset.dexfilter;
+      if(f === 'empty') dexHideEmpty = !dexHideEmpty;
+      else if(f === 'shiny') dexShinyOnly = !dexShinyOnly;
+      else if(f === 'clear') resetDexFilters();
+      render();
+    };
   });
 
   document.querySelectorAll('details[data-tier]').forEach(d => {
