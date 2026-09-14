@@ -16,9 +16,17 @@
 <link rel="icon" href="./icon-192.png">
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 :root{
+  /* Three roles, one place. --font-display is the chunky wordmark/heading face,
+     --font-body is everything you read - deliberately the same mono as
+     --font-mono, because the monospace texture in body copy is wanted here,
+     and its tabular figures keep HEX values and x-counts in columns. */
+  --font-display:'Exo 2',system-ui,sans-serif;
+  --font-body:var(--font-mono);
+  --font-mono:'JetBrains Mono',monospace;
+
   --bg:#07090a;
   --surface:#0e130f;
   --surface2:#141b16;
@@ -59,7 +67,7 @@ body {
     repeating-linear-gradient(to bottom, rgba(57,255,20,0.025) 0px, rgba(57,255,20,0.025) 1px, transparent 1px, transparent 3px),
     radial-gradient(circle at 50% -10%, #101a12 0%, var(--bg) 55%);
   color:var(--text);
-  font-family:'JetBrains Mono',monospace;
+  font-family:var(--font-body);
   min-height:100vh;
   padding:20px 16px 60px;
   box-sizing:border-box;
@@ -67,8 +75,8 @@ body {
   position:relative;
 }
 *{box-sizing:border-box;}
-.mono{font-family:'JetBrains Mono',monospace;}
-.disp{font-family:'VT323',monospace;font-weight:400;letter-spacing:0.04em;text-transform:uppercase;color:var(--foil1);text-shadow:0 0 8px rgba(57,255,20,0.45);}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+.disp{font-family:var(--font-display);font-weight:800;letter-spacing:0.04em;text-transform:uppercase;color:var(--foil1);text-shadow:0 0 8px rgba(57,255,20,0.45);}
 
 /* ---------- currency cube icon ---------- */
 .hex-icon {
@@ -136,16 +144,63 @@ body {
     #000000;
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
+
+/* The hexmark sitting INSIDE the wordmark as the letter O. Everything is in em
+   so it scales with the h1's clamp() instead of needing its own breakpoints.
+   It is sized to Exo 2's cap height so it reads as a letter rather than a logo
+   that wandered into the word. aria-hidden on the element plus an sr-only "O"
+   keeps the word readable to screen readers and to search. */
+.brand h1 .hexo, .authcard h1 .hexo{
+  display:inline-block;
+  /* 1em is the FONT size, not the letter height - a 1em box towers over the
+     caps beside it. Exo 2's cap height is ~0.72em, so that is the target, and
+     inline-block sits its bottom edge on the baseline, where a cap sits. */
+  /* font-size:inherit is load-bearing: the sibling rule .brand span sets 11px
+     on every span in the header, and all of these sizes are in em. */
+  font-size:inherit;
+  width:0.63em;
+  height:0.72em;
+  position:relative;
+  vertical-align:baseline;
+  margin:0 0.03em;
+  filter: drop-shadow(0 0 0.18em rgba(57,255,20,0.45));
+}
+.brand h1 .hexo::before, .authcard h1 .hexo::before{
+  content:'';
+  position:absolute;
+  /* percentages, so the inner diamond tracks any change to the box above */
+  top:0; left:23%;
+  width:59%; height:40%;
+  background:var(--foil1);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  z-index:2;
+}
+.brand h1 .hexo::after, .authcard h1 .hexo::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(135deg, var(--foil1), var(--foil2)),
+    #000000;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
 .brand div:not(.brand-hexmark) { text-align: center; }
 
 /* Slime Title with Sparkles & Floating Dust Particles */
 .brand h1,
 .authcard h1 {
-  font-size: 42px;
+  /* fluid so a 360px phone and a 430px phone both get a wordmark that fits -
+     no breakpoint snap. Exo 2 runs much larger than the old pixel font did at
+     same px, hence 28 where this used to be 42. */
+  font-size: clamp(26px, 8.4vw, 36px);
   margin: 0;
-  font-family: 'VT323', monospace;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-family:var(--font-display);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  /* the hexagon is an inline-block, which is a legal line-break opportunity -
+     without this the wordmark splits as P / hex / KeHEX */
+  white-space: nowrap;
   color: var(--foil1);
   text-shadow: 0 0 12px rgba(57, 255, 20, 0.7), 0 0 25px rgba(57, 255, 20, 0.4);
   text-transform: uppercase;
@@ -258,12 +313,20 @@ body {
 }
 /* Only the shop tiles get the two-column layout - .packcard is also the vault's
    card tile, so the class itself must keep its original block behaviour. */
-.packcard.shop{display:flex;align-items:center;gap:16px;}
-.packcard.shop .pack-info{flex:1;min-width:0;}
+/* stretch, not center: centering made every tile start its heading at a
+   different height, because the descriptions wrap to different line counts.
+   Stretch pins the headings to the top and lets margin-top:auto below push
+   the odds/price block to the bottom, so all three tiles line up regardless
+   of how much text they carry or how narrow the screen is. */
+.packcard.shop{display:flex;align-items:stretch;gap:16px;}
+.packcard.shop .pack-info{flex:1;min-width:0;display:flex;flex-direction:column;}
 /* The pack and its Open button share the right column, so the button reads as
    belonging to the pack rather than floating beside the price. */
 .pack-mini{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:12px;}
-.pack-mini .buybtn{width:100%;}
+/* auto margins above and below the art centre it in whatever space is left,
+   while the button is pinned to the bottom edge - level with the price. */
+.pack-mini .pack-visual{margin-top:auto;margin-bottom:auto;}
+.pack-mini .buybtn{width:100%;margin-top:auto;}
 /* The mini wrapper reuses .pack-visual wholesale, so themes, crimp and symbol
    colours follow automatically. Only the geometry changes - and because the
    420px rule scales var(--pack-w), the mini shrinks on phones for free. */
@@ -284,9 +347,9 @@ body {
    tap Open, you do not tear this one. It only appears on the opening overlay. */
 .pack-visual.mini .tear{display:none;}
 
-.pack-name{font-family:'VT323',monospace;font-weight:400;font-size:19px;margin:0 0 4px;}
-.pack-desc{color:var(--muted);font-size:12.5px;margin:0 0 14px;line-height:1.4;min-height:34px;}
-.pack-odds{font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.6;}
+.pack-name{font-family:var(--font-display);font-weight:800;font-size:13px;margin:0 0 4px;}
+.pack-desc{color:var(--muted);font-size:12.5px;margin:0 0 14px;line-height:1.4;}
+.pack-odds{font-size:11px;color:var(--muted);margin-top:auto;margin-bottom:14px;line-height:1.6;}
 .pack-odds b{color:var(--text);}
 .pack-price{
   display:flex;align-items:center;justify-content:space-between;
@@ -341,15 +404,24 @@ body {
 .card-back.theme-whale{background:repeating-linear-gradient(45deg,#1a1408,#1a1408 8px,#0d0a04 8px,#0d0a04 16px);}
 .card-back.theme-whale span{color:var(--luxe-gold2);text-shadow:0 0 6px rgba(212,175,55,0.6);}
 
-/* Diamond Pack - white/light-grey border instead of the default green */
+/* Diamond Pack - white/light-grey. Given the same treatment as basic and whale:
+   tinted body, coloured name, ::after sheen and a glowing mark. It previously
+   had only the hover border, which is why it looked flat next to the others. */
+.packcard.theme-diamond{background:linear-gradient(160deg,#12161a,#080a0c);border-color:#c9d1d9;}
 .packcard.theme-diamond:hover{border-color:#e6e6e6;box-shadow:0 0 16px rgba(230,230,230,0.25);}
+.packcard.theme-diamond .pack-name{color:#e6e6e6;text-shadow:0 0 8px rgba(230,230,230,0.6);}
+.packcard.theme-diamond::after{background:linear-gradient(135deg,#e6e6e6,#8b949e);opacity:0.12;}
+
 .pack-visual.theme-diamond{--edge:#e6e6e6;}
+.pack-visual.theme-diamond .pack-top,.pack-visual.theme-diamond .pack-body{background:linear-gradient(160deg,#12161a,#080a0c);}
 .pack-visual.theme-diamond .sym{color:#e6e6e6;}
+.pack-visual.theme-diamond .mark{color:#e6e6e6;text-shadow:0 0 10px rgba(230,230,230,0.7);}
+
 
 /* ---------- dex ---------- */
 .dexhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px;}
 .dexhead-left{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;}
-.dexhead-left h2{font-family:'VT323',monospace;font-size:26px;margin:0;letter-spacing:0.03em;text-transform:uppercase;}
+.dexhead-left h2{font-family:var(--font-display);font-weight:800;font-size:20px;margin:0;letter-spacing:0.03em;text-transform:uppercase;}
 .dexcount{color:var(--muted);font-size:13px;}
 
 /* Rarity Key Legend */
@@ -677,8 +749,8 @@ body {
    the pack narrows. Side padding is a percentage so the clear margin scales
    with the pack instead of collapsing, and leaves room for the glow. */
 .pack-visual .mark{
-  font-family:'VT323',monospace;
-  font-weight:400;
+  font-family:var(--font-display);
+  font-weight:800;
   font-size:9.5cqw;
   line-height:1;
   white-space:nowrap;
@@ -915,7 +987,7 @@ body {
   background:repeating-linear-gradient(45deg,#161630,#161630 8px,#1c1c38 8px,#1c1c38 16px);
   display:flex;align-items:center;justify-content:center;
 }
-.card-back span{font-family:'VT323',monospace;font-weight:400;color:var(--foil1);font-size:13px;letter-spacing:0.1em;opacity:0.8;}
+.card-back span{font-family:var(--font-display);font-weight:800;color:var(--foil1);font-size:9px;letter-spacing:0.1em;opacity:0.8;}
 
 /* ---------- card back shelf (shop) ---------- */
 /* Tiles are full card size so the swatch IS the preview - no separate
@@ -1314,7 +1386,7 @@ body {
   width:100%;height:100%;object-fit:contain;image-rendering:pixelated;
 }
 .cf-bottom{z-index:1;text-align:center;}
-.cf-name{font-family:'VT323',monospace;font-weight:400;font-size:13px;}
+.cf-name{font-family:var(--font-display);font-weight:800;font-size:10px;line-height:1.15;}
 .cf-rarity{font-size:8.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--card-color,var(--common));font-weight:700;}
 .cf-value{
   font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--gold);margin-top:2px;
@@ -1360,7 +1432,7 @@ body {
 .howto p{color:var(--text);font-size:14px;line-height:1.65;margin:0 0 14px;}
 .howto p.lead{color:var(--muted);}
 .howto h3{
-  font-family:'VT323',monospace;font-weight:400;font-size:22px;
+  font-family:var(--font-display);font-weight:800;font-size:18px;
   letter-spacing:0.06em;text-transform:uppercase;color:var(--foil1);
   text-shadow:0 0 8px rgba(57,255,20,0.45);
   margin:34px 0 4px;
@@ -1376,7 +1448,7 @@ body {
 }
 .howto-tip{display:flex;gap:12px;margin:0 0 14px;align-items:baseline;}
 .howto-tip .n{
-  font-family:'VT323',monospace;font-size:20px;color:var(--foil1);
+  font-family:var(--font-display);font-weight:800;font-size:13px;color:var(--foil1);
   flex:0 0 auto;min-width:18px;
 }
 .howto-sign{
@@ -2456,7 +2528,7 @@ function renderResetConfirmModal(){
   return `
   <div class="overlay">
     <div class="summary-panel" style="max-width:440px;">
-      <div style="font-family:'VT323',monospace;font-size:22px;color:#ff4444;text-transform:uppercase;">Reset Progress?</div>
+      <div style="font-family:var(--font-display);font-weight:800;font-size:18px;color:#ff4444;text-transform:uppercase;">Reset Progress?</div>
       <div style="font-size:13px;text-align:center;line-height:1.5;">
         Resetting your progress will <b>delete all cards</b>, reset your HEX balance to <b>2,500</b>, and <b>wipe all account stats</b>.
       </div>
@@ -2998,7 +3070,7 @@ function renderVaultChart(){
     return `
     <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:20px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
-        <span style="font-family:'VT323',monospace; font-size:18px; color:var(--foil1); letter-spacing:0.04em;">Profit &amp; Loss</span>
+        <span style="font-family:var(--font-display);font-weight:800; font-size:14px; color:var(--foil1); letter-spacing:0.04em;">Profit &amp; Loss</span>
         ${ahead === null ? '' : `<span class="mono" style="font-size:14px;color:${ahead>=0?'var(--foil1)':'#ff4444'};">
           ${ahead>=0?'+':'-'}<i class="hex-icon"></i>${fmtHex(Math.abs(ahead))} vs doing nothing</span>`}
       </div>
@@ -3029,7 +3101,7 @@ function renderVaultChart(){
   return `
     <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:20px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
-        <span style="font-family:'VT323',monospace; font-size:18px; color:var(--foil1); letter-spacing:0.04em;">Vault Valuation</span>
+        <span style="font-family:var(--font-display);font-weight:800; font-size:14px; color:var(--foil1); letter-spacing:0.04em;">Vault Valuation</span>
         <span id="vaultTotalVal" class="mono" style="font-size:14px; color:var(--gold);"><i class="hex-icon"></i>${fmtHex(currentTotal)} HEX</span>
       </div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
@@ -3190,7 +3262,7 @@ function renderMarketIndexChart(){
   return `
     <div style="background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:20px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;flex-wrap:wrap;gap:8px;">
-        <span style="font-family:'VT323',monospace; font-size:18px; color:var(--foil1); letter-spacing:0.04em;">Market Cycle</span>
+        <span style="font-family:var(--font-display);font-weight:800; font-size:14px; color:var(--foil1); letter-spacing:0.04em;">Market Cycle</span>
         <span class="mono" style="font-size:13px;font-weight:700;">
           <span id="marketPhaseLabel" style="color:${phase.color};">${phase.label}</span> &middot; <span id="marketPhaseVal" style="color:${phase.color};">${(idxNow*100).toFixed(0)}</span>%
         </span>
@@ -3266,7 +3338,7 @@ function renderMarketModal() {
           shiny: inst.shiny, type: p.type, sprite: p.sprite
         }, true)}</div>
 
-        <div style="font-family:'VT323',monospace;font-size:24px;color:${rc.color};text-transform:uppercase;letter-spacing:0.04em;">
+        <div style="font-family:var(--font-display);font-weight:800;font-size:16px;color:${rc.color};text-transform:uppercase;letter-spacing:0.04em;">
           ${esc(p.name)}${inst.shiny ? ' \u2605' : ''}
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:-6px;">
@@ -3309,7 +3381,7 @@ function renderMarketModal() {
     return `
     <div class="overlay">
       <div class="summary-panel" style="max-width:440px;">
-        <div style="font-family:'VT323',monospace;font-size:22px;color:var(--gold);text-transform:uppercase;">Confirm Liquidation</div>
+        <div style="font-family:var(--font-display);font-weight:800;font-size:18px;color:var(--gold);text-transform:uppercase;">Confirm Liquidation</div>
         <div style="font-size:13px;text-align:center;">Liquidate <b>${esc(p.name)}${inst.shiny ? ' ✨' : ''}</b>?</div>
         
         <div style="background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:12px;width:100%;text-align:center;">
@@ -3337,7 +3409,7 @@ function renderMarketModal() {
     return `
     <div class="overlay">
       <div class="summary-panel" style="max-width:460px;">
-        <div style="font-family:'VT323',monospace;font-size:22px;color:#a855f7;text-transform:uppercase;">Confirm Duplicate Liquidation</div>
+        <div style="font-family:var(--font-display);font-weight:800;font-size:18px;color:#a855f7;text-transform:uppercase;">Confirm Duplicate Liquidation</div>
         <div style="font-size:13px;text-align:center;">Liquidate <b>${prev.count}</b> duplicate ${prev.count === 1 ? 'card' : 'cards'} in <b>${tierLabels[targetTier]}</b> tier?</div>
         <div style="font-size:11px;color:var(--muted);text-align:center;line-height:1.4;">
           Your least valuable copy of each card is kept, so it can keep maturing.
@@ -3379,7 +3451,7 @@ function renderMarketModal() {
     return `
     <div class="overlay">
       <div class="summary-panel" style="max-width:460px;">
-        <div style="font-family:'VT323',monospace;font-size:22px;color:#ff4444;text-transform:uppercase;">Confirm Bulk Liquidation</div>
+        <div style="font-family:var(--font-display);font-weight:800;font-size:18px;color:#ff4444;text-transform:uppercase;">Confirm Bulk Liquidation</div>
         <div style="font-size:13px;text-align:center;">Liquidate all <b>${count}</b> cards in <b>${tierLabels[targetTier]}</b> tier?</div>
         
         <div style="background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:12px;width:100%;text-align:center;">
@@ -3558,7 +3630,7 @@ function renderMarket(){
 
         return `
           <details data-tier="${tier}" ${(tiersWithHits.has(tier) || expandedTiers.has(tier)) ? 'open' : ''} style="margin-bottom:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px;">
-            <summary style="font-family:'VT323',monospace; font-size:20px; color:${rc.color}; cursor:pointer; text-transform:uppercase; letter-spacing:0.04em; outline:none; display:flex; justify-content:space-between; align-items:center;">
+            <summary style="font-family:var(--font-display);font-weight:800; font-size:15px; color:${rc.color}; cursor:pointer; text-transform:uppercase; letter-spacing:0.04em; outline:none; display:flex; justify-content:space-between; align-items:center;">
               <span>${tierLabels[tier]} (${items.length})</span>
               <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--gold);">
                 Tier Est: <span id="price-tier-${tier}"><i class="hex-icon"></i>~${fmtHex(tierTotalPayout)}</span>
@@ -3675,7 +3747,7 @@ function renderMarket(){
     ${renderVaultChart()}
 
     <details style="margin-bottom:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px;">
-      <summary style="font-family:'VT323',monospace; font-size:20px; color:var(--muted); cursor:pointer; text-transform:uppercase; letter-spacing:0.04em; outline:none;">How selling works</summary>
+      <summary style="font-family:var(--font-display);font-weight:800; font-size:15px; color:var(--muted); cursor:pointer; text-transform:uppercase; letter-spacing:0.04em; outline:none;">How selling works</summary>
       <div style="margin-top:12px;">
     <div class="slippage-row">
       <div class="slippage-notice">
@@ -4449,10 +4521,9 @@ function render(){
   const app = document.getElementById('app');
   app.innerHTML = `
     <div class="topbar">
-      <div class="brand-hexmark"></div>
       <div class="brand">
         <div>
-          <h1>POKéHEX</h1>
+          <h1>P<span class="hexo" aria-hidden="true"></span><span class="sr-only">O</span>KéHEX</h1>
           <span>rip packs &middot; fill your dex <br>risk fake currency &middot; 0.8.0 beta </span>
         </div>
       </div>
