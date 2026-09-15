@@ -2728,6 +2728,7 @@ let openBinderId = null;
 let binderPage = 0;
 let carrying = null;   // { source:'reorder', fromPage, fromSlot, uid }
 let inspectUid = null; // uid of the instance shown in the enlarged inspect view
+let inspectFrom = null; // { pageIdx, slotIdx } of the pocket that opened it, so it can be removed
 
 // Press-hold bookkeeping for the pocket reorder gesture. These are plain
 // module vars, not state - resetting them never needs a render().
@@ -5022,7 +5023,7 @@ function rarityColor(rarity){ return (RARITY[rarity]||RARITY.common).color; }
 function renderInspect(){
   if(!inspectUid) return '';
   const card = instanceCard(inspectUid);
-  if(!card){ inspectUid = null; return ''; } // liquidated while inspecting - just close
+  if(!card){ inspectUid = null; inspectFrom = null; return ''; } // liquidated while inspecting - just close
   const binder = binderById(openBinderId);
   const glowColor = binder ? binder.color : '#ffffff';
   const faceCard = { id:card.id, name:card.name, type:card.type, rarity:card.rarity, shiny:card.shiny, sprite:card.sprite, value:card.value };
@@ -5033,6 +5034,7 @@ function renderInspect(){
     <div class="inspect-card-wrap" data-inspectcard>
       ${renderCardFace(faceCard, true)}
     </div>
+    ${inspectFrom ? `<button class="mono" style="background:none;border:none;color:#ff6b6b;font-size:11.5px;text-decoration:underline;cursor:pointer;padding:14px 0 0;position:relative;z-index:1;" data-remove-from-binder>Remove from Binder</button>` : ''}
   </div>`;
 }
 
@@ -5194,7 +5196,7 @@ function pocketPressEnd(pageIdx, slotIdx, uid, e){
     dropCard(pageIdx, slotIdx);
     return;
   }
-  if(!justPickedUp && uid){ openInspectFor(uid); }
+  if(!justPickedUp && uid){ openInspectFor(uid, pageIdx, slotIdx); }
 }
 
 function pocketPressCancel(){
@@ -5221,12 +5223,31 @@ function dropCard(targetPage, targetSlot){
   render();
 }
 
-function openInspectFor(uid){
+function openInspectFor(uid, pageIdx, slotIdx){
   inspectUid = uid;
+  inspectFrom = (pageIdx !== undefined) ? { pageIdx, slotIdx } : null;
   render();
 }
 function closeInspect(){
   inspectUid = null;
+  inspectFrom = null;
+  render();
+}
+
+// Only reachable from the binder page view (inspectFrom is only ever set by
+// a pocket tap), so a removed card just stops being filed - it's still
+// owned, still in the dex, and can be re-filed from there any time.
+function removeFromBinder(){
+  if(!inspectFrom || !openBinderId) return;
+  const binder = binderById(openBinderId);
+  if(!binder) return;
+  const pages = binder.pages.map(p=>p.slice());
+  pages[inspectFrom.pageIdx][inspectFrom.slotIdx] = null;
+  state.binders = state.binders.map(b => b.id===openBinderId ? Object.assign({}, b, { pages }) : b);
+  saveBinders();
+  inspectUid = null;
+  inspectFrom = null;
+  toast('Removed from binder.');
   render();
 }
 
@@ -5414,6 +5435,7 @@ function wire(){
       openBinderId = null;
       carrying = null;
       inspectUid = null;
+      inspectFrom = null;
       dexAddOpen = false;
       dexAddSpeciesId = null;
       dexAddUid = null;
@@ -5585,6 +5607,7 @@ function wire(){
   });
 
   document.querySelectorAll('[data-closeinspect]').forEach(b=>b.onclick=closeInspect);
+  document.querySelectorAll('[data-remove-from-binder]').forEach(b=>b.onclick=removeFromBinder);
   const inspectEl = document.querySelector('[data-inspectcard]');
   if(inspectEl){
     inspectEl.onmousedown = ()=>{ inspectPressed = true; };
