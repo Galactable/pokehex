@@ -269,6 +269,18 @@ body {
 .balance .val{
   font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;color:var(--gold);
 }
+.mailbtn{
+  position:relative;background:var(--surface);border:1px solid var(--line);border-radius:999px;
+  width:38px;height:38px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  color:var(--foil1);filter:drop-shadow(0 0 6px rgba(57,255,20,0.5));
+}
+.mailbtn:hover{filter:drop-shadow(0 0 9px rgba(57,255,20,0.75));}
+.mailbadge{
+  position:absolute;top:-4px;right:-4px;background:#ff4444;color:#fff;
+  border-radius:999px;min-width:16px;height:16px;padding:0 4px;
+  font-size:10px;line-height:16px;text-align:center;font-weight:800;
+  box-shadow:0 0 6px rgba(255,68,68,0.6);
+}
 .cta-account-row{
   display:flex;justify-content:center;max-width:920px;margin:0 auto 24px;
 }
@@ -1405,6 +1417,15 @@ body {
 .sbtn.keep{background:var(--foil2);color:#fff;box-shadow:0 0 10px rgba(157,78,221,0.4);}
 .sbtn.sell{background:var(--surface2);color:var(--gold);border:1px solid var(--gold);}
 .closex{position:absolute;top:18px;right:22px;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;}
+.friend-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;width:100%;}
+.friend-row:last-child{border-bottom:none;}
+.friend-row .fr-actions{display:flex;gap:6px;flex:0 0 auto;}
+.frbtn{border:none;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;cursor:pointer;}
+.frbtn.accept{background:var(--foil1);color:#07090a;}
+.frbtn.decline,.frbtn.cancel,.frbtn.remove{background:var(--surface2);color:var(--muted);border:1px solid var(--line);}
+.frbtn:disabled{opacity:.5;cursor:default;}
+.frname{background:none;border:none;color:var(--text);font-size:13px;font-weight:700;text-align:left;cursor:pointer;padding:0;text-decoration:underline;text-decoration-color:var(--line);}
+.frname:hover{text-decoration-color:var(--foil1);}
 
 .toast{
   position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
@@ -1726,6 +1747,13 @@ html,body{ max-width:100%; overflow-x:hidden; }
   font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--foil1);
 }
 .skill-summary .val.alt{color:var(--gold);}
+.visibility-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--surface2);border:1px solid var(--line);border-radius:999px;
+  padding:6px 12px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;
+}
+.visibility-pill.is-public{color:var(--foil1);border-color:var(--foil1);}
+.visibility-pill.is-private{color:var(--gold);border-color:var(--gold);}
 .skillmap{max-width:340px;margin:0 auto 14px;}
 .skillmap svg{width:100%;height:auto;display:block;overflow:visible;}
 
@@ -2647,6 +2675,7 @@ let state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, val
 let view = 'open';
 let profileStats = null;
 let profileUsername = null;
+let profileIsPublic = true;
 let profileSkills = null;
 // which skill's info panel is open; null = none. one at a time, so the page
 // never grows by six panels at once.
@@ -2737,6 +2766,33 @@ let pressTimer = null;
 let pressFired = false;
 let lastTouchAt = 0;
 let inspectPressed = false;
+
+// Friend requests / friendships live in their own table, same non-economy
+// pattern as binders (see loadState()/loadFriendRequests()) - accepted rows
+// ARE the friendship, there's no separate friends table. Refetched after
+// every mailbox action rather than polled or subscribed to.
+let mailboxOpen = false;
+let mailboxTab = 'requests'; // 'requests' | 'friends'
+let addFriendInput = '';
+let addFriendMsg = null; // { type:'ok'|'err', text }
+let friendActionBusy = false; // disables buttons during an in-flight RPC call
+let friendUsernames = {}; // user_id -> username, for everyone in state.friendRequests
+
+// Visiting someone else's profile - a drill-in (like opening a binder), not
+// a nav tab. viewingProfileId set means render() shows renderPublicProfile()
+// instead of whatever `view` currently is; clearing it (Back, or any top nav
+// click) returns to normal content.
+let viewingProfileId = null;
+let viewingProfileData = null; // get_public_profile + get_player_skills, merged
+let viewingProfileLoading = false;
+// Read-only binder browsing for a visited profile - deliberately separate
+// from openBinderId/binderPage/carrying/inspectUid, which are the OWNER's
+// drag-reorder-inspect gesture state. None of that applies to someone
+// else's cards, so this is just spine -> page -> back, no gestures at all.
+let viewingBinders = [];
+let viewingFiledInstances = [];
+let viewingOpenBinderId = null; // null = shelf, else that binder's page
+let viewingBinderPageIdx = 0;
 
 function dexFiltersActive(){
   return dexHideEmpty || !!dexTypeFilter || dexShinyOnly || !!dexSearch;
@@ -2841,6 +2897,11 @@ async function loadState(){
     console.error('binder load failed', e);
     state.binders = [];
   }
+
+  // Friend requests/friendships - see loadFriendRequests(). Same
+  // fail-safe-and-continue treatment as binders: a failure here shouldn't
+  // block the rest of the game from loading.
+  await loadFriendRequests();
 
   recordVaultValue();
   render();
@@ -4232,7 +4293,7 @@ async function loadProfileStats(retrying){
   try{
     const [{ data: statsData, error: statsErr }, { data: profileData, error: profileErr }, { data: skillsData, error: skillsErr }] = await Promise.all([
       sb.rpc('get_player_stats'),
-      sb.from('profiles').select('username').eq('user_id', authUser.id).maybeSingle(),
+      sb.from('profiles').select('username, is_public').eq('user_id', authUser.id).maybeSingle(),
       // skills are the newest and least-proven RPC on this page, so this call
       // is wrapped to RESOLVE on failure rather than reject. a rejection here
       // would fail the whole Promise.all and blank the entire stats page over
@@ -4243,6 +4304,7 @@ async function loadProfileStats(retrying){
     if(profileErr) throw profileErr;
     profileStats = statsData;
     profileUsername = profileData ? profileData.username : null;
+    profileIsPublic = profileData ? profileData.is_public : true;
     // deliberately NOT thrown: the skills section renders its own failure state
     if(skillsErr){
       console.error('get_player_skills failed:', skillsErr && skillsErr.message, skillsErr);
@@ -4405,6 +4467,419 @@ function renderSkillsSection(){
     ${rows}`;
 }
 
+// ---------- Friends & Mailbox ----------
+async function loadFriendRequests(){
+  try{
+    const { data, error } = await sb
+      .from('friend_requests')
+      .select('id, requester_id, recipient_id, status, created_at, responded_at')
+      .or(`requester_id.eq.${authUser.id},recipient_id.eq.${authUser.id}`);
+    if(error) throw error;
+    state.friendRequests = data || [];
+
+    const otherIds = [...new Set(state.friendRequests.map(r => r.requester_id===authUser.id ? r.recipient_id : r.requester_id))];
+    if(otherIds.length){
+      const { data: profs, error: profErr } = await sb.from('profiles').select('user_id, username').in('user_id', otherIds);
+      if(profErr) throw profErr;
+      friendUsernames = {};
+      (profs||[]).forEach(p => { friendUsernames[p.user_id] = p.username; });
+    } else {
+      friendUsernames = {};
+    }
+  }catch(e){
+    console.error('friend request load failed', e);
+    state.friendRequests = [];
+    friendUsernames = {};
+  }
+}
+
+function incomingRequests(){ return (state.friendRequests||[]).filter(r=>r.status==='pending' && r.recipient_id===authUser.id); }
+function outgoingRequests(){ return (state.friendRequests||[]).filter(r=>r.status==='pending' && r.requester_id===authUser.id); }
+function acceptedFriends(){ return (state.friendRequests||[]).filter(r=>r.status==='accepted'); }
+function friendUserId(row){ return row.requester_id===authUser.id ? row.recipient_id : row.requester_id; }
+
+async function sendFriendRequest(username){
+  const val = (username||'').trim();
+  if(!val){ addFriendMsg = { type:'err', text:'Enter a username.' }; render(); return; }
+  friendActionBusy = true; render();
+  try{
+    const escaped = val.replace(/_/g, '\\_');
+    const { data: target, error: lookupErr } = await sb.from('profiles').select('user_id, username').ilike('username', escaped).maybeSingle();
+    if(lookupErr) throw lookupErr;
+    if(!target){ addFriendMsg = { type:'err', text:'No player with that username.' }; return; }
+    if(target.user_id === authUser.id){ addFriendMsg = { type:'err', text:"That's you." }; return; }
+    const { error: rpcErr } = await sb.rpc('send_friend_request', { target_user_id: target.user_id });
+    if(rpcErr) throw rpcErr;
+    addFriendInput = '';
+    addFriendMsg = { type:'ok', text: `Friend request sent to ${target.username}.` };
+    await loadFriendRequests();
+  }catch(e){
+    console.error('send friend request failed', e);
+    addFriendMsg = { type:'err', text: (e && e.message && e.message.includes('already exists')) ? 'A request or friendship already exists with this user.' : 'Could not send request - try again.' };
+  } finally {
+    friendActionBusy = false;
+    render();
+  }
+}
+
+async function respondFriendRequest(requestId, accept){
+  friendActionBusy = true; render();
+  try{
+    const { error } = await sb.rpc('respond_friend_request', { request_id: requestId, accept });
+    if(error) throw error;
+    await loadFriendRequests();
+  }catch(e){
+    console.error('respond to friend request failed', e);
+    toast('Could not update that request - try again.');
+  } finally {
+    friendActionBusy = false;
+    render();
+  }
+}
+
+async function cancelFriendRequest(requestId){
+  friendActionBusy = true; render();
+  try{
+    const { error } = await sb.rpc('cancel_friend_request', { request_id: requestId });
+    if(error) throw error;
+    await loadFriendRequests();
+  }catch(e){
+    console.error('cancel friend request failed', e);
+    toast('Could not cancel that request - try again.');
+  } finally {
+    friendActionBusy = false;
+    render();
+  }
+}
+
+async function removeFriend(otherUserId){
+  friendActionBusy = true; render();
+  try{
+    const { error } = await sb.rpc('remove_friend', { other_user_id: otherUserId });
+    if(error) throw error;
+    await loadFriendRequests();
+  }catch(e){
+    console.error('remove friend failed', e);
+    toast('Could not remove that friend - try again.');
+  } finally {
+    friendActionBusy = false;
+    render();
+  }
+}
+
+async function toggleProfileVisibility(){
+  const next = !profileIsPublic;
+  profileIsPublic = next; render(); // optimistic - a simple boolean flip on your own row
+  // update, not upsert: this only ever runs against a row that's guaranteed to
+  // already exist (post username-gate), and upsert's ON CONFLICT DO UPDATE
+  // still validates the candidate INSERT row's NOT NULL constraints - including
+  // username, which this payload doesn't carry - before it even checks for a
+  // conflict, so it was failing even though a matching row already existed.
+  const { error } = await sb.from('profiles').update({ is_public: next }).eq('user_id', authUser.id);
+  if(error){
+    console.error('visibility toggle failed', error);
+    profileIsPublic = !next;
+    toast('Could not update visibility - try again.');
+    render();
+  }
+}
+
+async function openPublicProfile(userId){
+  viewingProfileId = userId;
+  viewingProfileData = null;
+  viewingProfileLoading = true;
+  viewingBinders = [];
+  viewingFiledInstances = [];
+  viewingOpenBinderId = null;
+  viewingBinderPageIdx = 0;
+  render();
+  try{
+    const [{ data: profileData, error: profileErr }, { data: skillsData, error: skillsErr }, { data: bindersData, error: bindersErr }] = await Promise.all([
+      sb.rpc('get_public_profile', { target_user_id: userId }),
+      // same "degrade, don't fail the page" treatment as loadProfileStats -
+      // a skills or binders hiccup shouldn't blank out the rest of the visit
+      sb.rpc('get_player_skills', { p_user_id: userId }).then(r => r, e => ({ data: null, error: e })),
+      sb.rpc('get_public_binders', { target_user_id: userId }).then(r => r, e => ({ data: null, error: e }))
+    ]);
+    if(profileErr) throw profileErr;
+    viewingProfileData = {
+      ...profileData,
+      skills: skillsErr ? null : (Array.isArray(skillsData) ? skillsData[0] : skillsData) || null
+    };
+    if(bindersErr){
+      console.error('failed to load public binders', bindersErr && bindersErr.message, bindersErr);
+    } else {
+      viewingBinders = (bindersData && Array.isArray(bindersData.binders)) ? bindersData.binders : [];
+      viewingFiledInstances = (bindersData && Array.isArray(bindersData.filedInstances)) ? bindersData.filedInstances : [];
+    }
+  }catch(e){
+    console.error('failed to load public profile', e && e.message, e);
+    toast(e && e.message === 'profile is private' ? "That player's profile is private." : 'Could not load that profile - try again.');
+    viewingProfileId = null;
+    viewingProfileData = null;
+  } finally {
+    viewingProfileLoading = false;
+    render();
+  }
+}
+
+function closePublicProfile(){
+  viewingProfileId = null;
+  viewingProfileData = null;
+  viewingBinders = [];
+  viewingFiledInstances = [];
+  viewingOpenBinderId = null;
+  render();
+}
+
+// Resolves a filed uid against the minimal filedInstances subset the RPC
+// returned - never the owner's full instances array. A uid that doesn't
+// resolve (liquidated since filing) renders as an empty pocket, same
+// reconciliation rule as the owner's own binders.
+function viewingInstanceCard(uid){
+  const inst = viewingFiledInstances.find(x=>x.uid===uid);
+  if(!inst) return null;
+  const p = POKEMON.find(x=>x.id===inst.id);
+  if(!p) return null;
+  return { uid, id:p.id, name:p.name, type:p.type, sprite:p.sprite, value:p.value, shiny:!!inst.shiny, rarity:inst.rarity||p.rarity };
+}
+function viewingCountFilled(binder){
+  return (binder.pages||[]).reduce((n,p)=>n + p.filter(uid=>uid && viewingInstanceCard(uid)).length, 0);
+}
+
+function renderPublicBinderShelf(){
+  if(!viewingBinders.length){
+    return `<div class="section-label" style="margin-top:20px;">Binders</div><div style="color:var(--muted);font-size:12px;padding:8px 0;">No binders yet.</div>`;
+  }
+  const spinesHtml = viewingBinders.map(b => `
+    <div class="spine" style="background:${spineFace(b.color)};color:${b.textColor||'#07090a'};" data-view-binder="${b.id}">
+      <div class="spine-texture"></div>
+      <div class="spine-shine"></div>
+      <div class="spine-name">${esc(b.name)}</div>
+    </div>`).join('');
+  return `
+  <div class="section-label" style="margin-top:20px;">Binders</div>
+  <div class="shelfwrap">
+    <div class="shelfstage">
+      <div class="shelf-lighting"></div>
+      <div class="shelfcase">
+        <div class="shelfrow">
+          <div class="bookend bookend-left"></div>
+          ${spinesHtml}
+          <div class="bookend bookend-right"></div>
+        </div>
+        <div class="shelfledge"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderPublicBinderPage(){
+  const binder = viewingBinders.find(b=>b.id===viewingOpenBinderId);
+  if(!binder){ viewingOpenBinderId = null; return renderPublicBinderShelf(); }
+  const pages = binder.pages && binder.pages.length ? binder.pages : [new Array(9).fill(null)];
+  const pageIdx = Math.min(viewingBinderPageIdx, pages.length-1);
+  const pageArr = pages[pageIdx];
+
+  const cellsHtml = pageArr.map(uid=>{
+    const card = uid ? viewingInstanceCard(uid) : null;
+    if(card){
+      return `<div class="pocket">
+        <div class="pocket-lip"></div>
+        <div class="sleeve">
+          <div class="dexslot owned ${card.shiny?'shiny-card':''}" style="--slot-color:${rarityColor(card.rarity)};${card.shiny?`--shiny-hue:${shinyHue(card.id)}deg;`:''}">
+            ${renderPocketCard(card)}
+          </div>
+        </div>
+      </div>`;
+    }
+    return `<div class="pocket pocket-empty"><div class="pocket-note">Empty</div></div>`;
+  }).join('');
+
+  const pbg = `color-mix(in srgb, ${binder.color} 20%, var(--bg) 80%)`;
+
+  return `
+  <div class="dexhead">
+    <div class="dexhead-left">
+      <button class="iconbtn" data-viewbinder-close title="Back to Binders">&lsaquo;</button>
+      <h2 class="disp">${esc(binder.name)}</h2>
+      <div class="dexcount mono">${viewingCountFilled(binder)} / ${9*pages.length}</div>
+    </div>
+  </div>
+  ${binder.desc ? `<div class="mono" style="font-size:11.5px;color:var(--muted);margin:-6px 0 12px;">${esc(binder.desc)}</div>` : ''}
+
+  <div class="sheet3x3" style="--pbg:${pbg};">${cellsHtml}</div>
+
+  <div class="pagenav">
+    <button class="pagenavbtn" data-viewbinder-page-prev ${pageIdx===0?'disabled':''}>&lsaquo;</button>
+    <div class="pageindicator mono">Page ${pageIdx+1} / ${pages.length}</div>
+    <button class="pagenavbtn" data-viewbinder-page-next ${pageIdx===pages.length-1?'disabled':''}>&rsaquo;</button>
+  </div>
+  `;
+}
+
+function renderPublicProfile(){
+  if(viewingProfileLoading || !viewingProfileData){
+    return `
+    <button class="iconbtn" data-viewprofile-close title="Back">&lsaquo;</button>
+    <div class="section-label">Profile</div>
+    <div style="color:var(--muted);padding:20px 0;">Loading profile…</div>`;
+  }
+  const d = viewingProfileData;
+  const mvp = d.mostValuablePull;
+  const mvpPokemon = mvp ? POKEMON.find(p=>p.id===mvp.id) : null;
+  const mvpCard = mvpPokemon ? {
+    id: mvp.id, name: mvp.name, rarity: mvp.rarity, value: mvp.value,
+    shiny: mvp.shiny, type: mvpPokemon.type, sprite: mvpPokemon.sprite
+  } : null;
+
+  const favoriteUids = Array.isArray(d.favoriteUids) ? d.favoriteUids : [];
+  const favoriteInstances = Array.isArray(d.favoriteInstances) ? d.favoriteInstances : [];
+  const favCards = Array.from({ length: FAVORITE_SLOTS }, (_, i) => {
+    const uid = favoriteUids[i];
+    const inst = uid ? favoriteInstances.find(x => x.uid === uid) : null;
+    const fp = inst ? POKEMON.find(x => x.id === inst.id) : null;
+    return fp ? {
+      id: fp.id, name: fp.name, rarity: inst.rarity,
+      value: fp.value, shiny: inst.shiny, type: fp.type, sprite: fp.sprite
+    } : null;
+  });
+
+  const dex = d.dex || {};
+  const dexIds = Object.keys(dex).map(Number);
+  const genRows = GENS.map(g => {
+    const total = g.hi - g.lo + 1;
+    const owned = dexIds.filter(n => n >= g.lo && n <= g.hi).length;
+    const pct   = ((owned / total) * 100).toFixed(1);
+    return `<div class="stat-row"><span>% of ${g.label}</span><span class="mono">${pct}% (${owned}/${total})</span></div>`;
+  }).join('');
+  const dexOwned = dexIds.filter(n => n >= 1 && n <= DEX_TOTAL).length;
+  const dexPct   = ((dexOwned / DEX_TOTAL) * 100).toFixed(1);
+
+  const packRows = PACKS.map(p=>{
+    const count = (d.packsOpened && d.packsOpened[p.id]) || 0;
+    return `<div class="stat-row"><span>${esc(p.name)}</span><span class="mono">${count}</span></div>`;
+  }).join('');
+
+  return `
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <button class="iconbtn" data-viewprofile-close title="Back">&lsaquo;</button>
+    ${d.equippedBack && cardBackById(d.equippedBack)
+      ? `<div class="cb-swatch card-face card-back back-${esc(d.equippedBack)}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;"></div>`
+      : ''}
+    <h2 class="disp" style="margin:0;">${esc(d.username || 'Player')}</h2>
+  </div>
+
+  ${d.skills ? `<div class="section-label" style="margin-top:20px;">Skills</div>${renderSkillMap(d.skills)}` : ''}
+
+  <div class="section-label">Collection</div>
+  <div class="stat-row"><span>% of Full Dex</span><span class="mono">${dexPct}% (${dexOwned}/${DEX_TOTAL})</span></div>
+  ${genRows}
+  <div class="stat-row"><span># of Secret Rares Pulled</span><span class="mono">${d.secretPullsCount}</span></div>
+  <div class="stat-row"><span># of Shinies Found</span><span class="mono">${d.shinyPullsCount}</span></div>
+
+  <div class="stats-card-display">
+    <div class="stats-card-col">
+      <div class="section-label" style="margin:0;">Most Valuable Pull</div>
+      ${mvpCard
+        ? renderCardFace(mvpCard, true)
+        : `<div class="stats-card-empty">No pulls recorded yet.</div>`}
+    </div>
+  </div>
+
+  <div class="section-label" style="margin-top:20px;">Favorite Cards</div>
+  <div class="stats-card-display">
+    ${favCards.map((c, i) => `
+      <div class="stats-card-col">
+        <div class="section-label" style="margin:0;">Slot ${i + 1}</div>
+        ${c
+          ? renderCardFace(c, true)
+          : `<div class="stats-card-empty">No favorite in this slot.</div>`}
+      </div>`).join('')}
+  </div>
+
+  <div class="section-label" style="margin-top:20px;">Badges <span class="mono" style="color:var(--muted);letter-spacing:0;">${earnedBadgeCount(dex)}/${BADGES.length}</span></div>
+  ${renderBadgeGrid(dex)}
+
+  <div class="section-label" style="margin-top:20px;">Packs Opened by Tier</div>
+  ${packRows}
+
+  ${viewingOpenBinderId ? renderPublicBinderPage() : renderPublicBinderShelf()}
+  `;
+}
+
+function lockIcon(open){
+  return open
+    ? `<svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="12" height="8" rx="1.5"/><path d="M6.5 9V6.5a3.5 3.5 0 0 1 6.5-1.8"/></svg>`
+    : `<svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="12" height="8" rx="1.5"/><path d="M6.5 9V6.5a3.5 3.5 0 0 1 7 0V9"/></svg>`;
+}
+
+function renderMailbox(){
+  if(!mailboxOpen) return '';
+  const incoming = incomingRequests();
+  const outgoing = outgoingRequests();
+  const friends = acceptedFriends();
+  const nameFor = row => esc(friendUsernames[friendUserId(row)] || 'Unknown player');
+
+  const incomingHtml = incoming.length
+    ? incoming.map(r => `
+      <div class="friend-row">
+        <span>${nameFor(r)}</span>
+        <span class="fr-actions">
+          <button class="frbtn accept" data-friend-accept="${r.id}" ${friendActionBusy?'disabled':''}>Accept</button>
+          <button class="frbtn decline" data-friend-decline="${r.id}" ${friendActionBusy?'disabled':''}>Decline</button>
+        </span>
+      </div>`).join('')
+    : `<div style="color:var(--muted);font-size:12px;padding:8px 0;">No incoming requests.</div>`;
+
+  const outgoingHtml = outgoing.length
+    ? outgoing.map(r => `
+      <div class="friend-row">
+        <span>${nameFor(r)} <span style="color:var(--muted);font-size:11px;">pending</span></span>
+        <span class="fr-actions">
+          <button class="frbtn cancel" data-friend-cancel="${r.id}" ${friendActionBusy?'disabled':''}>Cancel</button>
+        </span>
+      </div>`).join('')
+    : `<div style="color:var(--muted);font-size:12px;padding:8px 0;">No sent requests.</div>`;
+
+  const friendsHtml = friends.length
+    ? friends.map(r => `
+      <div class="friend-row">
+        <button class="frname" data-view-profile="${friendUserId(r)}">${nameFor(r)}</button>
+        <span class="fr-actions">
+          <button class="frbtn remove" data-friend-remove="${friendUserId(r)}" ${friendActionBusy?'disabled':''}>Remove</button>
+        </span>
+      </div>`).join('')
+    : `<div style="color:var(--muted);font-size:12px;padding:8px 0;">No friends yet.</div>`;
+
+  return `
+  <div class="overlay">
+    <button class="closex" data-mailbox-close>&times;</button>
+    <div class="summary-panel" style="max-width:460px;align-items:stretch;">
+      <div style="font-family:var(--font-display);font-weight:800;font-size:16px;text-transform:uppercase;text-align:center;">Friends</div>
+
+      <div>
+        <div class="mono" style="font-size:10.5px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Add Friend</div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="addFriendInput" placeholder="Username" value="${esc(addFriendInput)}"
+            style="flex:1;background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:9px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;" />
+          <button class="sbtn keep" data-friend-send ${friendActionBusy?'disabled':''}>Send</button>
+        </div>
+        ${addFriendMsg ? `<div style="font-size:11.5px;margin-top:6px;color:${addFriendMsg.type==='err'?'#ff4444':'#39ff14'};">${esc(addFriendMsg.text)}</div>` : ''}
+      </div>
+
+      <div class="navrow" style="margin:0;">
+        <button class="navbtn ${mailboxTab==='requests'?'active':''}" data-mailbox-tab="requests">Requests${incoming.length?` (${incoming.length})`:''}</button>
+        <button class="navbtn ${mailboxTab==='friends'?'active':''}" data-mailbox-tab="friends">Friends (${friends.length})</button>
+      </div>
+
+      ${mailboxTab==='requests'
+        ? `<div class="section-label" style="margin:0;">Incoming</div>${incomingHtml}<div class="section-label">Sent</div>${outgoingHtml}`
+        : friendsHtml}
+    </div>
+  </div>`;
+}
+
 function renderProfile(){
   if(!authUser){
     return `<div class="section-label">Profile</div><div style="color:var(--muted);padding:20px 0;">Sign in to view your profile and stats.</div>`;
@@ -4461,6 +4936,10 @@ function renderProfile(){
       ? `<div class="cb-swatch card-face card-back back-${esc(state.equippedBack)}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;"></div>`
       : ''}
     <h2 class="disp" style="margin:0;">${esc(profileUsername || 'Profile')}</h2>
+    <button class="visibility-pill ${profileIsPublic?'is-public':'is-private'}" style="margin-left:auto;" data-profile-visibility
+      title="${profileIsPublic ? 'Anyone can view your profile and stats. Click to make it visible to friends only.' : 'Only friends can view your profile and stats. Click to make it public.'}">
+      ${lockIcon(profileIsPublic)}<span>${profileIsPublic ? 'Public' : 'Private'}</span>
+    </button>
   </div>
 
   ${renderSkillsSection()}
@@ -5287,7 +5766,13 @@ function render(){
         </div>
       </div>
       ${authUser
-        ? `<div class="balance"><span class="tick">Balance</span><span class="val mono"><i class="hex-icon"></i>${fmtHex(state.hex)}</span></div>`
+        ? `<div style="grid-column:3;justify-self:end;display:flex;align-items:center;gap:10px;">
+             <button class="mailbtn" data-mailbox-open aria-label="Friends and requests" title="Friends and requests">
+               <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="16" height="12" rx="1.5"/><path d="M2.5 5 10 11 17.5 5"/></svg>
+               ${incomingRequests().length ? `<span class="mailbadge">${incomingRequests().length}</span>` : ''}
+             </button>
+             <div class="balance"><span class="tick">Balance</span><span class="val mono"><i class="hex-icon"></i>${fmtHex(state.hex)}</span></div>
+           </div>`
         : ''
       }
     </div>
@@ -5303,7 +5788,7 @@ function render(){
     </div>
     ${!authUser ? `<div class="cta-account-row"><button class="cta-account-link" data-createaccount>SIGN IN OR CREATE AN ACCOUNT TO PLAY</button></div>` : ''}
     <div class="wrap">
-      ${view==='open'?renderOpen():(view==='market'?renderMarket():(view==='shop'?renderShopBonus():(view==='profile'?renderProfile():(view==='howto'?renderHowTo():renderDex()))))}
+      ${viewingProfileId ? renderPublicProfile() : (view==='open'?renderOpen():(view==='market'?renderMarket():(view==='shop'?renderShopBonus():(view==='profile'?renderProfile():(view==='howto'?renderHowTo():renderDex())))))}
       <div class="footer-actions"><button class="reset-link" data-reset>[burn everything]</button><img class="sigil" alt="" title="333" src="data:image/png;base64,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"><span class="reset-link" style="cursor:default;text-decoration:none;">[dev.dungeon]</span></div>
     </div>
     <div class="signoutbtn-row">
@@ -5312,6 +5797,7 @@ function render(){
     </div>
     ${opening?renderOpening():''}
     ${renderResetConfirmModal()}
+    ${renderMailbox()}
   `;
   wire();
 }
@@ -5405,6 +5891,66 @@ function speakerIcon(off){
 }
 
 function wire(){
+  const mailBtn = document.querySelector('[data-mailbox-open]');
+  if(mailBtn) mailBtn.onclick = ()=>{ mailboxOpen = true; mailboxTab = 'requests'; render(); };
+  document.querySelectorAll('[data-mailbox-close]').forEach(b=>b.onclick=()=>{
+    mailboxOpen = false;
+    addFriendMsg = null;
+    render();
+  });
+  document.querySelectorAll('[data-mailbox-tab]').forEach(b=>b.onclick=()=>{
+    mailboxTab = b.dataset.mailboxTab;
+    render();
+  });
+  const addFriendInputEl = document.getElementById('addFriendInput');
+  if(addFriendInputEl) addFriendInputEl.oninput = ()=>{
+    // no render() here on purpose - same reasoning as binderNameInput above:
+    // render() rebuilds innerHTML, which would drop focus mid-keystroke.
+    addFriendInput = addFriendInputEl.value;
+  };
+  document.querySelectorAll('[data-friend-send]').forEach(b=>b.onclick=()=>{
+    sendFriendRequest(addFriendInput);
+  });
+  document.querySelectorAll('[data-friend-accept]').forEach(b=>b.onclick=()=>{
+    respondFriendRequest(b.dataset.friendAccept, true);
+  });
+  document.querySelectorAll('[data-friend-decline]').forEach(b=>b.onclick=()=>{
+    respondFriendRequest(b.dataset.friendDecline, false);
+  });
+  document.querySelectorAll('[data-friend-cancel]').forEach(b=>b.onclick=()=>{
+    cancelFriendRequest(b.dataset.friendCancel);
+  });
+  document.querySelectorAll('[data-friend-remove]').forEach(b=>b.onclick=()=>{
+    removeFriend(b.dataset.friendRemove);
+  });
+  document.querySelectorAll('[data-profile-visibility]').forEach(b=>b.onclick=()=>{
+    toggleProfileVisibility();
+  });
+  document.querySelectorAll('[data-view-profile]').forEach(b=>b.onclick=()=>{
+    mailboxOpen = false;
+    openPublicProfile(b.dataset.viewProfile);
+  });
+  document.querySelectorAll('[data-viewprofile-close]').forEach(b=>b.onclick=()=>{
+    closePublicProfile();
+  });
+  document.querySelectorAll('[data-view-binder]').forEach(b=>b.onclick=()=>{
+    viewingOpenBinderId = b.dataset.viewBinder;
+    viewingBinderPageIdx = 0;
+    render();
+  });
+  document.querySelectorAll('[data-viewbinder-close]').forEach(b=>b.onclick=()=>{
+    viewingOpenBinderId = null;
+    render();
+  });
+  document.querySelectorAll('[data-viewbinder-page-prev]').forEach(b=>b.onclick=()=>{
+    viewingBinderPageIdx = Math.max(0, viewingBinderPageIdx - 1);
+    render();
+  });
+  document.querySelectorAll('[data-viewbinder-page-next]').forEach(b=>b.onclick=()=>{
+    viewingBinderPageIdx = viewingBinderPageIdx + 1;
+    render();
+  });
+
   const muteBtn = document.querySelector('[data-mute]');
   if(muteBtn) muteBtn.onclick = ()=>{
     setMuted(!muted);
@@ -5440,6 +5986,11 @@ function wire(){
       dexAddSpeciesId = null;
       dexAddUid = null;
     }
+    viewingProfileId = null;
+    viewingProfileData = null;
+    viewingBinders = [];
+    viewingFiledInstances = [];
+    viewingOpenBinderId = null;
     view=b.dataset.nav;
     if(view==='profile' && authUser) loadProfileStats();
     if(view==='market' && authUser && !pnlSeries && !pnlLoading) loadPnlSeries();
