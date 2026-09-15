@@ -1728,6 +1728,190 @@ html,body{ max-width:100%; overflow-x:hidden; }
 .skill-summary .val.alt{color:var(--gold);}
 .skillmap{max-width:340px;margin:0 auto 14px;}
 .skillmap svg{width:100%;height:auto;display:block;overflow:visible;}
+
+/* ---------- Binder Shelf ---------- */
+.shelfentry{
+  margin:0 0 14px;padding:13px 15px;border-radius:10px;cursor:pointer;
+  background:var(--surface2);border:1px solid var(--foil1);
+  box-shadow:0 0 10px rgba(57,255,20,0.18);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.shelfentry-label{
+  font-family:var(--font-display);font-weight:800;font-size:13px;
+  letter-spacing:0.04em;text-transform:uppercase;color:var(--foil1);
+}
+.shelfentry-sub{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;}
+.iconbtn{
+  width:28px;height:28px;flex:0 0 auto;border-radius:7px;border:1px solid var(--line);
+  background:var(--surface2);color:var(--text);font-size:16px;line-height:1;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;
+}
+.shelfwrap{display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px 0 30px;}
+.shelfstage{position:relative;padding-top:22px;width:100%;max-width:520px;}
+.shelf-lighting{
+  position:absolute;top:-14px;left:0;right:0;height:120px;
+  background:radial-gradient(ellipse 80% 100% at 50% 0%, rgba(255,255,255,0.10), transparent 72%);
+  pointer-events:none;
+}
+.shelfcase{position:relative;display:flex;flex-direction:column;}
+.shelfrow{display:flex;gap:6px;align-items:flex-end;}
+/* Placeholder end caps - a spot for real bookend art later without
+   touching the row layout. */
+.bookend{
+  width:12px;flex:0 0 auto;align-self:stretch;border-radius:4px;
+  background:linear-gradient(180deg,var(--surface2),var(--surface));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,0.05), 0 8px 14px rgba(0,0,0,0.5);
+}
+.spine{
+  flex:1 1 0;min-width:0;height:190px;border-radius:8px 8px 4px 4px;
+  display:flex;align-items:center;justify-content:center;padding:8px 0;
+  cursor:pointer;position:relative;overflow:hidden;
+  border:1px solid rgba(0,0,0,0.4);
+  box-shadow:0 8px 14px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+.spine-texture{
+  position:absolute;inset:0;pointer-events:none;mix-blend-mode:overlay;
+  background-image:
+    repeating-linear-gradient(112deg, rgba(0,0,0,0.16) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(22deg, rgba(255,255,255,0.10) 0 1px, transparent 1px 3px);
+}
+.spine-shine{
+  position:absolute;top:0;left:6%;width:16%;height:100%;
+  background:linear-gradient(180deg,rgba(255,255,255,0.28),rgba(255,255,255,0));
+  pointer-events:none;
+}
+.spine-name{
+  writing-mode:vertical-rl;text-orientation:mixed;font-size:16px;
+  font-family:var(--font-display);font-weight:800;
+  letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-height:100%;
+  text-shadow:0 1px 2px rgba(0,0,0,0.25);
+}
+.spine-empty{background:transparent;border:1.5px dashed var(--line);color:var(--muted);box-shadow:none;}
+.spine-plus{font-size:20px;font-weight:700;color:var(--muted);}
+.shelfledge{
+  height:12px;border-radius:0 0 4px 4px;
+  background:linear-gradient(180deg,var(--surface2),var(--surface));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.05), 0 6px 12px rgba(0,0,0,0.5);
+}
+.shelfhint{text-align:center;font-size:11px;color:var(--muted);}
+
+/* ---------- Binder color picker: a hexagon of hexagons, PokeHex-style ---------- */
+.hexwrap{display:flex;flex-direction:column;align-items:center;gap:0;padding:4px 0;}
+.hexrow{display:flex;gap:5px;}
+.hexrow:not(:first-child){margin-top:-7px;}
+.hexrow:nth-child(even){margin-left:18px;}
+.swatch{
+  width:32px;aspect-ratio:1;cursor:pointer;
+  clip-path:polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,0.18);
+  transition:transform 0.12s ease;
+}
+.swatch.sel{
+  filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 9px rgba(57,255,20,0.65));
+  transform:scale(1.16);
+}
+
+/* ---------- Binder Page View ---------- */
+.reorderhint{font-size:11px;color:var(--muted);text-align:center;margin:0 0 12px;line-height:1.4;min-height:1.4em;}
+.reorderhint.active{color:var(--foil1);}
+/* One continuous plastic page tinted with the binder's own color, not nine
+   separate floating tiles - the borders between pockets are seams in that
+   one sheet, and it gets a single diagonal sheen rather than each card
+   getting its own. */
+.sheet3x3{
+  position:relative;overflow:hidden;
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+  gap:0;aspect-ratio:3/4;max-width:420px;margin:0 auto 18px;border-radius:12px;
+  background:var(--pbg, rgba(255,255,255,0.035));
+  border:1px solid rgba(255,255,255,0.08);
+  box-shadow:inset 0 0 30px rgba(0,0,0,0.3), 0 8px 20px rgba(0,0,0,0.45);
+}
+.sheet3x3::before{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:1;
+  background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,0.09) 46%,rgba(255,255,255,0.02) 58%,transparent 75%);
+}
+.pocket{
+  position:relative;display:flex;align-items:flex-end;justify-content:center;
+  min-width:0;min-height:0;padding:6px 6px 8px;cursor:pointer;
+  border-right:1px solid rgba(255,255,255,0.12);border-bottom:1px solid rgba(255,255,255,0.12);
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;
+}
+.pocket:nth-child(3n){border-right:none;}
+.pocket:nth-child(n+7){border-bottom:none;}
+/* Cards are pushed in from the top of the pocket, so a strip of clear page
+   shows above them, with a lip highlight marking the opening. */
+.pocket-lip{position:absolute;top:5px;left:18%;right:18%;height:2px;border-radius:2px;background:rgba(255,255,255,0.24);pointer-events:none;z-index:2;}
+.sleeve{position:relative;width:100%;height:88%;display:flex;align-items:flex-end;justify-content:center;pointer-events:none;}
+.sleeve .dexslot{width:auto;height:100%;aspect-ratio:3/4;padding:4px;}
+.pocket .lifted-note{
+  display:none;position:absolute;inset:0;align-items:center;justify-content:center;
+  text-align:center;font-size:10px;line-height:1.3;color:var(--foil1);
+  background:rgba(6,6,14,0.75);padding:6px;z-index:3;
+}
+.pocket.mid-lift .sleeve{opacity:0.15;}
+.pocket.mid-lift .lifted-note{display:flex;}
+.pocket .swap-badge{
+  position:absolute;top:50%;left:8%;right:8%;transform:translateY(-50%);z-index:4;
+  text-align:center;background:rgba(6,6,14,0.85);color:var(--foil1);
+  font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:0.03em;
+  border-radius:5px;padding:4px 0;
+}
+.pocket-empty{display:flex;align-items:center;justify-content:center;}
+.pocket-empty .pocket-note{font-size:10px;color:var(--muted);text-align:center;line-height:1.3;pointer-events:none;}
+.pocket-empty.place-target{box-shadow:inset 0 0 0 2px var(--foil1), 0 0 10px rgba(57,255,20,0.35);}
+.pocket-empty.place-target .pocket-note{color:var(--foil1);}
+/* Every valid target says up front what tapping it does - there's no
+   hover-then-decide on touch, so a blocked pocket (filing onto an occupied
+   one) has to look inert before the tap, not after. */
+.pocket.blocked{opacity:0.4;cursor:default;}
+.pagenav{display:flex;align-items:center;justify-content:center;gap:16px;margin:6px 0 20px;}
+.pagenavbtn{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--surface2);color:var(--text);font-size:16px;cursor:pointer;}
+.pagenavbtn:disabled{opacity:0.3;cursor:default;}
+.pageindicator{font-size:11px;color:var(--muted);}
+.carrytag{color:var(--foil1);margin-left:4px;}
+.carrybar{
+  position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));
+  display:flex;align-items:center;gap:10px;max-width:396px;margin:0 auto;
+  background:var(--surface2);border:1px solid var(--foil1);border-radius:10px;
+  padding:8px 10px;box-shadow:0 0 14px rgba(57,255,20,0.25),0 8px 20px rgba(0,0,0,0.5);
+  z-index:45;
+}
+.carrybar-thumb{
+  width:36px;height:36px;flex:0 0 auto;border-radius:6px;overflow:hidden;
+  background:var(--surface);border:1.5px solid var(--slot-color,var(--rare));
+  display:flex;align-items:center;justify-content:center;
+}
+.carrybar-thumb img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated;}
+.carrytext{flex:1;min-width:0;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ---------- Binder Inspect: hold the card to tilt it ---------- */
+.inspect-overlay .closex{z-index:2;}
+.inspect-glow{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:340px;height:340px;border-radius:50%;
+  filter:blur(30px);opacity:0.55;pointer-events:none;z-index:0;
+}
+@media (min-width:721px){ .inspect-glow{width:420px;height:420px;} }
+.inspect-card-wrap{position:relative;z-index:1;cursor:grab;touch-action:none;}
+.inspect-card-wrap .already-owned-badge{display:none;}
+.inspect-card-wrap .flame-aura{animation:none;box-shadow:none;}
+.inspect-card-wrap .card-slot{width:210px;height:292px;user-select:none;-webkit-user-select:none;}
+@media (min-width:721px){ .inspect-card-wrap .card-slot{width:260px;height:361px;} }
+
+/* ---------- Dex -> binder filing sheet ---------- */
+.dexgrid .dexslot.owned{cursor:pointer;}
+.chooserow{
+  display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;
+  background:var(--surface2);border:1px solid var(--line);cursor:pointer;
+  text-align:left;font-family:inherit;color:var(--text);width:100%;
+}
+.chooserow:disabled{opacity:0.45;cursor:default;}
+.chooserow-dot{width:14px;height:14px;border-radius:4px;flex:0 0 auto;}
+.chooserow-num{font-size:11px;color:var(--muted);flex:0 0 auto;}
+.chooserow-text{flex:1;min-width:0;font-size:12.5px;}
+.chooserow-name{font-size:12.5px;font-weight:700;}
+.chooserow-sub{font-size:10px;color:var(--muted);margin-top:1px;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -2500,6 +2684,59 @@ let dexTypeFilter = '';
 let dexShinyOnly = false;
 let dexSearch = '';
 const titleType = t => t.charAt(0).toUpperCase() + t.slice(1);
+
+// Binder Shelf lives as a tab on the Dex page, not a separate top-level
+// view - 'dex' is the normal collection grid, 'shelf' is the binder shelf.
+// Resets to 'dex' on leaving the Dex page entirely (same [data-nav] hook
+// that clears the dex filters), so returning to Dex always lands on the
+// grid rather than wherever the player left the shelf.
+let dexTab = 'dex';
+let binderSheetOpen = false;
+let editingBinderId = null;      // null = creating a new binder, else the id being edited
+let deleteBinderConfirm = false; // delete-confirmation step within the edit sheet
+let binderDraft = { name:'', desc:'', color:'' };
+
+// Dex -> binder filing flow. Tapping an owned Dex tile opens this; which
+// specific copy only needs asking when there's a real choice (a dupe or a
+// shiny alongside a normal one).
+let dexAddOpen = false;
+let dexAddSpeciesId = null;
+let dexAddUid = null;
+
+// Vibrant hues fading into a black-to-white ramp - not tied to TYPE_COLORS
+// or RARITY, since a binder's color is purely cosmetic and "at least the
+// type colors, but more, and funkier" was the ask. Four rows of seven.
+const BINDER_SWATCHES = [
+  { hex:'#FF1744', text:'#f5f5f0' }, { hex:'#FF6E40', text:'#07090a' }, { hex:'#FF9100', text:'#07090a' },
+  { hex:'#FFC400', text:'#07090a' }, { hex:'#FFEA00', text:'#07090a' }, { hex:'#C6FF00', text:'#07090a' }, { hex:'#76FF03', text:'#07090a' },
+  { hex:'#00E676', text:'#07090a' }, { hex:'#1DE9B6', text:'#07090a' }, { hex:'#00E5FF', text:'#07090a' }, { hex:'#00B0FF', text:'#f5f5f0' },
+  { hex:'#2979FF', text:'#f5f5f0' }, { hex:'#3D5AFE', text:'#f5f5f0' }, { hex:'#651FFF', text:'#f5f5f0' },
+  { hex:'#D500F9', text:'#f5f5f0' }, { hex:'#F50057', text:'#f5f5f0' }, { hex:'#FF4081', text:'#f5f5f0' }, { hex:'#FF80AB', text:'#07090a' },
+  { hex:'#EA80FC', text:'#07090a' }, { hex:'#8C9EFF', text:'#07090a' }, { hex:'#84FFFF', text:'#07090a' },
+  { hex:'#141414', text:'#f5f5f0' }, { hex:'#3A3A3A', text:'#f5f5f0' }, { hex:'#5E5E5E', text:'#f5f5f0' },
+  { hex:'#828282', text:'#07090a' }, { hex:'#A8A8A8', text:'#07090a' }, { hex:'#CFCFCF', text:'#07090a' }, { hex:'#F5F5F5', text:'#07090a' }
+];
+const BINDER_MAX_COUNT = 6;
+const BINDER_NAME_MAX = 9;
+const BINDER_MAX_CARDS = 180;
+const BINDER_MAX_PAGES = BINDER_MAX_CARDS / 9;
+
+// Binder Page View - open binder, its current page, and the reorder gesture.
+// None of this is persisted; it's rebuilt from state.binders each time a
+// binder is opened. carrying/inspect are pure UI state, same as dexSearch.
+let openBinderId = null;
+let binderPage = 0;
+let carrying = null;   // { source:'reorder', fromPage, fromSlot, uid }
+let inspectUid = null; // uid of the instance shown in the enlarged inspect view
+
+// Press-hold bookkeeping for the pocket reorder gesture. These are plain
+// module vars, not state - resetting them never needs a render().
+const PRESS_HOLD_MS = 450;
+let pressTimer = null;
+let pressFired = false;
+let lastTouchAt = 0;
+let inspectPressed = false;
+
 function dexFiltersActive(){
   return dexHideEmpty || !!dexTypeFilter || dexShinyOnly || !!dexSearch;
 }
@@ -2587,6 +2824,23 @@ async function loadState(){
   if(state.valueHistory===undefined) state.valueHistory = [];
   if(state.longHistory===undefined) state.longHistory = [];
 
+  // Binders live in their own table, not game_states_v2 - they're not
+  // economy state (nothing reads them back to compute HEX or ownership),
+  // so the client reads/writes this one directly instead of through an
+  // RPC. A failure here shouldn't block the rest of the game from loading.
+  try{
+    const { data: binderRow, error: binderErr } = await sb
+      .from('player_binders')
+      .select('binders')
+      .eq('user_id', authUser.id)
+      .maybeSingle();
+    if(binderErr) throw binderErr;
+    state.binders = (binderRow && Array.isArray(binderRow.binders)) ? binderRow.binders : [];
+  }catch(e){
+    console.error('binder load failed', e);
+    state.binders = [];
+  }
+
   recordVaultValue();
   render();
 }
@@ -2609,6 +2863,27 @@ async function doSave(){
   }catch(e){
     console.error('save failed', e);
     toast('Save failed - check your connection.');
+  }
+}
+
+// Binders: direct client write to player_binders (see loadState) - every
+// binder mutation (create/rename/delete, file a card, reorder) calls this
+// after updating state.binders, same debounce pattern as saveState above.
+let saveBindersTimer = null;
+function saveBinders(){
+  clearTimeout(saveBindersTimer);
+  saveBindersTimer = setTimeout(doSaveBinders, 250);
+}
+async function doSaveBinders(){
+  if(!authUser) return;
+  try{
+    const { error } = await sb
+      .from('player_binders')
+      .upsert({ user_id: authUser.id, binders: state.binders }, { onConflict: 'user_id' });
+    if(error) throw error;
+  }catch(e){
+    console.error('binder save failed', e);
+    toast('Binder save failed - check your connection.');
   }
 }
 
@@ -4331,6 +4606,8 @@ ${backToTopBtn()}
 }
 
 function renderDex(){
+  if(dexTab === 'shelf') return renderBinderShelf();
+  if(dexTab === 'page') return renderBinderPage();
   const owned = state.dex;
   // Shiny indication is ownership-based, derived from instances - not from the
   // dex entry. Liquidate the shiny and the dex forgets it. Lifetime credit for
@@ -4366,6 +4643,12 @@ function renderDex(){
       <div class="key-item"><span class="key-dot" style="--dot-color:var(--secret)"></span>Secret</div>
     </div>
   </div>
+
+  <div class="shelfentry" data-openshelf>
+    <div class="shelfentry-label">Binder Shelf</div>
+    <div class="shelfentry-sub">${(state.binders||[]).length} / ${BINDER_MAX_COUNT} &rsaquo;</div>
+  </div>
+
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
     ${GENS.map(g => tabBtn(g.n, g.label)).join('')}
     <span class="mono" style="font-size:10px;color:var(--muted);">${genOwned}/${genList.length}</span>
@@ -4400,7 +4683,7 @@ function renderDex(){
     ${list.map(p=>{
       const o = owned[p.id];
       const color = TYPE_COLORS[p.type];
-      return `<div class="dexslot ${o?'owned':''} ${o && shinyIds.has(p.id) ? 'shiny-card' : ''}" style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};${o && shinyIds.has(p.id) ? `--shiny-hue:${shinyHue(p.id)}deg;` : ''}">
+      return `<div class="dexslot ${o?'owned':''} ${o && shinyIds.has(p.id) ? 'shiny-card' : ''}" ${o?`data-species="${p.id}"`:''} style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};${o && shinyIds.has(p.id) ? `--shiny-hue:${shinyHue(p.id)}deg;` : ''}">
         <span class="num mono">#${String(p.id).padStart(3,'0')}</span>
         ${o && shinyIds.has(p.id) ? `<div class="shiny-sparkle-overlay"></div><span style="position:absolute;top:2px;right:4px;color:gold;font-size:12px;text-shadow:0 0 5px gold;z-index:3;" title="Shiny owned">★</span>` : ''}
         <div class="glyph">
@@ -4412,7 +4695,345 @@ function renderDex(){
   </div>
 
   ${backToTopBtn()}
+  ${renderDexAddSheet()}
   `;
+}
+
+function spineFace(color){
+  return `linear-gradient(180deg, ${color}, color-mix(in srgb, ${color} 65%, black 35%))`;
+}
+
+function renderDexAddSheet(){
+  if(!dexAddOpen) return '';
+  const p = POKEMON.find(x=>x.id===dexAddSpeciesId);
+  if(!p) return '';
+  const avail = availableInstancesFor(dexAddSpeciesId);
+
+  if(!avail.length){
+    return `<div class="overlay">
+      <div class="summary-panel" style="max-width:380px;">
+        <div style="font-family:var(--font-display);font-weight:800;font-size:15px;text-transform:uppercase;text-align:center;">${esc(p.name)}</div>
+        <div style="font-size:12.5px;text-align:center;color:var(--muted);line-height:1.5;">Every copy of ${esc(p.name)} you own is already filed in a binder.</div>
+        <div class="summary-actions"><button class="sbtn keep" data-dexadd-close>Close</button></div>
+      </div>
+    </div>`;
+  }
+
+  // Which copy only needs asking when there's a real choice - a dupe or a
+  // shiny alongside a normal one.
+  if(avail.length > 1 && !dexAddUid){
+    return `<div class="overlay">
+      <div class="summary-panel" style="max-width:380px;align-items:stretch;">
+        <div style="font-family:var(--font-display);font-weight:800;font-size:15px;text-transform:uppercase;text-align:center;">Which ${esc(p.name)}?</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${avail.map(inst=>`
+            <button class="chooserow" data-dexadd-pick="${inst.uid}">
+              <span class="mono chooserow-num">#${String(p.id).padStart(3,'0')}</span>
+              <span class="chooserow-text">${inst.shiny?'&#9733; Shiny ':''}${(RARITY[inst.rarity]||RARITY.common).label}</span>
+            </button>
+          `).join('')}
+        </div>
+        <div class="summary-actions"><button class="sbtn sell" data-dexadd-close>Cancel</button></div>
+      </div>
+    </div>`;
+  }
+
+  const uid = dexAddUid || avail[0].uid;
+  const binders = state.binders || [];
+  return `<div class="overlay">
+    <div class="summary-panel" style="max-width:380px;align-items:stretch;">
+      <div style="font-family:var(--font-display);font-weight:800;font-size:15px;text-transform:uppercase;text-align:center;">File ${esc(p.name)} in&hellip;</div>
+      ${binders.length === 0 ? `
+        <div style="font-size:12.5px;text-align:center;color:var(--muted);line-height:1.5;">You don't have a binder yet.</div>
+        <div class="summary-actions"><button class="sbtn keep" data-dexadd-goto-shelf>Create a Binder</button></div>
+      ` : `
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${binders.map(b=>{
+            const filled = countFilled(b);
+            const isFull = filled >= BINDER_MAX_CARDS;
+            return `<button class="chooserow" ${isFull?'disabled':''} data-dexadd-binder="${b.id}" data-dexadd-uid="${uid}">
+              <span class="chooserow-dot" style="background:${b.color};"></span>
+              <span class="chooserow-text">
+                <div class="chooserow-name">${esc(b.name)}</div>
+                <div class="mono chooserow-sub">${isFull?'Full &middot; ':''}${filled} / ${BINDER_MAX_CARDS}</div>
+              </span>
+            </button>`;
+          }).join('')}
+        </div>
+      `}
+      <div class="summary-actions"><button class="sbtn sell" data-dexadd-close>Cancel</button></div>
+    </div>
+  </div>`;
+}
+
+function addCardToBinder(binderId, uid){
+  const binder = binderById(binderId);
+  if(!binder) return;
+  let pages = binder.pages.map(p=>p.slice());
+  let pageIdx = pages.findIndex(p=>p.some(c=>!slotIsFilled(c)));
+  if(pageIdx === -1){
+    if(pages.length >= BINDER_MAX_PAGES) return;
+    pages = pages.concat([new Array(9).fill(null)]);
+    pageIdx = pages.length - 1;
+    state.binders = state.binders.map(b => b.id===binderId ? Object.assign({}, b, { pages }) : b);
+    saveBinders();
+  }
+  dexAddOpen = false;
+  dexAddSpeciesId = null;
+  dexAddUid = null;
+  openBinderId = binderId;
+  binderPage = pageIdx;
+  // Land on the page with room and let the player tap exactly which pocket
+  // it goes in, rather than guessing the first empty slot for them.
+  carrying = { source:'dex', uid };
+  dexTab = 'page';
+  render();
+}
+
+function renderBinderShelf(){
+  const binders = state.binders || [];
+  const spinesHtml = [];
+  for(let i=0;i<BINDER_MAX_COUNT;i++){
+    const b = binders[i];
+    spinesHtml.push(b
+      ? `<div class="spine" style="background:${spineFace(b.color)};color:${b.textColor||'#07090a'};" data-openbinder="${b.id}">
+           <div class="spine-texture"></div>
+           <div class="spine-shine"></div>
+           <div class="spine-name">${esc(b.name)}</div>
+         </div>`
+      : `<div class="spine spine-empty" data-createbinder>
+           <div class="spine-plus">+</div>
+         </div>`
+    );
+  }
+  return `
+  <div class="dexhead">
+    <div class="dexhead-left">
+      <button class="iconbtn" data-closeshelf title="Back to Dex">&lsaquo;</button>
+      <h2 class="disp">Binder Shelf</h2>
+      <div class="dexcount mono">${binders.length} / ${BINDER_MAX_COUNT}</div>
+    </div>
+  </div>
+
+  <div class="shelfwrap">
+    <div class="shelfstage">
+      <div class="shelf-lighting"></div>
+      <div class="shelfcase">
+        <div class="shelfrow">
+          <div class="bookend bookend-left"></div>
+          ${spinesHtml.join('')}
+          <div class="bookend bookend-right"></div>
+        </div>
+        <div class="shelfledge"></div>
+      </div>
+    </div>
+    <div class="shelfhint">Tap an empty slot to add a binder &middot; up to ${BINDER_MAX_COUNT}</div>
+  </div>
+
+  ${renderBinderSheet()}
+  `;
+}
+
+function renderBinderSheet(){
+  if(!binderSheetOpen) return '';
+  const editing = editingBinderId ? (state.binders||[]).find(b=>b.id===editingBinderId) : null;
+
+  if(deleteBinderConfirm && editing){
+    return `
+    <div class="overlay">
+      <div class="summary-panel" style="max-width:420px;">
+        <div style="font-family:var(--font-display);font-weight:800;font-size:16px;color:#ff4444;text-transform:uppercase;">Delete ${esc(editing.name)}?</div>
+        <div style="font-size:12.5px;text-align:center;line-height:1.5;color:var(--muted);">Its cards go back to your Dex &mdash; nothing is lost. This can't be undone.</div>
+        <div class="summary-actions">
+          <button class="sbtn sell" data-binder-delete-cancel>Cancel</button>
+          <button class="sbtn keep" style="background:#ff4444;box-shadow:0 0 10px rgba(255,68,68,0.4);" data-binder-delete-confirm>Delete Binder</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // Rows of 7 - the whole picker reads as one hexagon of hexagons.
+  const rows = [];
+  for(let i=0;i<BINDER_SWATCHES.length;i+=7) rows.push(BINDER_SWATCHES.slice(i,i+7));
+  const swatchesHtml = rows.map(row => `
+    <div class="hexrow">
+      ${row.map(sw => `<div class="swatch ${binderDraft.color===sw.hex?'sel':''}" style="background:${sw.hex};" data-binder-color="${sw.hex}"></div>`).join('')}
+    </div>
+  `).join('');
+
+  return `
+  <div class="overlay">
+    <div class="summary-panel" style="max-width:420px;align-items:stretch;">
+      <div style="font-family:var(--font-display);font-weight:800;font-size:16px;text-transform:uppercase;text-align:center;">${editing ? 'Edit Binder' : 'New Binder'}</div>
+      <div>
+        <div class="mono" style="font-size:10.5px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Name</div>
+        <input type="text" id="binderNameInput" maxlength="${BINDER_NAME_MAX}" value="${esc(binderDraft.name)}" placeholder="e.g. Flames"
+          style="width:100%;background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:9px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;" />
+        <div class="mono" style="font-size:9.5px;color:var(--muted);margin-top:4px;">Up to ${BINDER_NAME_MAX} characters &mdash; every spine label reads at the same size</div>
+      </div>
+      <div>
+        <div class="mono" style="font-size:10.5px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Description (optional)</div>
+        <textarea id="binderDescInput" placeholder="What's this binder for?"
+          style="width:100%;min-height:56px;resize:none;background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:9px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;">${esc(binderDraft.desc)}</textarea>
+      </div>
+      <div>
+        <div class="mono" style="font-size:10.5px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Color</div>
+        <div class="hexwrap">${swatchesHtml}</div>
+      </div>
+      <div class="summary-actions">
+        <button class="sbtn sell" data-binder-cancel>Cancel</button>
+        <button class="sbtn keep" data-binder-save>${editing ? 'Save Changes' : 'Add to Shelf'}</button>
+      </div>
+      ${editing ? `<button class="mono" style="background:none;border:none;color:#ff6b6b;font-size:11px;text-decoration:underline;cursor:pointer;padding:4px 0;align-self:center;" data-binder-delete-request>Delete this binder</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function binderById(id){ return (state.binders||[]).find(b=>b.id===id); }
+
+// A raw non-null slot value isn't the same thing as an occupied pocket - a
+// liquidated instance leaves its uid sitting in the pages array with nothing
+// left for it to resolve to. Every read of the raw pages array that decides
+// "is this slot taken" (not just "what do I render here") has to go through
+// this, or a dead uid counts as a card that no longer exists anywhere.
+function slotIsFilled(uid){ return !!(uid && instanceCard(uid)); }
+
+function countFilled(binder){
+  return (binder.pages||[]).reduce((n,p)=>n + p.filter(slotIsFilled).length, 0);
+}
+
+// Binder slots store a bare instance uid, never a duplicated card snapshot -
+// so a liquidated instance simply stops resolving here and its pocket renders
+// empty on its own, with no separate reconciliation pass needed for display.
+function instanceCard(uid){
+  const inst = (state.instances||[]).find(x=>x.uid===uid);
+  if(!inst) return null;
+  const p = POKEMON.find(x=>x.id===inst.id);
+  if(!p) return null;
+  return { uid, id:p.id, name:p.name, type:p.type, sprite:p.sprite, value:p.value, shiny:!!inst.shiny, rarity:inst.rarity||p.rarity };
+}
+
+// A physical card only sits in one pocket at a time - a uid already filed
+// somewhere isn't offered again as a copy to file.
+function usedBinderUids(){
+  const used = new Set();
+  (state.binders||[]).forEach(b=>(b.pages||[]).forEach(page=>page.forEach(uid=>{ if(uid) used.add(uid); })));
+  return used;
+}
+function availableInstancesFor(speciesId){
+  const used = usedBinderUids();
+  return (state.instances||[]).filter(i=>i.id===speciesId && !used.has(i.uid));
+}
+
+function renderPocketCard(card){
+  const rc = RARITY[card.rarity] || RARITY.common;
+  return `
+    <span class="num mono">#${String(card.id).padStart(3,'0')}</span>
+    ${card.shiny ? `<div class="shiny-sparkle-overlay"></div><span style="position:absolute;top:2px;right:4px;color:gold;font-size:12px;text-shadow:0 0 5px gold;z-index:3;" title="Shiny">&#9733;</span>` : ''}
+    <div class="glyph"><img src="${card.sprite}" alt="${esc(card.name)}" loading="lazy"></div>
+    <div class="nm">${esc(card.name)}</div>
+  `;
+}
+
+function renderBinderPage(){
+  const binder = binderById(openBinderId);
+  // The binder we had open can vanish out from under us (deleted from its own
+  // edit sheet) - fall back to the shelf rather than render a dangling view.
+  if(!binder){ dexTab = 'shelf'; openBinderId = null; carrying = null; return renderBinderShelf(); }
+  const pages = binder.pages && binder.pages.length ? binder.pages : [new Array(9).fill(null)];
+  const pageIdx = Math.min(binderPage, pages.length-1);
+  const pageArr = pages[pageIdx];
+
+  const carryingCardName = carrying ? (instanceCard(carrying.uid)||{}).name : '';
+  const hintText = carrying
+    ? (carrying.source==='dex'
+        ? `Placing ${esc(carryingCardName)} &mdash; tap a pocket to drop it in.`
+        : 'Moving a card &mdash; tap an empty pocket to place it, or tap a card to swap.')
+    : 'Tap a card to inspect it. Press and hold to pick it up, then tap another pocket to move or swap it.';
+
+  const cellsHtml = pageArr.map((uid, slotIdx)=>{
+    const isLifted = !!(carrying && carrying.source==='reorder' && carrying.fromPage===pageIdx && carrying.fromSlot===slotIdx);
+    const card = (uid && !isLifted) ? instanceCard(uid) : null;
+    const isDropTarget = !!carrying && !isLifted;
+    const swapTarget = isDropTarget && carrying.source==='reorder' && !!card;
+    const placeTarget = isDropTarget && !card;
+    const blocked = isDropTarget && carrying.source==='dex' && !!card;
+
+    if(card){
+      return `<div class="pocket ${blocked?'blocked':''}" data-pocket data-page="${pageIdx}" data-slot="${slotIdx}" data-uid="${card.uid}">
+        <div class="pocket-lip"></div>
+        <div class="sleeve">
+          <div class="dexslot owned ${card.shiny?'shiny-card':''}" style="--slot-color:${rarityColor(card.rarity)};${card.shiny?`--shiny-hue:${shinyHue(card.id)}deg;`:''}">
+            ${renderPocketCard(card)}
+          </div>
+        </div>
+        <div class="lifted-note">picked up<br>tap another pocket</div>
+        ${swapTarget ? `<div class="swap-badge">&#8644; Swap</div>` : ''}
+      </div>`;
+    }
+    return `<div class="pocket pocket-empty ${placeTarget?'place-target':''}" data-pocket data-page="${pageIdx}" data-slot="${slotIdx}" data-uid="">
+      <div class="pocket-note">${isLifted ? '(placing&hellip;)' : (placeTarget ? 'Tap to place' : 'Empty')}</div>
+    </div>`;
+  }).join('');
+
+  const carryCard = carrying ? instanceCard(carrying.uid) : null;
+  // The card being carried was liquidated mid-carry - drop the dangling carry
+  // rather than let dropCard() later write a dead uid into a page slot.
+  if(carrying && !carryCard){ carrying = null; }
+
+  const pbg = `color-mix(in srgb, ${binder.color} 20%, var(--bg) 80%)`;
+
+  return `
+  <div class="dexhead">
+    <div class="dexhead-left">
+      <button class="iconbtn" data-closepage title="Back to Shelf">&lsaquo;</button>
+      <h2 class="disp">${esc(binder.name)}</h2>
+      <div class="dexcount mono">${countFilled(binder)} / ${9*pages.length}</div>
+    </div>
+    <button class="iconbtn" data-editbinder="${binder.id}" title="Edit Binder">&#9998;</button>
+  </div>
+  ${binder.desc ? `<div class="mono" style="font-size:11.5px;color:var(--muted);margin:-6px 0 12px;">${esc(binder.desc)}</div>` : ''}
+  <div class="reorderhint ${carrying?'active':''}">${hintText}</div>
+
+  <div class="sheet3x3" style="--pbg:${pbg};">${cellsHtml}</div>
+
+  <div class="pagenav">
+    <button class="pagenavbtn" data-page-prev ${pageIdx===0?'disabled':''}>&lsaquo;</button>
+    <div class="pageindicator mono">Page ${pageIdx+1} / ${pages.length}${carrying?' <span class="carrytag">&middot; carrying</span>':''}</div>
+    <button class="pagenavbtn" data-page-next ${pageIdx===pages.length-1?'disabled':''}>&rsaquo;</button>
+  </div>
+
+  ${carryCard ? `
+  <div class="carrybar">
+    <div class="carrybar-thumb" style="--slot-color:${rarityColor(carryCard.rarity)};">
+      <img src="${carryCard.sprite}" alt="" style="${carryCard.shiny?`filter:hue-rotate(${shinyHue(carryCard.id)}deg) saturate(1.4);`:''}">
+    </div>
+    <div class="carrytext mono">${esc(carryCard.name)}</div>
+    <button class="sbtn sell" data-cancel-carry style="padding:5px 10px;font-size:11px;">Cancel</button>
+  </div>` : ''}
+
+  ${renderInspect()}
+  ${renderBinderSheet()}
+  `;
+}
+
+function rarityColor(rarity){ return (RARITY[rarity]||RARITY.common).color; }
+
+function renderInspect(){
+  if(!inspectUid) return '';
+  const card = instanceCard(inspectUid);
+  if(!card){ inspectUid = null; return ''; } // liquidated while inspecting - just close
+  const binder = binderById(openBinderId);
+  const glowColor = binder ? binder.color : '#ffffff';
+  const faceCard = { id:card.id, name:card.name, type:card.type, rarity:card.rarity, shiny:card.shiny, sprite:card.sprite, value:card.value };
+  return `
+  <div class="overlay inspect-overlay">
+    <button class="closex" data-closeinspect>&times;</button>
+    <div class="inspect-glow" style="background:radial-gradient(circle, color-mix(in srgb, ${glowColor} 65%, white 35%), color-mix(in srgb, ${glowColor} 45%, transparent) 45%, transparent 74%);"></div>
+    <div class="inspect-card-wrap" data-inspectcard>
+      ${renderCardFace(faceCard, true)}
+    </div>
+  </div>`;
 }
 
 function renderCardFace(card, flipped){
@@ -4517,6 +5138,123 @@ function renderSummary(){
   </div>`;
 }
 
+// ---------- Binder Page View: pocket reorder + inspect gestures ----------
+//
+// render() rebuilds #app's entire innerHTML from scratch on every call - it
+// destroys and recreates every DOM node under it. If a re-render happened
+// while a touch was still down on a node it just destroyed, the browser
+// fires touchcancel for that touch and the gesture dies mid-air (this is
+// exactly the "pops up above my finger" bug from the design prototype).
+//
+// So render() is NEVER called from a handler that can fire while a
+// touch/mouse button is still held: the press-hold pickup timer, and the
+// inspect-card tilt-on-move, both mutate the DOM directly instead (a
+// classList toggle or a style.transform assignment on the exact node
+// already under the finger - never a node swap). render() only runs from
+// touchend/mouseup/click handlers, i.e. once that gesture has already
+// concluded and there is no pending touch state left for the browser to
+// lose.
+
+// After a real touch, mobile browsers replay it as a synthetic mouse event
+// (~300ms later) for compatibility - one physical tap otherwise fires this
+// logic twice, and the ghost firing is what undid a swap right after it
+// landed. preventDefault() on the real touch stops the replay outright; the
+// timestamp guard catches any that still get through.
+function isGhostMouse(e){
+  if(!e) return false;
+  if(e.type && e.type.indexOf('touch')===0){
+    lastTouchAt = Date.now();
+    if(e.cancelable) e.preventDefault();
+    return false;
+  }
+  return !!(lastTouchAt && (Date.now()-lastTouchAt) < 800);
+}
+
+function pocketPressStart(pageIdx, slotIdx, uid, el, e){
+  if(isGhostMouse(e)) return;
+  if(carrying || !uid) return;
+  pressFired = false;
+  pressTimer = setTimeout(()=>{
+    pressFired = true;
+    carrying = { source:'reorder', fromPage:pageIdx, fromSlot:slotIdx, uid };
+    el.classList.add('mid-lift'); // direct DOM tweak only - no render() here
+  }, PRESS_HOLD_MS);
+}
+
+function pocketPressEnd(pageIdx, slotIdx, uid, e){
+  if(isGhostMouse(e)) return;
+  if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
+  const justPickedUp = pressFired;
+  pressFired = false;
+  if(carrying){
+    // The release at the tail end of the hold that just picked this card up -
+    // safe to render() now, since this touch has fully ended.
+    if(justPickedUp){ render(); return; }
+    if(carrying.source==='dex' && uid) return; // filing never overwrites an occupied pocket
+    dropCard(pageIdx, slotIdx);
+    return;
+  }
+  if(!justPickedUp && uid){ openInspectFor(uid); }
+}
+
+function pocketPressCancel(){
+  if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
+  pressFired = false;
+}
+
+function dropCard(targetPage, targetSlot){
+  if(!carrying) return;
+  const binder = binderById(openBinderId);
+  if(!binder){ carrying = null; return; }
+  const pages = binder.pages.map(p=>p.slice());
+  const targetUid = pages[targetPage][targetSlot];
+  if(carrying.source==='dex'){
+    if(slotIsFilled(targetUid)){ carrying = null; return; } // filing never overwrites an occupied pocket
+    pages[targetPage][targetSlot] = carrying.uid;
+  } else {
+    pages[targetPage][targetSlot] = carrying.uid;
+    pages[carrying.fromPage][carrying.fromSlot] = targetUid;
+  }
+  state.binders = state.binders.map(b => b.id===openBinderId ? Object.assign({}, b, { pages }) : b);
+  carrying = null;
+  saveBinders();
+  render();
+}
+
+function openInspectFor(uid){
+  inspectUid = uid;
+  render();
+}
+function closeInspect(){
+  inspectUid = null;
+  render();
+}
+
+// Holding the enlarged card and moving a finger/cursor over it tilts it in
+// 3D. Applied directly to the card's own style.transform on every move -
+// never through render(), which would rebuild the very node being dragged.
+function inspectPressEnd(){
+  inspectPressed = false;
+  const el = document.querySelector('[data-inspectcard]');
+  if(el) el.style.transform = '';
+}
+function inspectMove(e){
+  if(!inspectPressed) return;
+  if(e.cancelable) e.preventDefault();
+  const list = (e.touches && e.touches.length) ? e.touches : ((e.changedTouches && e.changedTouches.length) ? e.changedTouches : null);
+  const p = list ? list[0] : e;
+  if(!p || typeof p.clientX !== 'number') return;
+  const el = e.currentTarget;
+  const rect = el.getBoundingClientRect();
+  let relX = (p.clientX - rect.left) / rect.width;
+  let relY = (p.clientY - rect.top) / rect.height;
+  relX = Math.max(0, Math.min(1, relX));
+  relY = Math.max(0, Math.min(1, relY));
+  const ry = (relX - 0.5) * 26;
+  const rx = (0.5 - relY) * 26;
+  el.style.transform = `perspective(700px) rotateX(${rx}deg) rotateY(${ry}deg) scale(1.05)`;
+}
+
 function render(){
   const app = document.getElementById('app');
   app.innerHTML = `
@@ -4524,7 +5262,7 @@ function render(){
       <div class="brand">
         <div>
           <h1>P<span class="hexo" aria-hidden="true"></span><span class="sr-only">O</span>KéHEX</h1>
-          <span>rip packs &middot; fill your dex <br>risk fake currency &middot; 0.8.0 beta </span>
+          <span>rip packs &middot; fill your dex <br>risk fake currency &middot; 0.8.3 beta </span>
         </div>
       </div>
       ${authUser
@@ -4667,13 +5405,196 @@ function wire(){
     renderAuth();
   };
   document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{
-    // filters are per-visit, not per-session: leaving the Dex clears them
-    if(b.dataset.nav !== 'dex') resetDexFilters();
+    // filters are per-visit, not per-session: leaving the Dex clears them.
+    // dexTab (grid / shelf / open binder) resets the same way, so coming back
+    // to Dex later always lands on the grid, not wherever it was left.
+    if(b.dataset.nav !== 'dex'){
+      resetDexFilters();
+      dexTab = 'dex';
+      openBinderId = null;
+      carrying = null;
+      inspectUid = null;
+      dexAddOpen = false;
+      dexAddSpeciesId = null;
+      dexAddUid = null;
+    }
     view=b.dataset.nav;
     if(view==='profile' && authUser) loadProfileStats();
     if(view==='market' && authUser && !pnlSeries && !pnlLoading) loadPnlSeries();
     render();
   });
+
+  const openShelfBtn = document.querySelector('[data-openshelf]');
+  if(openShelfBtn) openShelfBtn.onclick = ()=>{ dexTab='shelf'; render(); };
+  const closeShelfBtn = document.querySelector('[data-closeshelf]');
+  if(closeShelfBtn) closeShelfBtn.onclick = ()=>{ dexTab='dex'; render(); };
+
+  document.querySelectorAll('[data-createbinder]').forEach(b=>b.onclick=()=>{
+    if((state.binders||[]).length>=BINDER_MAX_COUNT) return;
+    editingBinderId = null;
+    deleteBinderConfirm = false;
+    binderDraft = { name:'', desc:'', color:BINDER_SWATCHES[0].hex };
+    binderSheetOpen = true;
+    render();
+  });
+  document.querySelectorAll('[data-openbinder]').forEach(b=>b.onclick=()=>{
+    openBinderId = b.dataset.openbinder;
+    binderPage = 0;
+    carrying = null;
+    dexTab = 'page';
+    render();
+  });
+
+  document.querySelectorAll('.dexgrid .dexslot.owned[data-species]').forEach(el=>{
+    el.onclick = ()=>{
+      dexAddSpeciesId = Number(el.dataset.species);
+      const avail = availableInstancesFor(dexAddSpeciesId);
+      dexAddUid = avail.length === 1 ? avail[0].uid : null;
+      dexAddOpen = true;
+      render();
+    };
+  });
+  document.querySelectorAll('[data-dexadd-close]').forEach(b=>b.onclick=()=>{
+    dexAddOpen = false;
+    dexAddSpeciesId = null;
+    dexAddUid = null;
+    render();
+  });
+  document.querySelectorAll('[data-dexadd-pick]').forEach(b=>b.onclick=()=>{
+    dexAddUid = b.dataset.dexaddPick;
+    render();
+  });
+  document.querySelectorAll('[data-dexadd-binder]').forEach(b=>b.onclick=()=>{
+    addCardToBinder(b.dataset.dexaddBinder, b.dataset.dexaddUid);
+  });
+  document.querySelectorAll('[data-dexadd-goto-shelf]').forEach(b=>b.onclick=()=>{
+    dexAddOpen = false;
+    dexAddSpeciesId = null;
+    dexAddUid = null;
+    dexTab = 'shelf';
+    render();
+  });
+
+  const binderNameInput = document.getElementById('binderNameInput');
+  if(binderNameInput) binderNameInput.oninput = ()=>{
+    // no render() here on purpose - same reasoning as dexSearch above:
+    // render() rebuilds innerHTML, which would drop focus mid-keystroke.
+    binderDraft.name = binderNameInput.value;
+  };
+  const binderDescInput = document.getElementById('binderDescInput');
+  if(binderDescInput) binderDescInput.oninput = ()=>{
+    binderDraft.desc = binderDescInput.value;
+  };
+  document.querySelectorAll('[data-binder-color]').forEach(b=>b.onclick=()=>{
+    binderDraft.color = b.dataset.binderColor;
+    render();
+  });
+  document.querySelectorAll('[data-binder-cancel]').forEach(b=>b.onclick=()=>{
+    binderSheetOpen = false;
+    editingBinderId = null;
+    deleteBinderConfirm = false;
+    render();
+  });
+  document.querySelectorAll('[data-binder-save]').forEach(b=>b.onclick=()=>{
+    const name = (binderDraft.name||'').trim().toUpperCase().slice(0,BINDER_NAME_MAX);
+    if(!name) return;
+    const desc = (binderDraft.desc||'').trim();
+    const sw = BINDER_SWATCHES.find(s=>s.hex===binderDraft.color) || BINDER_SWATCHES[0];
+    state.binders = state.binders || [];
+    if(editingBinderId){
+      state.binders = state.binders.map(b => b.id===editingBinderId
+        ? Object.assign({}, b, { name, desc, color:binderDraft.color, textColor:sw.text })
+        : b);
+    } else {
+      if(state.binders.length>=BINDER_MAX_COUNT) return;
+      state.binders = state.binders.concat([{
+        id:'b'+Date.now(), name, desc, color:binderDraft.color, textColor:sw.text,
+        pages:[ new Array(9).fill(null) ]
+      }]);
+    }
+    saveBinders();
+    binderSheetOpen = false;
+    editingBinderId = null;
+    render();
+  });
+  document.querySelectorAll('[data-binder-delete-request]').forEach(b=>b.onclick=()=>{
+    deleteBinderConfirm = true;
+    render();
+  });
+  document.querySelectorAll('[data-binder-delete-cancel]').forEach(b=>b.onclick=()=>{
+    deleteBinderConfirm = false;
+    render();
+  });
+  document.querySelectorAll('[data-binder-delete-confirm]').forEach(b=>b.onclick=()=>{
+    state.binders = (state.binders||[]).filter(b=>b.id!==editingBinderId);
+    saveBinders();
+    binderSheetOpen = false;
+    editingBinderId = null;
+    deleteBinderConfirm = false;
+    render();
+  });
+
+  document.querySelectorAll('[data-editbinder]').forEach(b=>b.onclick=()=>{
+    const binder = binderById(b.dataset.editbinder);
+    if(!binder) return;
+    editingBinderId = binder.id;
+    deleteBinderConfirm = false;
+    binderDraft = { name:binder.name, desc:binder.desc||'', color:binder.color };
+    binderSheetOpen = true;
+    render();
+  });
+
+  const closePageBtn = document.querySelector('[data-closepage]');
+  if(closePageBtn) closePageBtn.onclick = ()=>{
+    dexTab = 'shelf';
+    openBinderId = null;
+    carrying = null;
+    render();
+  };
+  const pagePrevBtn = document.querySelector('[data-page-prev]');
+  if(pagePrevBtn) pagePrevBtn.onclick = ()=>{
+    binderPage = Math.max(0, binderPage - 1);
+    render();
+  };
+  const pageNextBtn = document.querySelector('[data-page-next]');
+  if(pageNextBtn) pageNextBtn.onclick = ()=>{
+    const binder = binderById(openBinderId);
+    if(!binder) return;
+    binderPage = Math.min(binder.pages.length - 1, binderPage + 1);
+    render();
+  };
+  const cancelCarryBtn = document.querySelector('[data-cancel-carry]');
+  if(cancelCarryBtn) cancelCarryBtn.onclick = ()=>{
+    carrying = null;
+    render();
+  };
+
+  // Pocket reorder gestures - press-and-hold to pick up, release, then a
+  // separate tap elsewhere to place or swap. See the note above render()
+  // for why this never calls render() while a touch is still down.
+  document.querySelectorAll('[data-pocket]').forEach(el=>{
+    const pageIdx = Number(el.dataset.page);
+    const slotIdx = Number(el.dataset.slot);
+    const uid = el.dataset.uid || null;
+    el.onmousedown = e=>pocketPressStart(pageIdx, slotIdx, uid, el, e);
+    el.ontouchstart = e=>pocketPressStart(pageIdx, slotIdx, uid, el, e);
+    el.onmouseup = e=>pocketPressEnd(pageIdx, slotIdx, uid, e);
+    el.ontouchend = e=>pocketPressEnd(pageIdx, slotIdx, uid, e);
+    el.onmouseleave = ()=>pocketPressCancel();
+    el.ontouchcancel = ()=>pocketPressCancel();
+  });
+
+  document.querySelectorAll('[data-closeinspect]').forEach(b=>b.onclick=closeInspect);
+  const inspectEl = document.querySelector('[data-inspectcard]');
+  if(inspectEl){
+    inspectEl.onmousedown = ()=>{ inspectPressed = true; };
+    inspectEl.ontouchstart = ()=>{ inspectPressed = true; };
+    inspectEl.onmouseup = inspectPressEnd;
+    inspectEl.ontouchend = inspectPressEnd;
+    inspectEl.onmouseleave = inspectPressEnd;
+    inspectEl.onmousemove = inspectMove;
+    inspectEl.ontouchmove = inspectMove;
+  }
 
   document.querySelectorAll('[data-scrolltop]').forEach(b=>b.onclick=()=>{
     window.scrollTo({top:0,behavior:'smooth'});
@@ -5023,7 +5944,11 @@ function wire(){
       // no longer resolve. cleared locally rather than via the RPC - see notes.
       // equipped_back is a permanent purchase and is NOT cleared by reset_game_state,
       // so carry it across rather than falling back to the pack theme until refresh.
-      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[], favoriteUids:[], equippedBack: state.equippedBack || null };
+      // Binders are organizational, not economy state, and reset_game_state never
+      // touches player_binders - carried across so a "burn everything" reset doesn't
+      // silently delete a player's binder setup. Their slots just go empty, since a
+      // reset wipes every instance uid a binder could be pointing at.
+      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[], favoriteUids:[], equippedBack: state.equippedBack || null, binders: state.binders || [] };
       saveState();
       resetConfirmOpen = false;
     } finally {
