@@ -4651,12 +4651,18 @@ function renderPublicBinderShelf(){
   if(!viewingBinders.length){
     return `<div class="section-label" style="margin-top:20px;">Binders</div><div style="color:var(--muted);font-size:12px;padding:8px 0;">No binders yet.</div>`;
   }
-  const spinesHtml = viewingBinders.map(b => `
-    <div class="spine" style="background:${spineFace(b.color)};color:${b.textColor||'#07090a'};" data-view-binder="${b.id}">
-      <div class="spine-texture"></div>
-      <div class="spine-shine"></div>
-      <div class="spine-name">${esc(b.name)}</div>
-    </div>`).join('');
+  const spinesHtml = [];
+  for(let i=0;i<BINDER_MAX_COUNT;i++){
+    const b = viewingBinders[i];
+    spinesHtml.push(b
+      ? `<div class="spine" style="background:${spineFace(b.color)};color:${b.textColor||'#07090a'};" data-view-binder="${b.id}">
+           <div class="spine-texture"></div>
+           <div class="spine-shine"></div>
+           <div class="spine-name">${esc(b.name)}</div>
+         </div>`
+      : `<div class="spine spine-empty"></div>`
+    );
+  }
   return `
   <div class="section-label" style="margin-top:20px;">Binders</div>
   <div class="shelfwrap">
@@ -4665,7 +4671,7 @@ function renderPublicBinderShelf(){
       <div class="shelfcase">
         <div class="shelfrow">
           <div class="bookend bookend-left"></div>
-          ${spinesHtml}
+          ${spinesHtml.join('')}
           <div class="bookend bookend-right"></div>
         </div>
         <div class="shelfledge"></div>
