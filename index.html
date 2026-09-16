@@ -2757,7 +2757,6 @@ let openBinderId = null;
 let binderPage = 0;
 let carrying = null;   // { source:'reorder', fromPage, fromSlot, uid }
 let inspectUid = null; // uid of the instance shown in the enlarged inspect view
-let inspectFrom = null; // { pageIdx, slotIdx } of the pocket that opened it, so it can be removed
 
 // Press-hold bookkeeping for the pocket reorder gesture. These are plain
 // module vars, not state - resetting them never needs a render().
@@ -5499,6 +5498,7 @@ function renderBinderPage(){
       <img src="${carryCard.sprite}" alt="" style="${carryCard.shiny?`filter:hue-rotate(${shinyHue(carryCard.id)}deg) saturate(1.4);`:''}">
     </div>
     <div class="carrytext mono">${esc(carryCard.name)}</div>
+    ${carrying.source==='reorder' ? `<button class="mono" style="background:none;border:none;color:#ff6b6b;font-size:11px;text-decoration:underline;cursor:pointer;padding:5px 6px;" data-remove-from-binder>Remove from Binder</button>` : ''}
     <button class="sbtn sell" data-cancel-carry style="padding:5px 10px;font-size:11px;">Cancel</button>
   </div>` : ''}
 
@@ -5512,7 +5512,7 @@ function rarityColor(rarity){ return (RARITY[rarity]||RARITY.common).color; }
 function renderInspect(){
   if(!inspectUid) return '';
   const card = instanceCard(inspectUid);
-  if(!card){ inspectUid = null; inspectFrom = null; return ''; } // liquidated while inspecting - just close
+  if(!card){ inspectUid = null; return ''; } // liquidated while inspecting - just close
   const binder = binderById(openBinderId);
   const glowColor = binder ? binder.color : '#ffffff';
   const faceCard = { id:card.id, name:card.name, type:card.type, rarity:card.rarity, shiny:card.shiny, sprite:card.sprite, value:card.value };
@@ -5523,7 +5523,6 @@ function renderInspect(){
     <div class="inspect-card-wrap" data-inspectcard>
       ${renderCardFace(faceCard, true)}
     </div>
-    ${inspectFrom ? `<button class="mono" style="background:none;border:none;color:#ff6b6b;font-size:11.5px;text-decoration:underline;cursor:pointer;padding:14px 0 0;position:relative;z-index:1;" data-remove-from-binder>Remove from Binder</button>` : ''}
   </div>`;
 }
 
@@ -5685,7 +5684,7 @@ function pocketPressEnd(pageIdx, slotIdx, uid, e){
     dropCard(pageIdx, slotIdx);
     return;
   }
-  if(!justPickedUp && uid){ openInspectFor(uid, pageIdx, slotIdx); }
+  if(!justPickedUp && uid){ openInspectFor(uid); }
 }
 
 function pocketPressCancel(){
@@ -5712,30 +5711,28 @@ function dropCard(targetPage, targetSlot){
   render();
 }
 
-function openInspectFor(uid, pageIdx, slotIdx){
+function openInspectFor(uid){
   inspectUid = uid;
-  inspectFrom = (pageIdx !== undefined) ? { pageIdx, slotIdx } : null;
   render();
 }
 function closeInspect(){
   inspectUid = null;
-  inspectFrom = null;
   render();
 }
 
-// Only reachable from the binder page view (inspectFrom is only ever set by
-// a pocket tap), so a removed card just stops being filed - it's still
+// Reachable from the carry bar during a reorder pickup (press-hold a filed
+// pocket) - carrying.source is only 'reorder' when the picked-up card was
+// already filed, so a removed card just stops being filed. It's still
 // owned, still in the dex, and can be re-filed from there any time.
 function removeFromBinder(){
-  if(!inspectFrom || !openBinderId) return;
+  if(!carrying || carrying.source!=='reorder' || !openBinderId) return;
   const binder = binderById(openBinderId);
   if(!binder) return;
   const pages = binder.pages.map(p=>p.slice());
-  pages[inspectFrom.pageIdx][inspectFrom.slotIdx] = null;
+  pages[carrying.fromPage][carrying.fromSlot] = null;
   state.binders = state.binders.map(b => b.id===openBinderId ? Object.assign({}, b, { pages }) : b);
   saveBinders();
-  inspectUid = null;
-  inspectFrom = null;
+  carrying = null;
   toast('Removed from binder.');
   render();
 }
@@ -5772,7 +5769,7 @@ function render(){
       <div class="brand">
         <div>
           <h1>P<span class="hexo" aria-hidden="true"></span><span class="sr-only">O</span>KéHEX</h1>
-          <span>rip packs &middot; fill your dex <br>risk fake currency &middot; 0.8.3 beta </span>
+          <span>rip packs &middot; fill your dex <br>risk fake currency &middot; 0.8.4 beta </span>
         </div>
       </div>
       ${authUser
@@ -5987,7 +5984,6 @@ function wire(){
       openBinderId = null;
       carrying = null;
       inspectUid = null;
-      inspectFrom = null;
       dexAddOpen = false;
       dexAddSpeciesId = null;
       dexAddUid = null;
