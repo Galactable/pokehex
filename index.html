@@ -3974,6 +3974,19 @@ function renderMarket(){
             </summary>
             
             <div style="padding-top:12px;">
+              <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:10px; color:#ffaa00;">⚠️ Real-Time Liquidation Subject to Market Dynamics</span>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  ${dupePrev.count > 0 ? `
+                  <button class="buybtn" style="background:#a855f7; color:#fff; padding:8px 16px; font-size:12px; box-shadow:0 0 8px rgba(168,85,247,0.4);" data-open-dupes-modal="${tier}">
+                    Liquidate Duplicates (<span id="btn-dupes-${tier}">~${fmtHex(dupePrev.est)}</span>)
+                  </button>` : ''}
+                  <button class="buybtn" style="background:#ff4444; color:#fff; padding:8px 16px; font-size:12px; box-shadow:0 0 8px rgba(255,68,68,0.4);" data-open-tier-modal="${tier}">
+                    Liquidate All ${tierLabels[tier]} (<span id="btn-tier-${tier}">~${fmtHex(tierTotalPayout)}</span>)
+                  </button>
+                </div>
+              </div>
+
               ${(() => {
                 // Group this tier's instances by species so the list length is
                 // bounded by distinct species rather than by copies held. The
@@ -4056,19 +4069,6 @@ function renderMarket(){
                   `;
                 }).join('');
               })()}
-
-              <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:10px; color:#ffaa00;">⚠️ Real-Time Liquidation Subject to Market Dynamics</span>
-                <div style="display:flex; gap:8px; align-items:center;">
-                  ${dupePrev.count > 0 ? `
-                  <button class="buybtn" style="background:#a855f7; color:#fff; padding:8px 16px; font-size:12px; box-shadow:0 0 8px rgba(168,85,247,0.4);" data-open-dupes-modal="${tier}">
-                    Liquidate Duplicates (<span id="btn-dupes-${tier}">~${fmtHex(dupePrev.est)}</span>)
-                  </button>` : ''}
-                  <button class="buybtn" style="background:#ff4444; color:#fff; padding:8px 16px; font-size:12px; box-shadow:0 0 8px rgba(255,68,68,0.4);" data-open-tier-modal="${tier}">
-                    Liquidate All ${tierLabels[tier]} (<span id="btn-tier-${tier}">~${fmtHex(tierTotalPayout)}</span>)
-                  </button>
-                </div>
-              </div>
             </div>
           </details>
         `;
