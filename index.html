@@ -4996,6 +4996,13 @@ function renderProfile(){
 }
 
 function renderHowTo(){
+  // Counts are derived from POKEMON so this copy can't go stale when the pool grows.
+  const ofType = t => POKEMON.filter(p => p.type === t);
+  const secretsOf = t => ofType(t).filter(p => p.rarity === 'secret').length;
+  const nWater = ofType('water').length;
+  const nPsychic = ofType('psychic').length, sPsychic = secretsOf('psychic');
+  const nPoison = ofType('poison').length, sPoison = secretsOf('poison');
+  const nDragon = ofType('dragon').length, sDragon = secretsOf('dragon');
   return `
   <div class="howto">
     <h2 class="disp" style="font-size:26px;margin:0 0 6px;">How to Play</h2>
@@ -5003,11 +5010,12 @@ function renderHowTo(){
 <h3>The Goal</h3>
 <p>Collect all ${DEX_TOTAL}. That's it. That's the game. Or set your own goals.</p>
 <p>You need to be <strong>holding</strong> one of each. Not "pulled it once." Not "had it for a while." Holding it. Right now. This is a binder, not a diary &mdash; sell your only Charizard and #006 goes dark like you never met him.</p>
-<p>Kanto and Johto, one pool, two views. Someone has already finished both. So the excuse that it can't be done is gone, which was the more comfortable excuse.</p>
+<p>${GENS.length} generations, one pool, ${GENS.length} tabs. Everyone who finished Kanto and Johto watched their dex sprout a few hundred holes and their badges vanish overnight. That wasn't a bug. You'd got comfortable.</p>
+<p>And when the binder's full, fill it again &mdash; shiny. Nobody has. The odds would like it kept that way.</p>
 
 <hr>
 
-<h3>HEX</h3>
+<h3><i class="hex-icon"></i> HEX</h3>
 <p>HEX is the only currency. HEX buys packs. Packs contain cards. Cards, when you no longer want them, become HEX again.</p>
 <p>You were given some to start. It was not enough and it was never going to be.</p>
 
@@ -5027,28 +5035,30 @@ function renderHowTo(){
 <p>When you sell a card, you get:</p>
 <div class="howto-payout">its base value &times; whatever the market feels like right now</div>
 <p>The index moves in cycles. Some short, some long, all of them stacked on top of each other. It is completely deterministic &mdash; the <em>same</em> market for every player at the same moment, so nobody is getting a better roll than you. You are just reading it worse.</p>
-<p><strong>The HODL bonus.</strong> Cards gain <strong>+1% per hour</strong> you hold them, up to <strong>+30%</strong>. Thirty hours of doing nothing is the most reliable return in the game.</p>
+<p><strong>The HODL bonus.</strong> Cards gain <strong>+1% per hour</strong> you hold them, up to <strong>+30%</strong>. Thirty hours of doing nothing is the most reliable return in the game. It softens a dip. It will not turn a bear market into a profit.</p>
 <p><strong>One more thing.</strong> The sell button on the pack reveal screen and the sell button in your Vault do not do the same math. That's not a bug. Figure out which one you want and when. I'm not going to tell you.</p>
 
 <hr>
 
 <h3>Skills</h3>
     <p>Six skills. Each one has its own 99, and they train on what you actually do &mdash; not on what you spend. A rich player and a broke player earn the same XP for the same action. Levels are not a wealth readout and they are not going to become one.</p>
-<p><strong>Attack</strong> trains when you sell a card straight off the reveal screen, before it ever reaches your Vault. No patience, no market read, no waiting.</p>
-<p><strong>Defense</strong> trains when you hold a card through a full market wave and then sell it. The longer the hold, the more it pays.</p>
-<p>Read those two again. They are opposites, and both of them are correct. Everything above this section told you to be patient &mdash; and there is now an entire skill that only rewards you for not being. You cannot max both quickly. Pick a way to play, or split the difference and be mediocre at two things instead of good at one. That's the actual decision this game is asking you to make.</p>
-<p><strong>Strength</strong> trains on risk &mdash; not on how much HEX you spend, but on how much of <em>what you have</em> you put on one thing. Whale Vaults on a fat balance barely register. Whale Vaults on a thin one are the whole skill.</p>
-<p><strong>Magic</strong> trains by liquidating. It is the only skill that grows by destroying the collection, which is either a nice piece of symmetry or a warning, depending on how the dex is going.</p>
-<p><strong>Prayer</strong> trains on wheel spins and shiny finds. Spins are steady and small. Shinies are rare and enormous. It is the slowest 99 in the game by a wide margin, and if you are chasing a shiny dex it is also the one that will define your account.</p>
-<p><!-- SIXTH-SKILL --><strong>Agility</strong> can't be trained directly. It rises from everything else, and what it measures is <em>when</em> you sold, not how often. Good timing on any other skill feeds it. It is the closest thing here to a verdict on whether you're any good.</p>
-<p><strong>Trainer Level</strong> on your Stats page is the one number that summarises all six. Total Level is just the sum. Neither caps until every skill does.</p>
+<p><strong>Attack</strong> trains when you sell a card straight off the reveal screen, before it ever reaches your Vault. Flat rate per card. No patience, no market read, no waiting.</p>
+<p><strong>Defense</strong> trains when you sell a card you've held, scaled by how long you held it. Nothing accrues while you wait &mdash; it pays on the sale, which means the XP costs you the card.</p>
+<p>Read those two again. They are opposites, and both of them are correct. Everything above this section told you to be patient &mdash; and there is an entire skill that only rewards you for not being. You cannot max both quickly. Pick a way to play, or split the difference and be mediocre at two things instead of good at one.</p>
+<p><strong>Strength</strong> is nerve. It trains on every pack, scaled by how much of <em>what you have</em> you just put on it. Whale Vaults on a fat balance barely register. Whale Vaults on a thin one are the whole skill.</p>
+<p><strong>Magic</strong> trains by liquidating, scaled by rarity. Bulk liquidation pays the full rate per card. It is the only skill that grows by destroying the collection, which is either a nice piece of symmetry or a warning, depending on how the dex is going.</p>
+<p><strong>Prayer</strong> trains on wheel spins and shinies &mdash; every shiny you pull, whether you keep it or not. Spins are steady and small. Shinies are rare and enormous. It is the slowest 99 in the game by a wide margin, and if you are chasing a shiny dex it is the one that will define your account.</p>
+<p><!-- SIXTH-SKILL --><strong>Agility</strong> only pays when you sell <em>above</em> the market average, scaled by how far above. Sell into a dip and it earns nothing. You can't grind it. You can only time it, which makes it the closest thing here to a verdict on whether you're any good.</p>
+<p>The hexagon on your Stats page shows which way you lean. <strong>Trainer Level</strong> summarizes all six; Total Level is just the sum. A reset wipes all of it &mdash; every level, every point of XP, back to the start.</p>
 
 <hr>
 
 <h3>Shinies</h3>
+<style>.howto-shiny{display:flex;justify-content:center;margin:8px 0 14px;pointer-events:none;}.howto-shiny .already-owned-badge{display:none;}</style>
+<div class="howto-shiny">${(()=>{ const p = POKEMON.find(x => x.id === 6); return renderCardFace({ id:p.id, name:p.name, rarity:p.rarity, value:p.value, shiny:true, type:p.type, sprite:p.sprite }, true); })()}</div>
 <p>Some cards come out wrong. Funky colored, sparkling, and rare enough that it matters when you see one.</p>
 <p>They're worth <strong>ten times</strong> a normal copy of the same card. That is the largest single swing available to you and it is entirely luck. Nothing you do makes one more likely, and there is no counter quietly filling up on your behalf.</p>
-<p>The bulk liquidators will not touch them. Where a shiny exists, it's kept as your copy until you sell it.</p>
+<p>The bulk liquidators will not touch them. Where a shiny exists, it's kept as your copy until you sell it yourself.</p>
 
 <hr>
 
@@ -5061,24 +5071,24 @@ function renderHowTo(){
 <hr>
 
 <h3>Badges</h3>
-<p>Sixteen badges, one per type. You get the Volcano Badge by holding every Fire card. The Cascade Badge by holding every Water card. All forty-six of them. There is no shortcut, and the shop doesn't sell them &mdash; it never will.</p>
-<p>They still do <strong>nothing</strong>. No bonus, no multiplier, no secret unlock. What changed is that you can no longer buy your way out of earning one, which most people will find is worse.</p>
+<p>Sixteen badges, one per type. The Volcano Badge is every Fire card. The Cascade Badge is every Water card &mdash; all ${nWater} of them. There is no shortcut, and the shop doesn't sell them. It never will.</p>
+<p>They do <strong>nothing</strong>. No bonus, no multiplier, no secret unlock. You can't buy your way out of earning one, which most people will find is worse.</p>
 <p>They are also <strong>not permanent</strong>. A badge is a statement about what you're holding right now. Check what a card is doing for you before you liquidate it.</p>
-<p>Progress is on the Stats page. Read it carefully. Marsh needs fifteen Psychics and four of them are secrets; Earth needs eleven Grounds and none of them are. Those two bars fill at wildly different speeds and neither bar mentions it.</p>
+<p>Progress is on the Stats page. Read it carefully. Marsh needs ${nPsychic} Psychics and ${sPsychic} of them are secrets. Soul needs ${nPoison} Poisons and ${sPoison ? sPoison + ' of them are' : 'none of them are'}. Dragon is only ${nDragon} cards, and ${sDragon} of those are secrets. The bars fill at wildly different speeds and none of them mention it.</p>
 
 <hr>
 
-<h3>Card Backs</h3>
-<p>Ten of them, in the shop, increasingly expensive and increasingly unhinged. They do nothing at all. No stats, no bonus, no edge. They are just what the back of your card looks like when a pack opens and what sits next to your name on your profile.</p>
-<p>They are the only thing in this game you buy once and keep forever. No refund, no sell button, no take-backs &mdash; and unlike almost everything else you own, <strong>card backs survive a reset</strong>. Wipe the dex, wipe the vault, start again: the backs are still yours.</p>
-<p>That permanence is the entire point. A cosmetic you can un-buy isn't status. This one costs real progress and it never comes back.</p>
+<h3>Binders</h3>
+<p>The dex tells you what you have. Binders are where you <em>keep</em> it. Up to ${BINDER_MAX_COUNT} on the shelf, ${BINDER_MAX_CARDS} pockets each, named and colored however you like. Pick up a card, drop it in a pocket, swap it around until the page looks right.</p>
+<p>They are organization, not economy. A card in a binder is still a card in your Vault &mdash; it sells exactly like any other, and when it goes, its pocket goes empty.</p>
+<p>A reset keeps your binders on the shelf. Every pocket in them comes back empty.</p>
 
 <hr>
 
 <h3>Three Things That Will Save You</h3>
-<div class="howto-tip"><span class="n">1</span><span><strong>Never sell your last copy.</strong> Duplicates are income. Singles are the entire point of the game. The Market page stacks your copies and flags anything you only hold one of &mdash; trust it over your own read. You can also star up to three cards as favorites, which puts them on your profile and, more usefully, makes you look at them before you do something stupid.</span></div>
+<div class="howto-tip"><span class="n">1</span><span><strong>Never sell your last copy.</strong> Duplicates are income. Singles are the entire point of the game. The Market page stacks your copies and flags anything you only hold one of &mdash; trust it over your own read. Star up to three favorites too: they go on your profile, and, more usefully, they make you look at them before you do something stupid.</span></div>
 <div class="howto-tip"><span class="n">2</span><span><strong>Spin every hour you're awake.</strong> It's free money, it outearns everything else you can do, and it's half of Prayer.</span></div>
-<div class="howto-tip"><span class="n">3</span><span><strong>Sell into strength, not into need.</strong> The moment you <em>need</em> HEX is almost never the moment the market wants to give you any. Sell when it's high and sit on the cash.</span></div>
+<div class="howto-tip"><span class="n">3</span><span><strong>Sell into strength, not into need.</strong> The moment you <em>need</em> HEX is almost never the moment the market wants to give you any. Sell when it's high and sit on the cash. Agility agrees.</span></div>
 
 <hr>
 
