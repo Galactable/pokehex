@@ -1960,7 +1960,6 @@ let authMode = 'signin';  // 'signin' | 'signup'
 let authBusy = false;
 let authMsg = null;       // {type:'err'|'ok', text}
 let needsUsername = false;
-let pendingUsername = ''; // carried over from the signup form to prefill the gate
 let usernameMsg = null;
 let usernameCheckTimer = null;
 
@@ -1996,7 +1995,7 @@ function renderUsernameGate(){
         <form id="usernameform">
           <div class="authfield">
             <label>Username</label>
-            <input type="text" id="usernameInput" autocomplete="off" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" value="${esc(pendingUsername)}" />
+            <input type="text" id="usernameInput" autocomplete="off" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" />
           </div>
           <div id="usernameStatus" style="font-size:12px;min-height:16px;"></div>
           <button type="submit" class="authbtn" id="usernameSubmitBtn">Save username</button>
@@ -2022,7 +2021,6 @@ function renderUsernameGate(){
     }, 400);
   };
   input.oninput = checkNow;
-  if(pendingUsername) checkNow();
 
   document.getElementById('usernameform').onsubmit = async (e)=>{
     e.preventDefault();
@@ -2036,14 +2034,13 @@ function renderUsernameGate(){
     btn.disabled = true; btn.textContent = 'Saving…';
     const { ok, error } = await saveUsername(val);
     if(!ok){
-      usernameMsg = { type:'err', text: (error && error.message && error.message.includes('duplicate'))
+      usernameMsg = { type:'err', text: (error && (error.code === '23505' || (error.message||'').includes('duplicate')))
         ? 'That username was just taken - try another.'
         : 'Could not save username - try again.' };
       renderUsernameGate();
       return;
     }
     needsUsername = false;
-    pendingUsername = '';
     usernameMsg = null;
     loadState(); // proceed into the actual game now that a profile exists
   };
@@ -2066,12 +2063,6 @@ function renderAuth(){
             <label>Password</label>
             <input type="password" id="authPassword" autocomplete="${authMode==='signin'?'current-password':'new-password'}" minlength="6" required />
           </div>
-          ${authMode==='signup' ? `
-          <div class="authfield">
-            <label>Username</label>
-            <input type="text" id="authUsername" autocomplete="off" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" />
-            <div id="authUsernameStatus" style="font-size:12px;min-height:16px;margin-top:2px;"></div>
-          </div>` : ''}
           <button type="submit" class="authbtn" ${authBusy?'disabled':''}>
             ${authBusy ? 'Please wait…' : (authMode==='signin' ? 'Sign in' : 'Create account')}
           </button>
@@ -2092,35 +2083,10 @@ function renderAuth(){
   const backBtn = document.getElementById('authBackBtn');
   if(backBtn) backBtn.onclick = ()=>{ authMsg = null; render(); };
 
-  const authUsernameInput = document.getElementById('authUsername');
-  if(authUsernameInput){
-    const status = document.getElementById('authUsernameStatus');
-    authUsernameInput.oninput = ()=>{
-      clearTimeout(usernameCheckTimer);
-      const val = authUsernameInput.value.trim();
-      if(val.length < 3){ status.textContent=''; return; }
-      if(!/^[a-zA-Z0-9_]{3,20}$/.test(val)){ status.textContent='Letters, numbers, underscores only.'; status.style.color='#ff4444'; return; }
-      status.textContent = 'Checking…'; status.style.color='var(--muted)';
-      usernameCheckTimer = setTimeout(async ()=>{
-        const available = await isUsernameAvailable(val, null);
-        if(authUsernameInput.value.trim() !== val) return;
-        if(available === true){ status.textContent='Available'; status.style.color='#39ff14'; }
-        else if(available === false){ status.textContent='Already taken'; status.style.color='#ff4444'; }
-        else { status.textContent=''; }
-      }, 400);
-    };
-  }
-
   document.getElementById('authform').onsubmit = async (e)=>{
     e.preventDefault();
     const email = document.getElementById('authEmail').value.trim();
     const password = document.getElementById('authPassword').value;
-    const username = authMode==='signup' ? document.getElementById('authUsername').value.trim() : null;
-    if(authMode==='signup' && !/^[a-zA-Z0-9_]{3,20}$/.test(username)){
-      authMsg = { type:'err', text:'Username must be 3-20 characters: letters, numbers, underscores only.' };
-      renderAuth();
-      return;
-    }
     authBusy = true; authMsg = null; renderAuth();
     try{
       if(authMode==='signin'){
@@ -2137,10 +2103,9 @@ function renderAuth(){
           renderAuth();
           return;
         }
-        // don't insert the profile here - the username gate (triggered by
-        // onAuthStateChange below) is the single place that ever writes a
-        // profile row, so there's no chance of two competing inserts
-        pendingUsername = username;
+        // the username gate (triggered by onAuthStateChange below) is the
+        // single place that ever writes a profile row - it prompts on first
+        // sign-in, once there's a real session to write with
       }
     }catch(err){
       authBusy = false;
