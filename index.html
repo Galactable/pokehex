@@ -1556,7 +1556,19 @@ body {
   width:100%;max-width:360px;background:var(--surface);border:1px solid var(--line);
   border-radius:16px;padding:28px 24px;text-align:center;
 }
-.authcard h1{font-size:36px;margin:0 auto 4px;text-align:center;}
+/* The shared .brand/.authcard h1 rule above sets white-space:nowrap so the
+   inline hexagon glyph can't split the PokeHex wordmark. No auth heading
+   contains that glyph, so here we undo it: these are real sentences and must
+   be free to wrap. Fluid size too - the rule above is overridden by this one,
+   so a flat 36px here defeated its clamp and overflowed the 360px card. */
+.authcard h1{
+  font-size:clamp(20px, 6vw, 36px);
+  margin:0 auto 4px;
+  text-align:center;
+  white-space:normal;
+  overflow-wrap:break-word;
+  max-width:100%;
+}
 .auth-hexmark{margin:0 auto 14px;}
 .authcard p.sub{color:var(--muted);font-size:12px;text-align:center;margin:0 0 20px;}
 .authfield{margin-bottom:12px;text-align:left;}
