@@ -3642,7 +3642,7 @@ function renderMarketModal() {
       <div class="summary-panel" style="max-width:460px;">
         <button class="fav-toggle ${isFav ? 'on' : ''}" data-fav-toggle="${inst.uid}" title="${isFav ? `Remove from favorite slot ${favSlot}` : (slotsFull ? 'All 3 slots full - pick one to replace' : 'Set as a favorite')}">
           <span class="fav-star">${isFav ? '\u2605' : '\u2606'}</span>
-          <span>${isFav ? `Favorite &middot; Slot ${favSlot}` : (slotsFull ? 'Favorites Full' : 'Favorite Card')}</span>
+          <span>${isFav ? `Favorite &middot; Slot ${favSlot}` : 'Favorite Card'}</span>
         </button>
         ${favSlotPicker(inst.uid)}
 
