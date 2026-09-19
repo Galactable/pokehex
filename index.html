@@ -5557,7 +5557,7 @@ function renderInspect(){
   const glowColor = binder ? binder.color : '#ffffff';
   const faceCard = { id:card.id, name:card.name, type:card.type, rarity:card.rarity, shiny:card.shiny, sprite:card.sprite, value:card.value };
   return `
-  <div class="overlay inspect-overlay">
+  <div class="overlay inspect-overlay" data-closeinspect-backdrop>
     <button class="closex" data-closeinspect>&times;</button>
     <div class="inspect-glow" style="background:radial-gradient(circle, color-mix(in srgb, ${glowColor} 65%, white 35%), color-mix(in srgb, ${glowColor} 45%, transparent) 45%, transparent 74%);"></div>
     <div class="inspect-card-wrap" data-inspectcard>
@@ -6216,6 +6216,12 @@ function wire(){
   });
 
   document.querySelectorAll('[data-closeinspect]').forEach(b=>b.onclick=closeInspect);
+  // Tap the darkened backdrop (not the card, not the close button) to back
+  // out - the top-right close button alone is a hard reach one-handed on
+  // taller phones.
+  document.querySelectorAll('[data-closeinspect-backdrop]').forEach(el=>{
+    el.onclick = (e)=>{ if(e.target === el) closeInspect(); };
+  });
   document.querySelectorAll('[data-remove-from-binder]').forEach(b=>b.onclick=removeFromBinder);
   const inspectEl = document.querySelector('[data-inspectcard]');
   if(inspectEl){
