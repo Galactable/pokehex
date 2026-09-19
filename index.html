@@ -5200,7 +5200,7 @@ function renderDexAddSheet(){
   if(avail.length > 1 && !dexAddUid){
     return `<div class="overlay">
       <div class="summary-panel" style="max-width:380px;align-items:stretch;">
-        <div style="font-family:var(--font-display);font-weight:800;font-size:15px;text-transform:uppercase;text-align:center;">Which ${esc(p.name)}?</div>
+        <div style="font-family:var(--font-display);font-weight:800;font-size:15px;text-transform:uppercase;text-align:center;">File which ${esc(p.name)}?</div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           ${avail.map(inst=>`
             <button class="chooserow" data-dexadd-pick="${inst.uid}">
@@ -5216,9 +5216,17 @@ function renderDexAddSheet(){
 
   const uid = dexAddUid || avail[0].uid;
   const binders = state.binders || [];
+  const favSlot = (state.favoriteUids || []).indexOf(uid) + 1; // 0 = not favorited
+  const isFav = favSlot > 0;
+  const slotsFull = (state.favoriteUids || []).length >= FAVORITE_SLOTS;
   return `<div class="overlay">
     <div class="summary-panel" style="max-width:380px;align-items:stretch;">
       <div style="font-family:var(--font-display);font-weight:800;font-size:15px;text-transform:uppercase;text-align:center;">File ${esc(p.name)} in&hellip;</div>
+      <button class="fav-toggle ${isFav ? 'on' : ''}" data-fav-toggle="${uid}" title="${isFav ? `Remove from favorite slot ${favSlot}` : (slotsFull ? 'All 3 slots full - pick one to replace' : 'Set as a favorite')}">
+        <span class="fav-star">${isFav ? '★' : '☆'}</span>
+        <span>${isFav ? `Favorite &middot; Slot ${favSlot}` : 'Favorite Card'}</span>
+      </button>
+      ${favSlotPicker(uid)}
       ${binders.length === 0 ? `
         <div style="font-size:12.5px;text-align:center;color:var(--muted);line-height:1.5;">You don't have a binder yet.</div>
         <div class="summary-actions"><button class="sbtn keep" data-dexadd-goto-shelf>Create a Binder</button></div>
