@@ -269,6 +269,13 @@ body {
 .balance .val{
   font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;color:var(--gold);
 }
+/* .hex-icon is reused all over the game at a fixed 14x16 - scoped here so
+   only the balance tile's copy grows. Base box and the ::before highlight's
+   offset/size scale together (::after uses inset:0, so it already tracks
+   the base box with no px of its own to convert) - same technique as the
+   card face's .cf-value .hex-icon override. */
+.balance .hex-icon{ width:18px; height:20px; margin-right:4px; }
+.balance .hex-icon::before{ left:4px; width:10px; height:7px; }
 .mailbtn{
   position:relative;background:none;border:none;padding:0;
   flex:0 0 auto;display:flex;align-items:center;justify-content:center;cursor:pointer;
@@ -434,6 +441,7 @@ body {
 .dexhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px;}
 .dexhead-left{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;}
 .dexhead-left h2{font-family:var(--font-display);font-weight:800;font-size:20px;margin:0;letter-spacing:0.03em;text-transform:uppercase;}
+.editbinder-pencil{transform:scaleX(-1);}
 .dexcount{color:var(--muted);font-size:13px;}
 
 /* Rarity Key Legend */
@@ -2910,7 +2918,7 @@ let resetBusy = false;
 function renderResetConfirmModal(){
   if(!resetConfirmOpen) return '';
   return `
-  <div class="overlay">
+  <div class="overlay" data-resetclose-backdrop>
     <div class="summary-panel" style="max-width:440px;">
       <div style="font-family:var(--font-display);font-weight:800;font-size:18px;color:#ff4444;text-transform:uppercase;">Reset Progress?</div>
       <div style="font-size:13px;text-align:center;line-height:1.5;">
@@ -3753,7 +3761,7 @@ function renderMarketModal() {
       </div>`;
 
     return `
-    <div class="overlay">
+    <div class="overlay" data-modalclose-backdrop>
       <div class="summary-panel" style="max-width:460px;">
         <button class="fav-toggle ${isFav ? 'on' : ''}" data-fav-toggle="${inst.uid}" title="${isFav ? `Remove from favorite slot ${favSlot}` : (slotsFull ? 'All 3 slots full - pick one to replace' : 'Set as a favorite')}">
           <span class="fav-star">${isFav ? '\u2605' : '\u2606'}</span>
@@ -3808,7 +3816,7 @@ function renderMarketModal() {
     const estPayout = Math.max(1, Math.round(baseValue * multiplier));
 
     return `
-    <div class="overlay">
+    <div class="overlay" data-modalclose-backdrop>
       <div class="summary-panel" style="max-width:440px;">
         <div style="font-family:var(--font-display);font-weight:800;font-size:18px;color:var(--gold);text-transform:uppercase;">Confirm Liquidation</div>
         <div style="font-size:13px;text-align:center;">Liquidate <b>${esc(p.name)}${inst.shiny ? ' ✨' : ''}${inst.holo ? ' ❖' : ''}</b>?</div>
@@ -3836,7 +3844,7 @@ function renderMarketModal() {
     const prev = dupePreview(targetTier, now);
 
     return `
-    <div class="overlay">
+    <div class="overlay" data-modalclose-backdrop>
       <div class="summary-panel" style="max-width:460px;">
         <div style="font-family:var(--font-display);font-weight:800;font-size:18px;color:#a855f7;text-transform:uppercase;">Confirm Duplicate Liquidation</div>
         <div style="font-size:13px;text-align:center;">Liquidate <b>${prev.count}</b> duplicate ${prev.count === 1 ? 'card' : 'cards'} in <b>${tierLabels[targetTier]}</b> tier?</div>
@@ -3878,7 +3886,7 @@ function renderMarketModal() {
     const totalEstPayout = prev.est;
 
     return `
-    <div class="overlay">
+    <div class="overlay" data-modalclose-backdrop>
       <div class="summary-panel" style="max-width:460px;">
         <div style="font-family:var(--font-display);font-weight:800;font-size:18px;color:#ff4444;text-transform:uppercase;">Confirm Bulk Liquidation</div>
         <div style="font-size:13px;text-align:center;">Liquidate all <b>${count}</b> cards in <b>${tierLabels[targetTier]}</b> tier?</div>
@@ -4953,7 +4961,7 @@ function renderMailbox(){
     : `<div style="color:var(--muted);font-size:12px;padding:8px 0;">No friends yet.</div>`;
 
   return `
-  <div class="overlay">
+  <div class="overlay" data-mailboxclose-backdrop>
     <button class="closex" data-mailbox-close>&times;</button>
     <div class="summary-panel" style="max-width:460px;align-items:stretch;">
       <div style="font-family:var(--font-display);font-weight:800;font-size:16px;text-transform:uppercase;text-align:center;">Friends</div>
@@ -5037,11 +5045,7 @@ function renderProfile(){
       ? `<div class="cb-swatch card-face card-back back-${esc(state.equippedBack)}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;"></div>`
       : ''}
     <h2 class="disp" style="margin:0;">${esc(profileUsername || 'Profile')}</h2>
-    <button class="mailbtn" style="margin-left:auto;" data-mailbox-open aria-label="Friends and requests" title="Friends and requests">
-      <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="16" height="12" rx="1.5"/><path d="M2.5 5 10 11 17.5 5"/></svg>
-      ${incomingRequests().length ? `<span class="mailbadge">${incomingRequests().length}</span>` : ''}
-    </button>
-    <button class="visibility-pill ${profileIsPublic?'is-public':'is-private'}" data-profile-visibility
+    <button class="visibility-pill ${profileIsPublic?'is-public':'is-private'}" style="margin-left:auto;" data-profile-visibility
       title="${profileIsPublic ? 'Anyone can view your profile and stats. Click to make it visible to friends only.' : 'Only friends can view your profile and stats. Click to make it public.'}">
       ${lockIcon(profileIsPublic)}<span>${profileIsPublic ? 'Public' : 'Private'}</span>
     </button>
@@ -5327,7 +5331,7 @@ function renderDexAddSheet(){
   const avail = instancesFor(dexAddSpeciesId);
 
   if(!avail.length){
-    return `<div class="overlay">
+    return `<div class="overlay" data-dexaddclose-backdrop>
       <div class="summary-panel" style="max-width:380px;">
         <div style="font-family:var(--font-display);font-weight:800;font-size:15px;text-transform:uppercase;text-align:center;">${esc(p.name)}</div>
         <div style="font-size:12.5px;text-align:center;color:var(--muted);line-height:1.5;">You don't own a copy of ${esc(p.name)} right now.</div>
@@ -5341,7 +5345,7 @@ function renderDexAddSheet(){
   // (badged) so a filed card stays reachable to favorite or re-file elsewhere.
   if(avail.length > 1 && !dexAddUid){
     const used = usedBinderUids();
-    return `<div class="overlay">
+    return `<div class="overlay" data-dexaddclose-backdrop>
       <div class="summary-panel" style="max-width:380px;align-items:stretch;">
         <div style="font-family:var(--font-display);font-weight:800;font-size:15px;text-transform:uppercase;text-align:center;">File which ${esc(p.name)}?</div>
         <div style="display:flex;flex-direction:column;gap:8px;">
@@ -5367,7 +5371,7 @@ function renderDexAddSheet(){
   const isFav = favSlot > 0;
   const slotsFull = (state.favoriteUids || []).length >= FAVORITE_SLOTS;
   const filedLoc = findFiledSlot(uid);
-  return `<div class="overlay">
+  return `<div class="overlay" data-dexaddclose-backdrop>
     <div class="summary-panel" style="max-width:380px;align-items:stretch;">
       <div style="font-family:var(--font-display);font-weight:800;font-size:15px;text-transform:uppercase;text-align:center;">File ${esc(p.name)} in&hellip;</div>
       <button class="fav-toggle ${isFav ? 'on' : ''}" data-fav-toggle="${uid}" title="${isFav ? `Remove from favorite slot ${favSlot}` : (slotsFull ? 'All 3 slots full - pick one to replace' : 'Set as a favorite')}">
@@ -5473,7 +5477,7 @@ function renderBinderSheet(){
 
   if(deleteBinderConfirm && editing){
     return `
-    <div class="overlay">
+    <div class="overlay" data-binderdeleteclose-backdrop>
       <div class="summary-panel" style="max-width:420px;">
         <div style="font-family:var(--font-display);font-weight:800;font-size:16px;color:#ff4444;text-transform:uppercase;">Delete ${esc(editing.name)}?</div>
         <div style="font-size:12.5px;text-align:center;line-height:1.5;color:var(--muted);">Its cards go back to your Dex &mdash; nothing is lost. This can't be undone.</div>
@@ -5634,8 +5638,8 @@ function renderBinderPage(){
       <button class="iconbtn" data-closepage title="Back to Shelf">&lsaquo;</button>
       <h2 class="disp">${esc(binder.name)}</h2>
       <div class="dexcount mono">${countFilled(binder)} / ${9*pages.length}</div>
+      <button class="iconbtn editbinder-pencil" data-editbinder="${binder.id}" title="Edit Binder">&#9998;</button>
     </div>
-    <button class="iconbtn" data-editbinder="${binder.id}" title="Edit Binder">&#9998;</button>
   </div>
   ${binder.desc ? `<div class="mono" style="font-size:11.5px;color:var(--muted);margin:-6px 0 12px;">${esc(binder.desc)}</div>` : ''}
   <div class="reorderhint ${carrying?'active':''}">${hintText}</div>
@@ -5946,7 +5950,13 @@ function render(){
       </div>
       ${authUser
         ? `<div style="grid-column:3;justify-self:end;display:flex;align-items:center;gap:10px;">
-             <div class="balance"><span class="tick">Balance</span><span class="val mono"><i class="hex-icon"></i>${fmtHex(state.hex)}</span></div>
+             <div class="balance">
+               <button class="mailbtn" data-mailbox-open aria-label="Friends and requests" title="Friends and requests">
+                 <svg viewBox="0 0 20 20" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="16" height="12" rx="1.5"/><path d="M2.5 5 10 11 17.5 5"/></svg>
+                 ${incomingRequests().length ? `<span class="mailbadge">${incomingRequests().length}</span>` : ''}
+               </button>
+               <span class="tick">Hex</span><span class="val mono"><i class="hex-icon"></i>${fmtHex(state.hex)}</span>
+             </div>
            </div>`
         : ''
       }
@@ -6338,6 +6348,27 @@ function wire(){
   // taller phones.
   document.querySelectorAll('[data-closeinspect-backdrop]').forEach(el=>{
     el.onclick = (e)=>{ if(e.target === el) closeInspect(); };
+  });
+  // Same "tap the darkened backdrop to back out" as the inspect view, applied
+  // to every other confirm/info popup. Each mirrors that popup's own
+  // existing cancel/close body exactly - never the confirm/save side of an
+  // action. Deliberately NOT on the pack-opening overlay (mid-gesture taps
+  // there shouldn't risk cancelling a paid-for pack) or the new/edit binder
+  // form (typed name/description could be lost on a stray tap).
+  document.querySelectorAll('[data-modalclose-backdrop]').forEach(el=>{
+    el.onclick = (e)=>{ if(e.target === el){ activeModal = null; render(); } };
+  });
+  document.querySelectorAll('[data-resetclose-backdrop]').forEach(el=>{
+    el.onclick = (e)=>{ if(e.target === el){ resetConfirmOpen = false; render(); } };
+  });
+  document.querySelectorAll('[data-mailboxclose-backdrop]').forEach(el=>{
+    el.onclick = (e)=>{ if(e.target === el){ mailboxOpen = false; addFriendMsg = null; render(); } };
+  });
+  document.querySelectorAll('[data-dexaddclose-backdrop]').forEach(el=>{
+    el.onclick = (e)=>{ if(e.target === el){ dexAddOpen = false; dexAddSpeciesId = null; dexAddUid = null; render(); } };
+  });
+  document.querySelectorAll('[data-binderdeleteclose-backdrop]').forEach(el=>{
+    el.onclick = (e)=>{ if(e.target === el){ deleteBinderConfirm = false; render(); } };
   });
   document.querySelectorAll('[data-remove-from-binder]').forEach(b=>b.onclick=removeFromBinder);
   const inspectEl = document.querySelector('[data-inspectcard]');
