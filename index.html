@@ -2059,6 +2059,7 @@ html,body{ max-width:100%; overflow-x:hidden; }
   filter:drop-shadow(0 1px 2px rgba(0,0,0,0.9)) drop-shadow(0 0 3px rgba(0,0,0,0.75));
 }
 .chooserow-filed-badge{position:absolute;left:-6px;bottom:-6px;width:20px;height:20px;}
+.dexslot-filed-badge{position:absolute;right:3px;bottom:3px;width:24px;height:24px;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -5208,6 +5209,18 @@ function renderDex(){
   // having pulled it lives in player_stats.shiny_pulls_count instead.
   const shinyIds = new Set((state.instances || []).filter(i => i.shiny).map(i => i.id));
   const holoIds = new Set((state.instances || []).filter(i => i.holo).map(i => i.id));
+  // Fully-filed indicator: every copy you own of this species is placed in
+  // a binder somewhere, not just one of several. A per-copy "filed" badge
+  // here would misreport a species with one filed and two loose copies as
+  // "in your binder", which is what prompted this in the first place.
+  const usedUids = usedBinderUids();
+  const instancesBySpecies = {};
+  (state.instances || []).forEach(i => { (instancesBySpecies[i.id] = instancesBySpecies[i.id] || []).push(i); });
+  const fullyFiledIds = new Set(
+    Object.keys(instancesBySpecies)
+      .map(Number)
+      .filter(id => instancesBySpecies[id].every(i => usedUids.has(i.uid)))
+  );
   const genDef = GENS.find(g => g.n === dexGen) || GENS[0];
   const genRange = [genDef.lo, genDef.hi];
   const genList = POKEMON.filter(p => p.id >= genRange[0] && p.id <= genRange[1]);
@@ -5282,6 +5295,7 @@ function renderDex(){
         <span class="num mono">#${String(p.id).padStart(3,'0')}</span>
         ${o && shinyIds.has(p.id) ? `<div class="shiny-sparkle-overlay"></div><span style="position:absolute;top:2px;right:4px;color:gold;font-size:15px;text-shadow:0 0 5px gold;z-index:3;" title="Shiny owned">★</span>` : ''}
         ${o && holoIds.has(p.id) ? `<div class="holo-hex-overlay"></div><div class="holo-gloss-overlay"></div><div class="holo-sparkle-overlay"></div><span style="position:absolute;top:2px;right:4px;color:#8ad0ff;font-size:15px;text-shadow:0 0 5px #8ad0ff;z-index:3;" title="Holo owned">&#10070;</span>` : ''}
+        ${o && fullyFiledIds.has(p.id) ? `<img class="filed-badge dexslot-filed-badge" src="${FILED_BADGE_ICON}" alt="" title="${o.count > 1 ? 'All copies filed in a binder' : 'Filed in a binder'}">` : ''}
         <div class="glyph">
           ${o?`<img src="${p.sprite}" alt="${esc(p.name)}" loading="lazy">`:``}
         </div>
