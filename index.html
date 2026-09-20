@@ -4873,9 +4873,12 @@ function renderPublicProfile(){
   return `
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
     <button class="iconbtn" data-viewprofile-close title="Back">&lsaquo;</button>
-    ${d.equippedBack && cardBackById(d.equippedBack)
-      ? `<div class="cb-swatch card-face card-back back-${esc(d.equippedBack)}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;"></div>`
-      : ''}
+    ${(() => {
+      const eq = d.equippedBack && cardBackById(d.equippedBack);
+      // no purchase yet -> plain striped back, same fallback pack-opening
+      // uses. Rendering it (instead of nothing) is the nudge to buy one.
+      return `<div class="cb-swatch card-face card-back ${eq ? 'back-' + esc(d.equippedBack) : ''}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;">${eq ? '' : '<span>POKéHEX</span>'}</div>`;
+    })()}
     <h2 class="disp" style="margin:0;">${esc(d.username || 'Player')}</h2>
   </div>
 
@@ -5048,9 +5051,12 @@ function renderProfile(){
 
   return `
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-    ${state.equippedBack && cardBackById(state.equippedBack)
-      ? `<div class="cb-swatch card-face card-back back-${esc(state.equippedBack)}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;"></div>`
-      : ''}
+    ${(() => {
+      const eq = state.equippedBack && cardBackById(state.equippedBack);
+      // no purchase yet -> plain striped back, same fallback pack-opening
+      // uses. Rendering it (instead of nothing) is the nudge to buy one.
+      return `<div class="cb-swatch card-face card-back ${eq ? 'back-' + esc(state.equippedBack) : ''}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;">${eq ? '' : '<span>POKéHEX</span>'}</div>`;
+    })()}
     <h2 class="disp" style="margin:0;">${esc(profileUsername || 'Profile')}</h2>
     <button class="visibility-pill ${profileIsPublic?'is-public':'is-private'}" style="margin-left:auto;" data-profile-visibility
       title="${profileIsPublic ? 'Anyone can view your profile and stats. Click to make it visible to friends only.' : 'Only friends can view your profile and stats. Click to make it public.'}">
