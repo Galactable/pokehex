@@ -1854,10 +1854,11 @@ html,body{ max-width:100%; overflow-x:hidden; }
 }
 .skill-note b{color:var(--text);font-weight:600;}
 .skill-summary{
-  display:flex;gap:22px;flex-wrap:wrap;align-items:baseline;
-  justify-content:center;text-align:center;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px 22px;
+  justify-items:center;text-align:center;
   padding:10px 2px 12px;
 }
+.skill-summary>span{display:flex;flex-direction:column;align-items:center;gap:2px;}
 .skill-summary .lab{color:var(--muted);font-size:11px;letter-spacing:0.5px;}
 .skill-summary .val{
   font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--foil1);
@@ -4878,7 +4879,13 @@ function renderPublicProfile(){
     <h2 class="disp" style="margin:0;">${esc(d.username || 'Player')}</h2>
   </div>
 
-  ${d.skills ? `<div class="section-label" style="margin-top:20px;">Skills</div>${renderSkillMap(d.skills)}` : ''}
+  ${d.skills ? `<div class="section-label" style="margin-top:20px;">Skills</div>
+  <div class="skill-summary">
+    <span><span class="lab">TRAINER</span> <span class="val">${d.skills.trainer_level}</span></span>
+    <span><span class="lab">TOTAL LEVEL</span> <span class="val alt">${d.skills.total_level}</span></span>
+    <span><span class="lab">TOTAL XP</span> <span class="val alt">${fmtHex(Number(d.skills.total_xp))}</span></span>
+  </div>
+  ${renderSkillMap(d.skills)}` : ''}
 
   <div class="section-label">Collection</div>
   <div class="stat-row"><span>% of Full Dex</span><span class="mono">${dexPct}% (${dexOwned}/${DEX_TOTAL})</span></div>
