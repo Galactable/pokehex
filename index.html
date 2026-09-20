@@ -5225,7 +5225,6 @@ function renderDex(){
   // dex entry. Liquidate the shiny and the dex forgets it. Lifetime credit for
   // having pulled it lives in player_stats.shiny_pulls_count instead.
   const shinyIds = new Set((state.instances || []).filter(i => i.shiny).map(i => i.id));
-  const holoIds = new Set((state.instances || []).filter(i => i.holo).map(i => i.id));
   // Fully-filed indicator: every copy you own of this species is placed in
   // a binder somewhere, not just one of several. A per-copy "filed" badge
   // here would misreport a species with one filed and two loose copies as
@@ -5238,6 +5237,21 @@ function renderDex(){
       .map(Number)
       .filter(id => instancesBySpecies[id].every(i => usedUids.has(i.uid)))
   );
+  // Dex tile badges show only the most valuable copy's own flags, not "owns
+  // a shiny somewhere AND a holo somewhere" - those can be two different
+  // copies. Shiny (10x) always outvalues plain holo (3x), so a species with
+  // a plain shiny and a separate plain holo shows only the shiny star; a
+  // single copy that's genuinely both still shows both.
+  const bestFlagsById = {};
+  Object.keys(instancesBySpecies).forEach(idStr => {
+    const id = Number(idStr);
+    const p = POKEMON.find(x => x.id === id);
+    if(!p) return;
+    const best = instancesBySpecies[id].reduce((a, b) =>
+      effectiveCardValue(p.value, b.shiny, b.holo) > effectiveCardValue(p.value, a.shiny, a.holo) ? b : a
+    );
+    bestFlagsById[id] = { shiny: !!best.shiny, holo: !!best.holo };
+  });
   const genDef = GENS.find(g => g.n === dexGen) || GENS[0];
   const genRange = [genDef.lo, genDef.hi];
   const genList = POKEMON.filter(p => p.id >= genRange[0] && p.id <= genRange[1]);
@@ -5308,10 +5322,11 @@ function renderDex(){
     ${list.map(p=>{
       const o = owned[p.id];
       const color = TYPE_COLORS[p.type];
-      return `<div class="dexslot ${o?'owned':''} ${o && shinyIds.has(p.id) ? 'shiny-card' : ''}" ${o?`data-species="${p.id}"`:''} style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};${o && shinyIds.has(p.id) ? `--shiny-hue:${shinyHue(p.id)}deg;` : ''}">
+      const bf = bestFlagsById[p.id];
+      return `<div class="dexslot ${o?'owned':''} ${o && bf && bf.shiny ? 'shiny-card' : ''}" ${o?`data-species="${p.id}"`:''} style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};${o && bf && bf.shiny ? `--shiny-hue:${shinyHue(p.id)}deg;` : ''}">
         <span class="num mono">#${String(p.id).padStart(3,'0')}</span>
-        ${o && shinyIds.has(p.id) ? `<div class="shiny-sparkle-overlay"></div><span style="position:absolute;top:2px;right:4px;color:gold;font-size:15px;text-shadow:0 0 5px gold;z-index:3;" title="Shiny owned">★</span>` : ''}
-        ${o && holoIds.has(p.id) ? `<div class="holo-hex-overlay"></div><div class="holo-gloss-overlay"></div><div class="holo-sparkle-overlay"></div><span style="position:absolute;top:2px;right:4px;color:#8ad0ff;font-size:15px;text-shadow:0 0 5px #8ad0ff;z-index:3;" title="Holo owned">&#10070;</span>` : ''}
+        ${o && bf && bf.shiny ? `<div class="shiny-sparkle-overlay"></div><span style="position:absolute;top:2px;right:4px;color:gold;font-size:15px;text-shadow:0 0 5px gold;z-index:3;" title="Shiny owned">★</span>` : ''}
+        ${o && bf && bf.holo ? `<div class="holo-hex-overlay"></div><div class="holo-gloss-overlay"></div><div class="holo-sparkle-overlay"></div><span style="position:absolute;top:2px;right:4px;color:#8ad0ff;font-size:15px;text-shadow:0 0 5px #8ad0ff;z-index:3;" title="Holo owned">&#10070;</span>` : ''}
         ${o && fullyFiledIds.has(p.id) ? `<img class="filed-badge dexslot-filed-badge" src="${FILED_BADGE_ICON}" alt="" title="${o.count > 1 ? 'All copies filed in a binder' : 'Filed in a binder'}">` : ''}
         <div class="glyph">
           ${o?`<img src="${p.sprite}" alt="${esc(p.name)}" loading="lazy">`:``}
