@@ -2913,6 +2913,7 @@ const GENS = [
 const DEX_TOTAL = GENS[GENS.length - 1].hi;
 const genOf = id => GENS.find(g => id >= g.lo && id <= g.hi);
 let activeModal = null; // Confirmation modal state
+let tierProtectHolo = false; // Liquidate Tier modal's holo-protect checkbox; reset whenever that modal opens
 let resetConfirmOpen = false;
 let resetBusy = false;
 
@@ -3843,6 +3844,11 @@ function renderMarketModal() {
     const tierLabels = { secret: 'Secret Rare', ultra: 'Ultra Rare', rare: 'Rare', uncommon: 'Uncommon', common: 'Common' };
     const now = Date.now();
     const prev = dupePreview(targetTier, now);
+    const protectedParts = [
+      prev.shinyKept > 0 ? `${prev.shinyKept} shiny ${prev.shinyKept === 1 ? 'card' : 'cards'}` : '',
+      prev.holoKept > 0 ? `${prev.holoKept} holo ${prev.holoKept === 1 ? 'card' : 'cards'}` : '',
+      prev.filedKept > 0 ? `${prev.filedKept} filed ${prev.filedKept === 1 ? 'card' : 'cards'}` : ''
+    ].filter(Boolean);
 
     return `
     <div class="overlay" data-modalclose-backdrop>
@@ -3850,7 +3856,7 @@ function renderMarketModal() {
         <div style="font-family:var(--font-display);font-weight:800;font-size:18px;color:#a855f7;text-transform:uppercase;">Confirm Duplicate Liquidation</div>
         <div style="font-size:13px;text-align:center;">Liquidate <b>${prev.count}</b> duplicate ${prev.count === 1 ? 'card' : 'cards'} in <b>${tierLabels[targetTier]}</b> tier?</div>
         <div style="font-size:11px;color:var(--muted);text-align:center;line-height:1.4;">
-          Your least valuable copy of each card is kept, so it can keep maturing.
+          Your least valuable copy of each card is kept, so it can keep maturing &mdash; a holo always outranks a plain copy as the keeper.
         </div>
 
         <div style="background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:12px;width:100%;text-align:center;">
@@ -3863,10 +3869,10 @@ function renderMarketModal() {
 
         <div style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.35);border-radius:8px;padding:10px;width:100%;text-align:center;">
           <div style="font-size:10px;color:#c084fc;line-height:1.4;">
-            &#10024; <b>Shiny cards are never liquidated in bulk executions.</b>
-            ${prev.shinyKept > 0
-              ? `${prev.shinyKept} shiny ${prev.shinyKept === 1 ? 'card is' : 'cards are'} protected in this tier. Where a shiny exists, it is kept as your copy and the duplicates sell.`
-              : `You have no shinies in this tier.`}
+            &#10024; <b>Shinies, holos, and anything filed in a binder are never sold in bulk executions.</b>
+            ${protectedParts.length
+              ? ` Protected in this tier: ${protectedParts.join(', ')}.`
+              : ` Nothing in this tier needs protecting right now.`}
           </div>
         </div>
 
@@ -3882,16 +3888,26 @@ function renderMarketModal() {
     const targetTier = activeModal.tier;
     const tierLabels = { secret: 'Secret Rare', ultra: 'Ultra Rare', rare: 'Rare', uncommon: 'Uncommon', common: 'Common' };
     const now = Date.now();
-    const prev = tierPreview(targetTier, now);
+    const prev = tierPreview(targetTier, now, tierProtectHolo);
     const count = prev.count;
     const totalEstPayout = prev.est;
+    const protectedParts = [
+      prev.shinyKept > 0 ? `${prev.shinyKept} shiny ${prev.shinyKept === 1 ? 'card' : 'cards'}` : '',
+      prev.holoKept > 0 ? `${prev.holoKept} holo ${prev.holoKept === 1 ? 'card' : 'cards'}` : '',
+      prev.filedKept > 0 ? `${prev.filedKept} filed ${prev.filedKept === 1 ? 'card' : 'cards'}` : ''
+    ].filter(Boolean);
 
     return `
     <div class="overlay" data-modalclose-backdrop>
       <div class="summary-panel" style="max-width:460px;">
         <div style="font-family:var(--font-display);font-weight:800;font-size:18px;color:#ff4444;text-transform:uppercase;">Confirm Bulk Liquidation</div>
         <div style="font-size:13px;text-align:center;">Liquidate all <b>${count}</b> cards in <b>${tierLabels[targetTier]}</b> tier?</div>
-        
+
+        <label style="display:flex;align-items:center;gap:8px;justify-content:center;font-size:11px;color:var(--muted);cursor:pointer;">
+          <input type="checkbox" data-tier-protect-holo ${tierProtectHolo ? 'checked' : ''}/>
+          Protect holos &mdash; keep them out of this sale
+        </label>
+
         <div style="background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:12px;width:100%;text-align:center;">
           <div style="font-size:11px;color:var(--muted);">Total Estimated Payout:</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:22px;color:var(--gold);margin:4px 0;"><i class="hex-icon"></i>~${fmtHex(totalEstPayout)} HEX</div>
@@ -3902,10 +3918,10 @@ function renderMarketModal() {
 
         <div style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.35);border-radius:8px;padding:10px;width:100%;text-align:center;">
           <div style="font-size:10px;color:#c084fc;line-height:1.4;">
-            &#10024; <b>Shiny cards are never liquidated in bulk executions.</b>
-            ${prev.shinyKept > 0
-              ? `${prev.shinyKept} shiny ${prev.shinyKept === 1 ? 'card is' : 'cards are'} protected in this tier and will stay in your vault.`
-              : `You have no shinies in this tier.`}
+            &#10024; <b>Shinies and anything filed in a binder are never sold in bulk executions.</b>${tierProtectHolo ? ' Holos are protected too, since you checked the box above.' : ''}
+            ${protectedParts.length
+              ? ` Protected in this tier: ${protectedParts.join(', ')}.`
+              : ` Nothing in this tier needs protecting right now.`}
           </div>
         </div>
 
@@ -3921,23 +3937,30 @@ function renderMarketModal() {
 }
 
 // Preview for Liquidate Duplicates. Mirrors the server's liquidate_duplicates
-// grouping exactly: keep the LEAST valuable non-shiny copy of each species and
-// sell the rest; if a species has a shiny, the shiny is kept and every
-// non-shiny copy of it sells. Estimate only - the server recalculates each
-// payout at execution time, so slippage applies.
+// exactly: shinies are always kept, filed-in-a-binder copies are always kept
+// (and still count toward whether the species "has" a shiny/holo even though
+// they're excluded from the sellable pool), and a holo - anywhere in the
+// species, filed or not - always outranks a plain copy as the one kept
+// representative; only when no shiny and no holo exist anywhere in the group
+// does the classic "keep cheapest, sell the rest" rule apply. Estimate only -
+// the server recalculates each payout at execution time, so slippage applies.
 function dupePreview(tier, now){
+  const usedUids = usedBinderUids();
   const groups = {};
   (state.instances || []).forEach(inst => {
     if (inst.rarity !== tier) return;
     (groups[inst.id] = groups[inst.id] || []).push(inst);
   });
 
-  let count = 0, est = 0, shinyKept = 0;
+  let count = 0, est = 0, shinyKept = 0, holoKept = 0, filedKept = 0;
   Object.values(groups).forEach(g => {
     const hasShiny = g.some(x => x.shiny);
     if (hasShiny) shinyKept += g.filter(x => x.shiny).length;
+    const hasHolo = g.some(x => x.holo);
+    filedKept += g.filter(x => !x.shiny && usedUids.has(x.uid)).length;
 
-    const valued = g.filter(x => !x.shiny).map(inst => {
+    // candidates: anything that could actually be sold - not shiny, not filed
+    const candidates = g.filter(x => !x.shiny && !usedUids.has(x.uid)).map(inst => {
       const p = POKEMON.find(x => x.id === inst.id);
       const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
       return { inst, hoursHeld,
@@ -3945,30 +3968,53 @@ function dupePreview(tier, now){
         payout: Math.max(1, Math.round((effectiveCardValue(p.value, inst.shiny, inst.holo)) * cardMultiplier(hoursHeld, now))) };
     });
     // same tiebreak chain as the RPC: payout asc, hours asc, uid asc
-    valued.sort((a, b) => a.payout - b.payout || a.hoursHeld - b.hoursHeld
+    candidates.sort((a, b) => a.payout - b.payout || a.hoursHeld - b.hoursHeld
                        || (a.inst.uid < b.inst.uid ? -1 : 1));
 
-    (hasShiny ? valued : valued.slice(1)).forEach(d => { est += d.payout; count++; });
+    let doomed;
+    if (hasHolo) {
+      const holoCandidates = candidates.filter(d => d.inst.holo);
+      if (holoCandidates.length > 0) {
+        // cheapest floating holo becomes the keeper, everything else sells
+        holoKept++;
+        const keptUid = holoCandidates[0].inst.uid;
+        doomed = candidates.filter(d => d.inst.uid !== keptUid);
+      } else {
+        // the species' only holo is filed or shiny - already protected,
+        // nothing floating needs to be spared on its behalf
+        doomed = candidates;
+      }
+    } else {
+      doomed = hasShiny ? candidates : candidates.slice(1);
+    }
+
+    doomed.forEach(d => { est += d.payout; count++; });
   });
-  return { count, est, shinyKept };
+  return { count, est, shinyKept, holoKept, filedKept };
 }
 
-// Preview for Liquidate Tier. Mirrors the server's liquidate_tier after the
-// shiny-protection fix: every non-shiny card in the tier sells, shinies are
-// kept. The tier header still counts and values the whole tier including
-// shinies - that is inventory. This is what will actually execute.
-function tierPreview(tier, now){
-  let count = 0, est = 0, shinyKept = 0;
+// Preview for Liquidate Tier. Mirrors the server's liquidate_tier: shinies
+// and filed-in-a-binder copies are always kept; holos are additionally kept
+// only when protectHolo is true (this function's tier has no per-species
+// grouping, so it's a blanket skip, not a "keep one" rule like duplicates).
+function tierPreview(tier, now, protectHolo){
+  const usedUids = usedBinderUids();
+  let count = 0, est = 0, shinyKept = 0, holoKept = 0, filedKept = 0;
   (state.instances || []).forEach(inst => {
     if (inst.rarity !== tier) return;
     if (inst.shiny) { shinyKept++; return; }
+    if (usedUids.has(inst.uid)) { filedKept++; return; }
+    if (protectHolo && inst.holo) { holoKept++; return; }
     const p = POKEMON.find(x => x.id === inst.id);
     if (!p) return;
     const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
-    est += Math.max(1, Math.round(p.value * cardMultiplier(hoursHeld, now)));
+    // was p.value alone here, silently dropping the holo 3x multiplier from
+    // the estimate even before this feature - now matches effective_card_value
+    // the RPC actually uses
+    est += Math.max(1, Math.round(effectiveCardValue(p.value, inst.shiny, inst.holo) * cardMultiplier(hoursHeld, now)));
     count++;
   });
-  return { count, est, shinyKept };
+  return { count, est, shinyKept, holoKept, filedKept };
 }
 
 function renderMarket(){
@@ -6522,10 +6568,19 @@ function wire(){
 
   document.querySelectorAll('[data-open-tier-modal]').forEach(btn => {
     btn.onclick = () => {
+      tierProtectHolo = false;
       activeModal = { type: 'tier', tier: btn.dataset.openTierModal };
       render();
     };
   });
+
+  const tierProtectHoloCheckbox = document.querySelector('[data-tier-protect-holo]');
+  if (tierProtectHoloCheckbox) {
+    tierProtectHoloCheckbox.onchange = () => {
+      tierProtectHolo = tierProtectHoloCheckbox.checked;
+      render();
+    };
+  }
 
   const cancelBtn = document.querySelector('[data-modal-cancel]');
   if (cancelBtn) {
@@ -6613,30 +6668,21 @@ function wire(){
     confirmTierBtn.onclick = async () => {
       if(liquidateBusy) return;
       const targetTier = confirmTierBtn.dataset.modalConfirmTier;
+      const protectHolo = tierProtectHolo;
       liquidateBusy = true;
       try{
-        const { data, error } = await sb.rpc('liquidate_tier', { p_rarity: targetTier });
+        const { data, error } = await sb.rpc('liquidate_tier', { p_rarity: targetTier, p_protect_holo: protectHolo });
         if(error){
           toast("Couldn't liquidate those cards - try again.");
           return;
         }
         if (data.count > 0) {
-          const remainingInstances = [];
-          (state.instances || []).forEach(inst => {
-            // must mirror the server: liquidate_tier keeps shinies, so a
-            // shiny stays in instances and its dex count is NOT decremented.
-            if (inst.rarity === targetTier && !inst.shiny) {
-              const dexEntry = state.dex[inst.id];
-              if (dexEntry) {
-                dexEntry.count--;
-                if (dexEntry.count <= 0) delete state.dex[inst.id];
-              }
-            } else {
-              remainingInstances.push(inst);
-            }
-          });
-          state.instances = remainingInstances;
-          state.hex += data.payout; // authoritative payout from the server, not a local recompute
+          // the server now decides what survives - shiny, filed, and
+          // optionally holo protection all interact - so refetch rather than
+          // reproduce the keeper logic client-side and risk drift, same
+          // reasoning as Liquidate Duplicates above
+          activeModal = null;
+          await loadState();
           recordVaultValue();
           saveState();
           toast(`Liquidated ${data.count} ${targetTier} cards for <i class="hex-icon"></i>${fmtHex(data.payout)} HEX!`);
