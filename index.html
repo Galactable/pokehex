@@ -3957,6 +3957,7 @@ function dupePreview(tier, now){
     const hasShiny = g.some(x => x.shiny);
     if (hasShiny) shinyKept += g.filter(x => x.shiny).length;
     const hasHolo = g.some(x => x.holo);
+    const hasFiled = g.some(x => usedUids.has(x.uid));
     filedKept += g.filter(x => !x.shiny && usedUids.has(x.uid)).length;
 
     // candidates: anything that could actually be sold - not shiny, not filed
@@ -3985,7 +3986,8 @@ function dupePreview(tier, now){
         doomed = candidates;
       }
     } else {
-      doomed = hasShiny ? candidates : candidates.slice(1);
+      // a filed copy already represents the species, same as a shiny does
+      doomed = (hasShiny || hasFiled) ? candidates : candidates.slice(1);
     }
 
     doomed.forEach(d => { est += d.payout; count++; });
