@@ -1541,6 +1541,9 @@ body {
 .msg-body{font-size:12.5px;opacity:.85;margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere;}
 .msg-gift{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;padding:8px 10px;background:var(--surface2);border:1px solid var(--line);border-radius:8px;font-size:13px;}
 .msg-claimed{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;}
+.msg-x{background:none;border:none;color:var(--muted);font-size:16px;line-height:1;padding:0 2px;cursor:pointer;}
+.msg-x:hover{color:var(--text);}
+.msg-toolbar{display:flex;justify-content:flex-end;}
 
 .toast{
   position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
@@ -4717,6 +4720,26 @@ function markMessagesRead(){
     .then(({ error })=>{ if(error) console.error('mark read failed', error); });
 }
 
+// An unclaimed gift is never dismissable - the server skips it too
+// (dismiss_messages), this just keeps the button from being offered.
+function messageDismissable(m){ return !(m.kind==='gift' && !m.claimed_at); }
+
+// Dismissed rows drop out of the read policy, so removing them locally is
+// what the next load would return anyway. On failure, reload the truth.
+async function dismissMessages(ids){
+  if(!ids.length) return;
+  const gone = new Set(ids);
+  state.messages = (state.messages||[]).filter(m=>!gone.has(m.id));
+  render();
+  const { error } = await sb.rpc('dismiss_messages', { p_ids: ids });
+  if(error){
+    console.error('dismiss failed', error);
+    toast("Couldn't clear that - try again.");
+    await loadMessages();
+    render();
+  }
+}
+
 async function claimGift(id){
   if(claimBusy) return;
   claimBusy = id;
@@ -5145,6 +5168,7 @@ function renderMailbox(){
           <span class="msg-kind">${KIND_LABEL[m.kind] || esc(m.kind)}</span>
           ${freshMessageIds.has(m.id) ? '<span class="msg-new">New</span>' : ''}
           <span class="msg-when">${shortDate(m.created_at)}${m.expires_at && !m.claimed_at ? ` · expires ${shortDate(m.expires_at)}` : ''}</span>
+          ${messageDismissable(m) ? `<button class="msg-x" data-dismiss-msg="${m.id}" title="Dismiss" aria-label="Dismiss message">&times;</button>` : ''}
         </div>
         <div class="msg-title">${esc(m.title)}</div>
         ${m.body ? `<div class="msg-body">${esc(m.body)}</div>` : ''}
@@ -5158,6 +5182,10 @@ function renderMailbox(){
       </div>`).join('')}</div>`
     : `<div style="color:var(--muted);font-size:12px;padding:8px 0;">No messages yet.</div>`;
   const messagesWaiting = messages.filter(messageNeedsAttention).length;
+  const clearable = messages.filter(m => m.read_at && messageDismissable(m));
+  const messagesTab = (clearable.length
+    ? `<div class="msg-toolbar"><button class="frbtn cancel" data-clear-read title="Dismiss every read message - unclaimed gifts stay">Clear read (${clearable.length})</button></div>`
+    : '') + messagesHtml;
 
   return `
   <div class="overlay" data-mailboxclose-backdrop>
@@ -5170,7 +5198,7 @@ function renderMailbox(){
         <button class="navbtn ${mailboxTab==='friends'?'active':''}" data-mailbox-tab="friends">Friends${incoming.length?` (${incoming.length})`:''}</button>
       </div>
 
-      ${mailboxTab==='messages' ? messagesHtml : `
+      ${mailboxTab==='messages' ? messagesTab : `
       <div>
         <div class="mono" style="font-size:10.5px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Add Friend</div>
         <div style="display:flex;gap:8px;">
@@ -6334,6 +6362,14 @@ function wire(){
     if(mailboxTab==='messages') markMessagesRead();
     render();
   });
+  document.querySelectorAll('[data-dismiss-msg]').forEach(b=>b.onclick=()=>{
+    dismissMessages([b.dataset.dismissMsg]);
+  });
+  const clearReadBtn = document.querySelector('[data-clear-read]');
+  if(clearReadBtn) clearReadBtn.onclick = ()=>{
+    // exactly the read rows on screen, by id - same reasoning as markMessagesRead
+    dismissMessages((state.messages||[]).filter(m => m.read_at && messageDismissable(m)).map(m => m.id));
+  };
   document.querySelectorAll('[data-claim-gift]').forEach(b=>b.onclick=()=>{
     claimGift(b.dataset.claimGift);
   });
