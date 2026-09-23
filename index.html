@@ -3122,6 +3122,12 @@ async function openPack(pack){
       toast(error.message.includes('insufficient') ? "Not enough HEX for that pack." : "Couldn't open that pack - try again.");
       return;
     }
+    // rate limit refusal comes back as a normal result, not an error, so the
+    // server can log it. Nothing was charged.
+    if(data.rate_limited){
+      toast(`Slow down - try again in ${data.retry_after_s}s.`);
+      return;
+    }
     // server already rolled + charged; enrich with local cosmetic data (type/sprite) for display only
     const cards = data.cards.map(c=>{
       const p = POKEMON.find(x=>x.id===c.id);
