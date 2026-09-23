@@ -4720,6 +4720,95 @@ function markMessagesRead(){
     .then(({ error })=>{ if(error) console.error('mark read failed', error); });
 }
 
+// ---------- background mailbox sync ----------
+// Nothing pushes to the client, so new messages - and the admin credits,
+// refunds and cards their notices announce - are pulled: every 45s while the
+// tab is visible, and straight away when the player comes back to it.
+const MAIL_POLL_MS = 45000;
+const IDLE_BEFORE_SYNC_MS = 10000;
+let lastInteractionAt = Date.now();
+let stateRefreshPending = false;
+let stateRefreshTimer = null;
+let mailPollBusy = false;
+// capture phase, so a handler that stops propagation still counts as input
+['pointerdown','keydown'].forEach(t => document.addEventListener(t, ()=>{ lastInteractionAt = Date.now(); }, true));
+
+// Reload messages; if a new system notice arrived, queue a re-read of the
+// balance and collection it refers to (the credit is already server-side).
+async function syncMessages(){
+  const known = new Set((state.messages||[]).map(m=>m.id));
+  await loadMessages();
+  const arrived = (state.messages||[]).filter(m=>!known.has(m.id));
+  if(arrived.some(m=>m.kind==='system')){ stateRefreshPending = true; tryStateRefresh(); }
+  return arrived;
+}
+
+// Every economy action mirrors its result into state after its RPC returns
+// (cancel adds the refund, liquidate_instance splices by index...), so a
+// re-read landing between the server commit and that mirror would get the
+// mirror applied twice. Those actions all start with a click, so "no input
+// for 10s and no flow open" guards all of them without auditing each one.
+function stateRefreshBlocked(){
+  return !!(opening || packBusy || finalizeBusy || claimBusy || activeModal
+         || carrying || pressTimer
+         || (Date.now() - lastInteractionAt) < IDLE_BEFORE_SYNC_MS);
+}
+async function tryStateRefresh(){
+  clearTimeout(stateRefreshTimer);
+  if(!stateRefreshPending || !authUser) return;
+  if(stateRefreshBlocked()){ stateRefreshTimer = setTimeout(tryStateRefresh, 3000); return; }
+  stateRefreshPending = false;
+  const { data: fresh, error } = await sb
+    .from('game_states_v2')
+    .select('hex, dex, instances')
+    .eq('user_id', authUser.id)
+    .maybeSingle();
+  if(error || !fresh){
+    console.error('background state refresh failed', error);
+    stateRefreshPending = true;
+    stateRefreshTimer = setTimeout(tryStateRefresh, 30000);
+    return;
+  }
+  // a click may have started something while the read was in flight - this
+  // result could then land under its mirror, so drop it and retry once idle
+  if(stateRefreshBlocked()){ stateRefreshPending = true; stateRefreshTimer = setTimeout(tryStateRefresh, 3000); return; }
+  state.hex = fresh.hex;
+  state.dex = fresh.dex || {};
+  state.instances = fresh.instances || [];
+  recordVaultValue();
+  saveState();
+  // the balance is on every view - patch it in place rather than render(),
+  // which would rebuild the page under whatever the player is doing. Other
+  // views pick up the new cards on their next render (any click).
+  const bal = document.querySelector('.balance .val');
+  if(bal) bal.innerHTML = `<i class="hex-icon"></i>${fmtHex(state.hex)}`;
+}
+
+function updateMailBadge(){
+  const btn = document.querySelector('[data-mailbox-open]');
+  if(!btn) return;
+  const n = mailBadgeCount();
+  let badge = btn.querySelector('.mailbadge');
+  if(!n){ if(badge) badge.remove(); return; }
+  if(!badge){ badge = document.createElement('span'); badge.className = 'mailbadge'; btn.appendChild(badge); }
+  badge.textContent = n;
+}
+
+async function pollMailbox(){
+  if(!authUser || !state.messages || document.hidden || mailPollBusy) return; // state.messages unset = login still loading
+  mailPollBusy = true;
+  try{
+    const arrived = await syncMessages();
+    if(!arrived.length || !authUser) return;
+    // the Messages tab has no inputs or gestures to break, so a full render is
+    // safe there; anywhere else only the badge changes
+    if(mailboxOpen && mailboxTab==='messages'){ markMessagesRead(); render(); }
+    else updateMailBadge();
+  } finally {
+    mailPollBusy = false;
+  }
+}
+
 // An unclaimed gift is never dismissable - the server skips it too
 // (dismiss_messages), this just keeps the button from being offered.
 function messageDismissable(m){ return !(m.kind==='gift' && !m.claimed_at); }
@@ -6346,8 +6435,8 @@ function wire(){
     freshMessageIds = new Set();
     if(mailboxTab==='messages') markMessagesRead();
     render();
-    // pick up anything sent since login - the list only holds what loaded then
-    await loadMessages();
+    // pick up anything sent since the last load or poll
+    await syncMessages();
     if(!mailboxOpen || mailboxTab!=='messages') return; // don't re-render under someone typing a friend's name
     markMessagesRead();
     render();
@@ -7202,6 +7291,9 @@ setInterval(()=>{
     updateVaultFeedLive();
   }
 }, 1000);
+
+setInterval(pollMailbox, MAIL_POLL_MS);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) pollMailbox(); });
 
 render(); // guest view of the Packs page shown immediately; onAuthStateChange loads the real saved state if a session is restored
 })();
