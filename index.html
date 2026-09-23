@@ -506,13 +506,12 @@ body {
 .fav-toggle:hover{color:gold;border-color:gold;}
 .fav-toggle.on{color:gold;border-color:gold;box-shadow:0 0 8px rgba(255,215,0,0.35);}
 .fav-toggle.on .fav-star{text-shadow:0 0 5px gold;}
-
-/* favorite marker on the vault tile itself. sits left of the shiny star so a
-   shiny favorite shows both without overlapping. */
-.fav-tile-mark{
-  position:absolute;top:6px;left:6px;color:gold;font-size:13px;
-  text-shadow:0 0 5px gold;z-index:2;
-}
+/* Market detail modal: Favorite and Binder side by side. Binder reuses the
+   .fav-toggle shape, lit in foil green instead of gold when the card is filed. */
+.detail-toggle-row{align-self:center;display:flex;gap:8px;}
+.binder-toggle .binder-icon{width:15px;height:15px;}
+.binder-toggle:hover{color:var(--foil1);border-color:var(--foil1);}
+.binder-toggle.on{color:var(--foil1);border-color:var(--foil1);box-shadow:0 0 8px rgba(57,255,20,0.35);}
 
 /* Search hit highlight. Pulses in foil green rather than flashing once, so a
    card found behind a long scroll is still obviously marked when you reach it.
@@ -2060,7 +2059,7 @@ html,body{ max-width:100%; overflow-x:hidden; }
 .chooserow-thumb{position:relative;width:32px;height:32px;flex:0 0 auto;}
 
 /* Filed-in-a-binder marker. Bottom-left everywhere so it never collides with
-   the favorite star (top-left, .fav-tile-mark) or a shiny star (top-right).
+   a shiny star (top-right).
    The icon itself is white line art, so a white glow just bleeds into it -
    a dark shadow only, for contrast against light sprites and the art behind it. */
 .filed-badge{
@@ -2831,6 +2830,10 @@ let binderDraft = { name:'', desc:'', color:'' };
 let dexAddOpen = false;
 let dexAddSpeciesId = null;
 let dexAddUid = null;
+// uid of the card when the chooser was opened from the Market detail modal's
+// Binder button, so backing out returns there instead of stranding the player
+// on the Dex. Null when opened from the Dex itself.
+let dexAddFromMarket = null;
 
 // Vibrant hues fading into a black-to-white ramp - not tied to TYPE_COLORS
 // or RARITY, since a binder's color is purely cosmetic and "at least the
@@ -3753,6 +3756,7 @@ function renderMarketModal() {
     const isFav = favSlot > 0;
     const slotsFull = (state.favoriteUids || []).length >= FAVORITE_SLOTS;
     const filed = usedBinderUids().has(inst.uid);
+    const filedLoc = findFiledSlot(inst.uid);
     const acquiredStr = new Date(acquired).toLocaleString(undefined,
       {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
 
@@ -3765,10 +3769,16 @@ function renderMarketModal() {
     return `
     <div class="overlay" data-modalclose-backdrop>
       <div class="summary-panel" style="max-width:460px;">
-        <button class="fav-toggle ${isFav ? 'on' : ''}" data-fav-toggle="${inst.uid}" title="${isFav ? `Remove from favorite slot ${favSlot}` : (slotsFull ? 'All 3 slots full - pick one to replace' : 'Set as a favorite')}">
-          <span class="fav-star">${isFav ? '\u2605' : '\u2606'}</span>
-          <span>${isFav ? `Favorite &middot; Slot ${favSlot}` : 'Favorite Card'}</span>
-        </button>
+        <div class="detail-toggle-row">
+          <button class="fav-toggle ${isFav ? 'on' : ''}" data-fav-toggle="${inst.uid}" title="${isFav ? `Remove from favorite slot ${favSlot}` : (slotsFull ? 'All 3 slots full - pick one to replace' : 'Set as a favorite')}">
+            <span class="fav-star">${isFav ? '\u2605' : '\u2606'}</span>
+            <span>${isFav ? `Favorite &middot; Slot ${favSlot}` : 'Favorite'}</span>
+          </button>
+          <button class="fav-toggle binder-toggle ${filedLoc ? 'on' : ''}" data-binder-from-market="${inst.uid}" title="${filedLoc ? `Filed in ${esc(filedLoc.binder.name)} - tap to move it` : 'File in a binder'}">
+            <img class="binder-icon" src="${FILED_BADGE_ICON}" alt="">
+            <span>Binder</span>
+          </button>
+        </div>
         ${favSlotPicker(inst.uid)}
 
         <div class="detail-card-display" data-open-inspect="${inst.uid}" style="cursor:pointer;" title="Tap to view full-size">${renderCardFace({
@@ -4195,7 +4205,6 @@ function renderMarket(){
 
                             return `
                               <div class="packcard ${hitSet.has(inst.uid) ? 'search-hit' : ''}" style="padding:10px;border-color:${rc.color};display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--surface);cursor:pointer;" data-open-detail-modal="${inst.uid}" title="Inspect card &mdash; value breakdown and favorite">
-                                ${(state.favoriteUids || []).includes(inst.uid) ? `<span class="fav-tile-mark" title="Favorite slot ${(state.favoriteUids || []).indexOf(inst.uid) + 1}">★<sub style="font-size:8px;">${(state.favoriteUids || []).indexOf(inst.uid) + 1}</sub></span>` : ''}
                                 <div class="detail-card-display">${renderCardFace({
                                   id: p.id, name: p.name, rarity: inst.rarity, value: p.value,
                                   shiny: inst.shiny, holo: inst.holo, type: p.type, sprite: p.sprite
@@ -5479,6 +5488,21 @@ function renderDexAddSheet(){
   </div>`;
 }
 
+// Cancel / backdrop on the binder chooser. Opened from the Market detail
+// modal, it goes back to that modal; opened from the Dex, it just closes.
+function closeDexAdd(){
+  const backToUid = dexAddFromMarket;
+  dexAddOpen = false;
+  dexAddSpeciesId = null;
+  dexAddUid = null;
+  dexAddFromMarket = null;
+  if(backToUid){
+    view = 'market';
+    activeModal = { type: 'detail', uid: backToUid };
+  }
+  render();
+}
+
 function addCardToBinder(binderId, uid){
   const binder = binderById(binderId);
   if(!binder) return;
@@ -5494,6 +5518,7 @@ function addCardToBinder(binderId, uid){
   dexAddOpen = false;
   dexAddSpeciesId = null;
   dexAddUid = null;
+  dexAddFromMarket = null; // filing lands on the binder page, not back in the Market
   openBinderId = binderId;
   binderPage = pageIdx;
   // Land on the page with room and let the player tap exactly which pocket
@@ -6246,6 +6271,7 @@ function wire(){
       dexAddOpen = false;
       dexAddSpeciesId = null;
       dexAddUid = null;
+      dexAddFromMarket = null;
     }
     viewingProfileId = null;
     viewingProfileData = null;
@@ -6284,16 +6310,12 @@ function wire(){
       dexAddSpeciesId = Number(el.dataset.species);
       const avail = instancesFor(dexAddSpeciesId);
       dexAddUid = avail.length === 1 ? avail[0].uid : null;
+      dexAddFromMarket = null;
       dexAddOpen = true;
       render();
     };
   });
-  document.querySelectorAll('[data-dexadd-close]').forEach(b=>b.onclick=()=>{
-    dexAddOpen = false;
-    dexAddSpeciesId = null;
-    dexAddUid = null;
-    render();
-  });
+  document.querySelectorAll('[data-dexadd-close]').forEach(b=>b.onclick=closeDexAdd);
   document.querySelectorAll('[data-dexadd-pick]').forEach(b=>b.onclick=()=>{
     dexAddUid = b.dataset.dexaddPick;
     render();
@@ -6305,6 +6327,7 @@ function wire(){
     dexAddOpen = false;
     dexAddSpeciesId = null;
     dexAddUid = null;
+    dexAddFromMarket = null;
     dexTab = 'shelf';
     render();
   });
@@ -6441,7 +6464,7 @@ function wire(){
     el.onclick = (e)=>{ if(e.target === el){ mailboxOpen = false; addFriendMsg = null; render(); } };
   });
   document.querySelectorAll('[data-dexaddclose-backdrop]').forEach(el=>{
-    el.onclick = (e)=>{ if(e.target === el){ dexAddOpen = false; dexAddSpeciesId = null; dexAddUid = null; render(); } };
+    el.onclick = (e)=>{ if(e.target === el) closeDexAdd(); };
   });
   document.querySelectorAll('[data-binderdeleteclose-backdrop]').forEach(el=>{
     el.onclick = (e)=>{ if(e.target === el){ deleteBinderConfirm = false; render(); } };
@@ -6529,6 +6552,26 @@ function wire(){
       e.stopPropagation();
       // no slot: server appends if there's room, or answers 'full' and we ask
       setFavoriteSlot(btn.dataset.favToggle, null);
+    };
+  });
+
+  // Market detail modal -> the Dex's own binder chooser for this exact copy.
+  // That sheet only renders on the Dex grid, so hop views rather than build a
+  // second chooser that would drift from it. dexAddFromMarket brings Cancel back.
+  document.querySelectorAll('[data-binder-from-market]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const inst = (state.instances || []).find(x => x.uid === btn.dataset.binderFromMarket);
+      if(!inst) return;
+      activeModal = null;
+      favPickerFor = null;
+      view = 'dex';
+      dexTab = 'dex';
+      dexAddSpeciesId = inst.id;
+      dexAddUid = inst.uid;
+      dexAddFromMarket = inst.uid;
+      dexAddOpen = true;
+      render();
     };
   });
 
