@@ -1529,6 +1529,18 @@ body {
 .frbtn:disabled{opacity:.5;cursor:default;}
 .frname{background:none;border:none;color:var(--text);font-size:13px;font-weight:700;text-align:left;cursor:pointer;padding:0;text-decoration:underline;text-decoration-color:var(--line);}
 .frname:hover{text-decoration-color:var(--foil1);}
+.msg-list{max-height:55vh;overflow-y:auto;}
+.msg-row{padding:10px 0;border-bottom:1px solid var(--line);width:100%;}
+.msg-row:last-child{border-bottom:none;}
+.msg-head{display:flex;align-items:center;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);}
+.msg-kind{color:var(--foil1);}
+.msg-row.gift .msg-kind{color:var(--gold);}
+.msg-new{background:#ff4444;color:#fff;border-radius:999px;padding:0 6px;font-weight:800;}
+.msg-when{margin-left:auto;}
+.msg-title{font-weight:700;font-size:13.5px;margin-top:4px;}
+.msg-body{font-size:12.5px;opacity:.85;margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere;}
+.msg-gift{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;padding:8px 10px;background:var(--surface2);border:1px solid var(--line);border-radius:8px;font-size:13px;}
+.msg-claimed{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;}
 
 .toast{
   position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
@@ -2874,7 +2886,12 @@ let inspectPressed = false;
 // ARE the friendship, there's no separate friends table. Refetched after
 // every mailbox action rather than polled or subscribed to.
 let mailboxOpen = false;
-let mailboxTab = 'requests'; // 'requests' | 'friends'
+let mailboxTab = 'messages'; // 'messages' | 'friends'
+// Messages (announcements, gifts, later trades) are rows in player_messages,
+// written only by RPCs - admin_send_message fans a broadcast out to every
+// player, claim_message_gift credits a gift. The client just reads them.
+let freshMessageIds = new Set(); // unread when this mailbox opening showed them - drives the NEW chip
+let claimBusy = null; // message id mid-claim; disables every Claim button
 let addFriendInput = '';
 let addFriendMsg = null; // { type:'ok'|'err', text }
 let friendActionBusy = false; // disables buttons during an in-flight RPC call
@@ -3005,6 +3022,7 @@ async function loadState(){
   // fail-safe-and-continue treatment as binders: a failure here shouldn't
   // block the rest of the game from loading.
   await loadFriendRequests();
+  await loadMessages();
 
   recordVaultValue();
   render();
@@ -4658,6 +4676,90 @@ function outgoingRequests(){ return (state.friendRequests||[]).filter(r=>r.statu
 function acceptedFriends(){ return (state.friendRequests||[]).filter(r=>r.status==='accepted'); }
 function friendUserId(row){ return row.requester_id===authUser.id ? row.recipient_id : row.requester_id; }
 
+// RLS already limits this to the caller's own unexpired rows; the user_id
+// filter is there so the (user_id, created_at) index serves the query.
+async function loadMessages(){
+  try{
+    const { data, error } = await sb
+      .from('player_messages')
+      .select('id, kind, title, body, gift, read_at, claimed_at, expires_at, created_at')
+      .eq('user_id', authUser.id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if(error) throw error;
+    state.messages = data || [];
+  }catch(e){
+    console.error('message load failed', e);
+    state.messages = state.messages || [];
+  }
+}
+
+// a message needs attention while unread, and a gift stays that way until claimed
+function messageNeedsAttention(m){ return !m.read_at || (m.kind==='gift' && !m.claimed_at); }
+function mailBadgeCount(){
+  return (state.messages||[]).filter(messageNeedsAttention).length + incomingRequests().length;
+}
+function defaultMailboxTab(){
+  if((state.messages||[]).some(messageNeedsAttention)) return 'messages';
+  if(incomingRequests().length) return 'friends';
+  return 'messages';
+}
+
+// Marks exactly the rows on screen, by id - not "all", which would also
+// swallow anything that arrived after the last load and was never shown.
+function markMessagesRead(){
+  const unread = (state.messages||[]).filter(m=>!m.read_at);
+  if(!unread.length) return;
+  const now = new Date().toISOString();
+  unread.forEach(m=>{ m.read_at = now; freshMessageIds.add(m.id); });
+  // fire-and-forget: if this fails the rows just come back unread next load
+  sb.rpc('mark_messages_read', { p_ids: unread.map(m=>m.id) })
+    .then(({ error })=>{ if(error) console.error('mark read failed', error); });
+}
+
+async function claimGift(id){
+  if(claimBusy) return;
+  claimBusy = id;
+  render();
+  try{
+    const { data, error } = await sb.rpc('claim_message_gift', { p_message_id: id });
+    if(error){
+      const m = error.message || '';
+      toast(m.includes('already claimed') ? 'Already claimed.'
+          : m.includes('expired')         ? 'That gift has expired.'
+          : m.includes('restricted')      ? "Your account can't claim gifts right now."
+          : "Couldn't claim that gift - try again.");
+      await loadMessages(); // the server knows whether it's claimed or gone
+      return;
+    }
+    // the server has credited it - read the changed rows back rather than
+    // mirroring the gift locally, same reasoning as finalizeOpening()
+    const { data: fresh, error: readErr } = await sb
+      .from('game_states_v2')
+      .select('hex, dex, instances')
+      .eq('user_id', authUser.id)
+      .maybeSingle();
+    if(readErr || !fresh){
+      console.error('post-claim re-read failed', readErr);
+      toast('Gift claimed - reload the page to see it.');
+    } else {
+      state.hex = fresh.hex;
+      state.dex = fresh.dex || {};
+      state.instances = fresh.instances || [];
+      recordVaultValue();
+      saveState();
+    }
+    const msg = (state.messages||[]).find(x=>x.id===id);
+    if(msg){ msg.claimed_at = new Date().toISOString(); msg.read_at = msg.read_at || msg.claimed_at; }
+    if(fresh) toast(data.hex
+      ? `Claimed <i class="hex-icon"></i>${fmtHex(data.hex)} HEX!`
+      : `Claimed ${esc(data.name)}${data.shiny ? ' ✨' : ''}${data.holo ? ' ❖' : ''}!`);
+  } finally {
+    claimBusy = null;
+    render();
+  }
+}
+
 async function sendFriendRequest(username){
   const val = (username||'').trim();
   if(!val){ addFriendMsg = { type:'err', text:'Enter a username.' }; render(); return; }
@@ -5027,12 +5129,48 @@ function renderMailbox(){
       </div>`).join('')
     : `<div style="color:var(--muted);font-size:12px;padding:8px 0;">No friends yet.</div>`;
 
+  const messages = state.messages || [];
+  const KIND_LABEL = { announcement:'Announcement', gift:'Gift', system:'Notice', trade:'Trade' };
+  const shortDate = iso => new Date(iso).toLocaleDateString(undefined, { month:'short', day:'numeric' });
+  const giftLabel = g => {
+    if(g.hex) return `<span><i class="hex-icon"></i>${fmtHex(g.hex)} HEX</span>`;
+    const p = POKEMON.find(x=>x.id===g.card.id);
+    const color = p && RARITY[p.rarity] ? RARITY[p.rarity].color : 'var(--text)';
+    return `<span style="color:${color};font-weight:700;">${esc(p ? p.name : 'Card #' + g.card.id)}${g.card.shiny ? ' ✨' : ''}${g.card.holo ? ' ❖' : ''}</span>`;
+  };
+  const messagesHtml = messages.length
+    ? `<div class="msg-list">${messages.map(m => `
+      <div class="msg-row ${esc(m.kind)}">
+        <div class="msg-head">
+          <span class="msg-kind">${KIND_LABEL[m.kind] || esc(m.kind)}</span>
+          ${freshMessageIds.has(m.id) ? '<span class="msg-new">New</span>' : ''}
+          <span class="msg-when">${shortDate(m.created_at)}${m.expires_at && !m.claimed_at ? ` · expires ${shortDate(m.expires_at)}` : ''}</span>
+        </div>
+        <div class="msg-title">${esc(m.title)}</div>
+        ${m.body ? `<div class="msg-body">${esc(m.body)}</div>` : ''}
+        ${m.kind==='gift' && m.gift ? `
+        <div class="msg-gift">
+          ${giftLabel(m.gift)}
+          ${m.claimed_at
+            ? '<span class="msg-claimed">Claimed</span>'
+            : `<button class="frbtn accept" data-claim-gift="${m.id}" ${claimBusy?'disabled':''}>${claimBusy===m.id ? 'Claiming…' : 'Claim'}</button>`}
+        </div>` : ''}
+      </div>`).join('')}</div>`
+    : `<div style="color:var(--muted);font-size:12px;padding:8px 0;">No messages yet.</div>`;
+  const messagesWaiting = messages.filter(messageNeedsAttention).length;
+
   return `
   <div class="overlay" data-mailboxclose-backdrop>
     <button class="closex" data-mailbox-close>&times;</button>
     <div class="summary-panel" style="max-width:460px;align-items:stretch;">
-      <div style="font-family:var(--font-display);font-weight:800;font-size:16px;text-transform:uppercase;text-align:center;">Friends</div>
+      <div style="font-family:var(--font-display);font-weight:800;font-size:16px;text-transform:uppercase;text-align:center;">Mailbox</div>
 
+      <div class="navrow" style="margin:0;">
+        <button class="navbtn ${mailboxTab==='messages'?'active':''}" data-mailbox-tab="messages">Messages${messagesWaiting?` (${messagesWaiting})`:''}</button>
+        <button class="navbtn ${mailboxTab==='friends'?'active':''}" data-mailbox-tab="friends">Friends${incoming.length?` (${incoming.length})`:''}</button>
+      </div>
+
+      ${mailboxTab==='messages' ? messagesHtml : `
       <div>
         <div class="mono" style="font-size:10.5px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Add Friend</div>
         <div style="display:flex;gap:8px;">
@@ -5043,14 +5181,9 @@ function renderMailbox(){
         ${addFriendMsg ? `<div style="font-size:11.5px;margin-top:6px;color:${addFriendMsg.type==='err'?'#ff4444':'#39ff14'};">${esc(addFriendMsg.text)}</div>` : ''}
       </div>
 
-      <div class="navrow" style="margin:0;">
-        <button class="navbtn ${mailboxTab==='requests'?'active':''}" data-mailbox-tab="requests">Requests${incoming.length?` (${incoming.length})`:''}</button>
-        <button class="navbtn ${mailboxTab==='friends'?'active':''}" data-mailbox-tab="friends">Friends (${friends.length})</button>
-      </div>
-
-      ${mailboxTab==='requests'
-        ? `<div class="section-label" style="margin:0;">Incoming</div>${incomingHtml}<div class="section-label">Sent</div>${outgoingHtml}`
-        : friendsHtml}
+      <div class="section-label" style="margin:0;">Friends (${friends.length})</div>${friendsHtml}
+      <div class="section-label" style="margin:14px 0 0;">Incoming</div>${incomingHtml}
+      <div class="section-label" style="margin:14px 0 0;">Sent</div>${outgoingHtml}`}
     </div>
   </div>`;
 }
@@ -6054,7 +6187,7 @@ function render(){
              <div class="balance">
                <button class="mailbtn" data-mailbox-open aria-label="Friends and requests" title="Friends and requests">
                  <svg viewBox="0 0 20 20" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="16" height="12" rx="1.5"/><path d="M2.5 5 10 11 17.5 5"/></svg>
-                 ${incomingRequests().length ? `<span class="mailbadge">${incomingRequests().length}</span>` : ''}
+                 ${mailBadgeCount() ? `<span class="mailbadge">${mailBadgeCount()}</span>` : ''}
                </button>
                <span class="tick">Hex</span><span class="val mono"><i class="hex-icon"></i>${fmtHex(state.hex)}</span>
              </div>
@@ -6179,7 +6312,18 @@ function speakerIcon(off){
 
 function wire(){
   const mailBtn = document.querySelector('[data-mailbox-open]');
-  if(mailBtn) mailBtn.onclick = ()=>{ mailboxOpen = true; mailboxTab = 'requests'; render(); };
+  if(mailBtn) mailBtn.onclick = async ()=>{
+    mailboxOpen = true;
+    mailboxTab = defaultMailboxTab();
+    freshMessageIds = new Set();
+    if(mailboxTab==='messages') markMessagesRead();
+    render();
+    // pick up anything sent since login - the list only holds what loaded then
+    await loadMessages();
+    if(!mailboxOpen || mailboxTab!=='messages') return; // don't re-render under someone typing a friend's name
+    markMessagesRead();
+    render();
+  };
   document.querySelectorAll('[data-mailbox-close]').forEach(b=>b.onclick=()=>{
     mailboxOpen = false;
     addFriendMsg = null;
@@ -6187,7 +6331,11 @@ function wire(){
   });
   document.querySelectorAll('[data-mailbox-tab]').forEach(b=>b.onclick=()=>{
     mailboxTab = b.dataset.mailboxTab;
+    if(mailboxTab==='messages') markMessagesRead();
     render();
+  });
+  document.querySelectorAll('[data-claim-gift]').forEach(b=>b.onclick=()=>{
+    claimGift(b.dataset.claimGift);
   });
   const addFriendInputEl = document.getElementById('addFriendInput');
   if(addFriendInputEl) addFriendInputEl.oninput = ()=>{
