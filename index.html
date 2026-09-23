@@ -2821,10 +2821,11 @@ let dexGen = 1;
 // leaving the Dex page, so nobody comes back tomorrow to a half-empty grid and
 // reports missing cards. dexSearch is submitted, not live-typed: render()
 // rebuilds innerHTML, so filtering per keystroke would drop input focus.
-// Search spans ALL gens and overrides the tab; type and shiny stay inside it.
+// Search spans ALL gens and overrides the tab; type, shiny and holo stay inside it.
 let dexHideEmpty = false;
 let dexTypeFilter = '';
 let dexShinyOnly = false;
+let dexHoloOnly = false;
 let dexSearch = '';
 const titleType = t => t.charAt(0).toUpperCase() + t.slice(1);
 
@@ -2917,10 +2918,10 @@ let viewingOpenBinderId = null; // null = shelf, else that binder's page
 let viewingBinderPageIdx = 0;
 
 function dexFiltersActive(){
-  return dexHideEmpty || !!dexTypeFilter || dexShinyOnly || !!dexSearch;
+  return dexHideEmpty || !!dexTypeFilter || dexShinyOnly || dexHoloOnly || !!dexSearch;
 }
 function resetDexFilters(){
-  dexHideEmpty = false; dexTypeFilter = ''; dexShinyOnly = false; dexSearch = '';
+  dexHideEmpty = false; dexTypeFilter = ''; dexShinyOnly = false; dexHoloOnly = false; dexSearch = '';
 }
 
 // One pool, five views. Every gen boundary in the client reads from here, so
@@ -5538,6 +5539,7 @@ function renderDex(){
   // dex entry. Liquidate the shiny and the dex forgets it. Lifetime credit for
   // having pulled it lives in player_stats.shiny_pulls_count instead.
   const shinyIds = new Set((state.instances || []).filter(i => i.shiny).map(i => i.id));
+  const holoIds  = new Set((state.instances || []).filter(i => i.holo).map(i => i.id));
   // Fully-filed indicator: every copy you own of this species is placed in
   // a binder somewhere, not just one of several. A per-copy "filed" badge
   // here would misreport a species with one filed and two loose copies as
@@ -5577,6 +5579,7 @@ function renderDex(){
   if(q) list = list.filter(p => p.name.toLowerCase().includes(q) || String(p.id) === q || String(p.id).padStart(3,'0') === q);
   if(dexTypeFilter) list = list.filter(p => p.type === dexTypeFilter);
   if(dexShinyOnly)  list = list.filter(p => shinyIds.has(p.id));
+  if(dexHoloOnly)   list = list.filter(p => holoIds.has(p.id));
   if(dexHideEmpty)  list = list.filter(p => owned[p.id]);
   const shownOwned = list.filter(p => owned[p.id]).length;
   const tabBtn = (g, label) => `<button data-dexgen="${g}" style="font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 10px; border-radius:6px; cursor:pointer; border:1px solid ${dexGen===g?'var(--foil1)':'var(--line)'}; background:${dexGen===g?'rgba(57,255,20,0.12)':'transparent'}; color:${dexGen===g?'var(--foil1)':'var(--muted)'};">${label}</button>`;
@@ -5615,6 +5618,7 @@ function renderDex(){
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
     <button data-dexfilter="empty" class="dexfbtn ${dexHideEmpty?'on':''}">${dexHideEmpty?'&#10003; ':''}Hide Empty</button>
     <button data-dexfilter="shiny" class="dexfbtn ${dexShinyOnly?'on':''}">${dexShinyOnly?'&#10003; ':''}Shiny Only</button>
+    <button data-dexfilter="holo" class="dexfbtn ${dexHoloOnly?'on':''}">${dexHoloOnly?'&#10003; ':''}Holo Only</button>
     <select id="dexTypeSelect" class="dexfsel">
       <option value="">All Types</option>
       ${Object.keys(TYPE_COLORS).map(t => `<option value="${t}" ${dexTypeFilter===t?'selected':''}>${titleType(t)}</option>`).join('')}
@@ -5623,7 +5627,7 @@ function renderDex(){
 
   ${dexFiltersActive() ? `<div class="dexfbar">
     <span class="mono" style="font-size:11px;">
-      Filtered${q?` &middot; "${esc(dexSearch)}" across all gens`:''}${dexTypeFilter?` &middot; ${titleType(dexTypeFilter)}`:''}${dexShinyOnly?' &middot; shiny only':''}${dexHideEmpty?' &middot; owned only':''}
+      Filtered${q?` &middot; "${esc(dexSearch)}" across all gens`:''}${dexTypeFilter?` &middot; ${titleType(dexTypeFilter)}`:''}${dexShinyOnly?' &middot; shiny only':''}${dexHoloOnly?' &middot; holo only':''}${dexHideEmpty?' &middot; owned only':''}
       &mdash; showing ${list.length} slot${list.length===1?'':'s'} (${shownOwned} owned)
     </span>
     <button data-dexfilter="clear" class="sbtn sell" style="padding:5px 10px;font-size:11px;">Clear Filters</button>
@@ -7172,6 +7176,7 @@ function wire(){
       const f = btn.dataset.dexfilter;
       if(f === 'empty') dexHideEmpty = !dexHideEmpty;
       else if(f === 'shiny') dexShinyOnly = !dexShinyOnly;
+      else if(f === 'holo') dexHoloOnly = !dexHoloOnly;
       else if(f === 'clear') resetDexFilters();
       render();
     };
