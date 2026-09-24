@@ -1463,18 +1463,16 @@ body {
    each platform's fallback font. This is clip-path geometry, no text, so it
    renders identically everywhere. Glow lives on the outer span because
    clip-path would clip a drop-shadow on the same element. */
-/* Corner badge on dex/binder tiles. A fixed 20px box with the glyph
-   centred in it, so all three variants share one centre point
-   (13px in from the top and right) whatever each glyph's size. */
+/* Corner badge on dex/binder tiles. Inline SVG, not font glyphs: glyph
+   size varies with each platform's fallback font, so tuned font-sizes
+   matched on desktop and not on mobile. Same 16px box and position as
+   .shinyholo-badge, so all three are pixel-identical in size everywhere. */
 .corner-badge{
-  position:absolute;top:3px;right:3px;width:20px;height:20px;z-index:3;pointer-events:none;
-  display:flex;align-items:center;justify-content:center;line-height:1;
+  position:absolute;top:5px;right:5px;width:16px;height:16px;z-index:3;pointer-events:none;
 }
-/* Per-glyph sizes: ★ and ❖ fill different amounts of their em box, so
-   equal font-size renders unequal stars. Tuned by eye to match the 16px
-   shiny-holo mark. */
-.corner-badge.shiny{font-size:24px;color:gold;text-shadow:0 0 5px gold;}
-.corner-badge.holo{font-size:21px;color:#8ad0ff;text-shadow:0 0 5px #8ad0ff;}
+.corner-badge svg{display:block;width:100%;height:100%;fill:currentColor;}
+.corner-badge.shiny{color:gold;filter:drop-shadow(0 0 3px gold);}
+.corner-badge.holo{color:#8ad0ff;filter:drop-shadow(0 0 3px #8ad0ff);}
 .shinyholo-badge{
   position:absolute;top:5px;right:5px;width:16px;height:16px;z-index:3;pointer-events:none;
   filter:drop-shadow(0 0 1px rgba(0,0,0,.9)) drop-shadow(0 0 3px rgba(255,190,0,.7));
@@ -2824,8 +2822,8 @@ function effectiveCardValue(baseValue, shiny, holo){
 function cardBadge(shiny, holo, titleSuffix){
   const t = titleSuffix ? ' ' + titleSuffix : '';
   if (shiny && holo) return `<span class="shinyholo-badge" title="Shiny holo${t}"><i></i></span>`;
-  if (shiny) return `<span class="corner-badge shiny" title="Shiny${t}">&#9733;</span>`;
-  if (holo)  return `<span class="corner-badge holo" title="Holo${t}">&#10070;</span>`;
+  if (shiny) return `<span class="corner-badge shiny" title="Shiny${t}"><svg viewBox="0 -4.5 100 100" aria-hidden="true"><polygon points="50,0 61,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 39,35"/></svg></span>`;
+  if (holo)  return `<span class="corner-badge holo" title="Holo${t}"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 4 71 25 50 46 29 25Z M75 29 96 50 75 71 54 50Z M50 54 71 75 50 96 29 75Z M25 29 46 50 25 71 4 50Z"/></svg></span>`;
   return '';
 }
 
