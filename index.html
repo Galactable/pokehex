@@ -1482,9 +1482,11 @@ body {
   clip-path:polygon(50% 0%,58% 31%,85% 15%,69% 42%,100% 50%,69% 58%,85% 85%,58% 69%,50% 100%,42% 69%,15% 85%,31% 58%,0% 50%,31% 42%,15% 15%,42% 31%);
   background:linear-gradient(135deg,gold 0%,#ff9fd0 50%,#8ad0ff 100%);
 }
-/* Inline variant for the card-face name line. Sized in em so it scales with
-   .cf-name's cqw font size across pack reveal, detail and stats cards. */
-.shinyholo-badge.inline{
+/* Inline variant for the card-face name line, shared by all three badges.
+   Sized in em so it scales with .cf-name's cqw font size across pack
+   reveal, detail and stats cards. */
+.shinyholo-badge.inline,
+.corner-badge.inline{
   position:relative;top:auto;right:auto;display:inline-block;
   width:1.05em;height:1.05em;vertical-align:-0.15em;
 }
@@ -2817,13 +2819,16 @@ function effectiveCardValue(baseValue, shiny, holo){
   return baseValue * (shiny ? 10 : 1) * (holo ? 3 : 1);
 }
 
+const SHINY_STAR_SVG = `<svg viewBox="0 -4.5 100 100" aria-hidden="true"><polygon points="50,0 61,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 39,35"/></svg>`;
+const HOLO_SVG = `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 4 71 25 50 46 29 25Z M75 29 96 50 75 71 54 50Z M50 54 71 75 50 96 29 75Z M25 29 46 50 25 71 4 50Z"/></svg>`;
+
 // Corner badge for dex/binder tiles. Exactly one badge per tile; a card
 // that is both shiny and holo gets its own mark instead of both glyphs.
 function cardBadge(shiny, holo, titleSuffix){
   const t = titleSuffix ? ' ' + titleSuffix : '';
   if (shiny && holo) return `<span class="shinyholo-badge" title="Shiny holo${t}"><i></i></span>`;
-  if (shiny) return `<span class="corner-badge shiny" title="Shiny${t}"><svg viewBox="0 -4.5 100 100" aria-hidden="true"><polygon points="50,0 61,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 39,35"/></svg></span>`;
-  if (holo)  return `<span class="corner-badge holo" title="Holo${t}"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 4 71 25 50 46 29 25Z M75 29 96 50 75 71 54 50Z M50 54 71 75 50 96 29 75Z M25 29 46 50 25 71 4 50Z"/></svg></span>`;
+  if (shiny) return `<span class="corner-badge shiny" title="Shiny${t}">${SHINY_STAR_SVG}</span>`;
+  if (holo)  return `<span class="corner-badge holo" title="Holo${t}">${HOLO_SVG}</span>`;
   return '';
 }
 
@@ -6117,8 +6122,8 @@ function renderCardFace(card, flipped, filed){
             <div class="cf-bottom">
               <div class="cf-name">${esc(card.name)}${
                 card.shiny && card.holo ? ' <span class="shinyholo-badge inline" title="Shiny holo"><i></i></span>'
-                : card.shiny ? ' <span title="Shiny" style="color:gold;">&#9733;</span>'
-                : card.holo ? ' <span title="Holo" style="color:#8ad0ff;">&#10070;</span>' : ''
+                : card.shiny ? ` <span class="corner-badge shiny inline" title="Shiny">${SHINY_STAR_SVG}</span>`
+                : card.holo ? ` <span class="corner-badge holo inline" title="Holo">${HOLO_SVG}</span>` : ''
               }</div>
               <div class="cf-rarity">${rc.label} <span class="cf-num mono">#${String(card.id).padStart(3,'0')}</span></div>
               <div class="cf-value"><i class="hex-icon"></i> ${effectiveCardValue(card.value, card.shiny, card.holo)} HEX</div>
