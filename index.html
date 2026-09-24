@@ -1012,6 +1012,11 @@ body {
   display:flex;align-items:center;justify-content:center;
 }
 .card-back span{font-family:var(--font-display);font-weight:800;color:var(--foil1);font-size:9px;letter-spacing:0.1em;opacity:0.8;}
+/* Inside a real card, scale the wordmark with the card's width (.card-slot
+   is the size container). 6.9cqw = 9px at the 130px reveal size, so only
+   larger cards like the inspect view change. Shop/profile swatches sit
+   outside any .card-slot and keep the flat 9px above. */
+.card-slot .card-back span{font-size:max(9px, 6.9cqw);}
 
 /* ---------- card back shelf (shop) ---------- */
 /* Tiles are full card size so the swatch IS the preview - no separate
@@ -2091,6 +2096,19 @@ html,body{ max-width:100%; overflow-x:hidden; }
 .inspect-card-wrap .flame-aura{animation:none;box-shadow:none;}
 .inspect-card-wrap .card-slot{width:210px;height:292px;user-select:none;-webkit-user-select:none;}
 @media (min-width:721px){ .inspect-card-wrap .card-slot{width:260px;height:361px;} }
+/* "Tap to flip" hint. The box spans from just under the card to the bottom
+   of the overlay and centres its text, so the hint sits midway between the
+   card and the screen edge at any viewport height. The card is the overlay's
+   only in-flow child, so its centre is the overlay's centre: 50% + half the
+   card height, +12px for the scale(1.05)/tilt overhang. pointer-events:none
+   so a tap on the hint still reaches the backdrop and closes. */
+.inspect-hint{
+  position:absolute;left:0;right:0;bottom:0;top:calc(50% + 158px);
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;z-index:1;
+  font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--muted);
+}
+@media (min-width:721px){ .inspect-hint{top:calc(50% + 193px);} }
 
 /* ---------- Dex -> binder filing sheet ---------- */
 .dexgrid .dexslot.owned{cursor:pointer;}
@@ -6090,8 +6108,9 @@ function renderInspect(){
     <button class="closex" data-closeinspect>&times;</button>
     <div class="inspect-glow" style="background:radial-gradient(circle, color-mix(in srgb, ${glowColor} 65%, white 35%), color-mix(in srgb, ${glowColor} 45%, transparent) 45%, transparent 74%);"></div>
     <div class="inspect-card-wrap" data-inspectcard>
-      ${renderCardFace(faceCard, true)}
+      ${renderCardFace(faceCard, !inspectShowBack)}
     </div>
+    <div class="inspect-hint">Tap to flip &middot; Tap off card to close</div>
   </div>`;
 }
 
@@ -6303,10 +6322,12 @@ function dropCard(targetPage, targetSlot){
 
 function openInspectFor(uid){
   inspectUid = uid;
+  inspectShowBack = false;
   render();
 }
 function closeInspect(){
   inspectUid = null;
+  inspectShowBack = false;
   render();
 }
 
@@ -6330,10 +6351,35 @@ function removeFromBinder(){
 // Holding the enlarged card and moving a finger/cursor over it tilts it in
 // 3D. Applied directly to the card's own style.transform on every move -
 // never through render(), which would rebuild the very node being dragged.
+// Max tilt either way, at the card's edge (or beyond it - position clamps).
+const INSPECT_TILT_MAX_DEG = 18;
+// A press that moves less than this is a tap (flip); more is a tilt.
+const INSPECT_TAP_SLOP_PX = 6;
+let inspectShowBack = false; // inspect view is showing the cardback
+let inspectStartX = 0, inspectStartY = 0, inspectMoved = false;
+// A mouse drag released off the card lands its click on the backdrop,
+// which would close the view. Set on release, cleared once that click
+// has had its chance to fire.
+let inspectSuppressClick = false;
+function inspectPressStart(e){
+  const p = (e.touches && e.touches[0]) || e;
+  inspectPressed = true;
+  inspectStartX = p.clientX; inspectStartY = p.clientY;
+  inspectMoved = false;
+}
+// Toggles the class directly rather than re-rendering, so the flip gets the
+// card's own .6s transition; inspectShowBack keeps any later render in sync.
+function toggleInspectFlip(){
+  inspectShowBack = !inspectShowBack;
+  const slot = document.querySelector('[data-inspectcard] .card-slot');
+  if(slot) slot.classList.toggle('flipped', !inspectShowBack);
+}
 function inspectPressEnd(){
+  const wasTap = inspectPressed && !inspectMoved;
   inspectPressed = false;
   const el = document.querySelector('[data-inspectcard]');
   if(el) el.style.transform = '';
+  if(wasTap) toggleInspectFlip();
 }
 function inspectMove(e){
   if(!inspectPressed) return;
@@ -6341,16 +6387,29 @@ function inspectMove(e){
   const list = (e.touches && e.touches.length) ? e.touches : ((e.changedTouches && e.changedTouches.length) ? e.changedTouches : null);
   const p = list ? list[0] : e;
   if(!p || typeof p.clientX !== 'number') return;
-  const el = e.currentTarget;
+  if(!inspectMoved && Math.hypot(p.clientX - inspectStartX, p.clientY - inspectStartY) > INSPECT_TAP_SLOP_PX) inspectMoved = true;
+  // Looked up, not e.currentTarget: mouse moves arrive via window so the
+  // tilt keeps tracking off the card, the same way touch already does.
+  const el = document.querySelector('[data-inspectcard]');
+  if(!el) return;
   const rect = el.getBoundingClientRect();
   let relX = (p.clientX - rect.left) / rect.width;
   let relY = (p.clientY - rect.top) / rect.height;
   relX = Math.max(0, Math.min(1, relX));
   relY = Math.max(0, Math.min(1, relY));
-  const ry = (relX - 0.5) * 26;
-  const rx = (0.5 - relY) * 26;
+  const ry = (relX - 0.5) * 2 * INSPECT_TILT_MAX_DEG;
+  const rx = (0.5 - relY) * 2 * INSPECT_TILT_MAX_DEG;
   el.style.transform = `perspective(700px) rotateX(${rx}deg) rotateY(${ry}deg) scale(1.05)`;
 }
+// Registered once at load, not in wire() (which runs every render).
+// inspectMove bails immediately unless a press is active, so idle cost is nil.
+window.addEventListener('mousemove', inspectMove);
+window.addEventListener('mouseup', ()=>{
+  if(!inspectPressed) return;
+  inspectPressEnd();
+  inspectSuppressClick = true;
+  setTimeout(()=>{ inspectSuppressClick = false; }, 0);
+});
 
 function render(){
   const app = document.getElementById('app');
@@ -6782,7 +6841,7 @@ function wire(){
   // out - the top-right close button alone is a hard reach one-handed on
   // taller phones.
   document.querySelectorAll('[data-closeinspect-backdrop]').forEach(el=>{
-    el.onclick = (e)=>{ if(e.target === el) closeInspect(); };
+    el.onclick = (e)=>{ if(e.target === el && !inspectSuppressClick) closeInspect(); };
   });
   // Same "tap the darkened backdrop to back out" as the inspect view, applied
   // to every other confirm/info popup. Each mirrors that popup's own
@@ -6808,12 +6867,13 @@ function wire(){
   document.querySelectorAll('[data-remove-from-binder]').forEach(b=>b.onclick=removeFromBinder);
   const inspectEl = document.querySelector('[data-inspectcard]');
   if(inspectEl){
-    inspectEl.onmousedown = ()=>{ inspectPressed = true; };
-    inspectEl.ontouchstart = ()=>{ inspectPressed = true; };
-    inspectEl.onmouseup = inspectPressEnd;
-    inspectEl.ontouchend = inspectPressEnd;
-    inspectEl.onmouseleave = inspectPressEnd;
-    inspectEl.onmousemove = inspectMove;
+    // preventDefault stops a drag off the card from selecting page text
+    inspectEl.onmousedown = (e)=>{ e.preventDefault(); inspectPressStart(e); };
+    inspectEl.ontouchstart = inspectPressStart;
+    // preventDefault cancels the compat mousedown/mouseup/click a browser
+    // fires after a tap - without it the window mouseup would read that as
+    // a second tap and flip the card straight back.
+    inspectEl.ontouchend = (e)=>{ if(e.cancelable) e.preventDefault(); inspectPressEnd(); };
     inspectEl.ontouchmove = inspectMove;
   }
 
