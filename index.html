@@ -1457,6 +1457,40 @@ body {
   opacity:.55;
 }
 
+/* ---------- shiny + holo badge ----------
+   A card that is both gets its own mark rather than a star and a ❖ stacked
+   in the same spot: those are font glyphs, so their overlap shifted with
+   each platform's fallback font. This is clip-path geometry, no text, so it
+   renders identically everywhere. Glow lives on the outer span because
+   clip-path would clip a drop-shadow on the same element. */
+/* Corner badge on dex/binder tiles. A fixed 20px box with the glyph
+   centred in it, so all three variants share one centre point
+   (13px in from the top and right) whatever each glyph's size. */
+.corner-badge{
+  position:absolute;top:3px;right:3px;width:20px;height:20px;z-index:3;pointer-events:none;
+  display:flex;align-items:center;justify-content:center;line-height:1;
+}
+/* Per-glyph sizes: ★ and ❖ fill different amounts of their em box, so
+   equal font-size renders unequal stars. Tuned by eye to match the 16px
+   shiny-holo mark. */
+.corner-badge.shiny{font-size:24px;color:gold;text-shadow:0 0 5px gold;}
+.corner-badge.holo{font-size:21px;color:#8ad0ff;text-shadow:0 0 5px #8ad0ff;}
+.shinyholo-badge{
+  position:absolute;top:5px;right:5px;width:16px;height:16px;z-index:3;pointer-events:none;
+  filter:drop-shadow(0 0 1px rgba(0,0,0,.9)) drop-shadow(0 0 3px rgba(255,190,0,.7));
+}
+.shinyholo-badge i{
+  display:block;width:100%;height:100%;
+  clip-path:polygon(50% 0%,58% 31%,85% 15%,69% 42%,100% 50%,69% 58%,85% 85%,58% 69%,50% 100%,42% 69%,15% 85%,31% 58%,0% 50%,31% 42%,15% 15%,42% 31%);
+  background:linear-gradient(135deg,gold 0%,#ff9fd0 50%,#8ad0ff 100%);
+}
+/* Inline variant for the card-face name line. Sized in em so it scales with
+   .cf-name's cqw font size across pack reveal, detail and stats cards. */
+.shinyholo-badge.inline{
+  position:relative;top:auto;right:auto;display:inline-block;
+  width:1.05em;height:1.05em;vertical-align:-0.15em;
+}
+
 /* ---------- purple flame aura for ultra/secret tier cards ---------- */
 .flame-aura{
   animation: flamePulse 1.6s ease-in-out infinite alternate;
@@ -2783,6 +2817,16 @@ function cardMultiplier(hoursHeld, tNow){
 // holo multiply independently, so a card can be both (10 * 3 = 30x).
 function effectiveCardValue(baseValue, shiny, holo){
   return baseValue * (shiny ? 10 : 1) * (holo ? 3 : 1);
+}
+
+// Corner badge for dex/binder tiles. Exactly one badge per tile; a card
+// that is both shiny and holo gets its own mark instead of both glyphs.
+function cardBadge(shiny, holo, titleSuffix){
+  const t = titleSuffix ? ' ' + titleSuffix : '';
+  if (shiny && holo) return `<span class="shinyholo-badge" title="Shiny holo${t}"><i></i></span>`;
+  if (shiny) return `<span class="corner-badge shiny" title="Shiny${t}">&#9733;</span>`;
+  if (holo)  return `<span class="corner-badge holo" title="Holo${t}">&#10070;</span>`;
+  return '';
 }
 
 let state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[], favoriteUids:[] }; // hex:0 until signed in - real balance loads after auth
@@ -5642,8 +5686,9 @@ function renderDex(){
       const bf = bestFlagsById[p.id];
       return `<div class="dexslot ${o?'owned':''} ${o && bf && bf.shiny ? 'shiny-card' : ''}" ${o?`data-species="${p.id}"`:''} style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};${o && bf && bf.shiny ? `--shiny-hue:${shinyHue(p.id)}deg;` : ''}">
         <span class="num mono">#${String(p.id).padStart(3,'0')}</span>
-        ${o && bf && bf.shiny ? `<div class="shiny-sparkle-overlay"></div><span style="position:absolute;top:2px;right:4px;color:gold;font-size:15px;text-shadow:0 0 5px gold;z-index:3;" title="Shiny owned">★</span>` : ''}
-        ${o && bf && bf.holo ? `<div class="holo-hex-overlay"></div><div class="holo-gloss-overlay"></div><div class="holo-sparkle-overlay"></div><span style="position:absolute;top:2px;right:4px;color:#8ad0ff;font-size:15px;text-shadow:0 0 5px #8ad0ff;z-index:3;" title="Holo owned">&#10070;</span>` : ''}
+        ${o && bf && bf.shiny ? `<div class="shiny-sparkle-overlay"></div>` : ''}
+        ${o && bf && bf.holo ? `<div class="holo-hex-overlay"></div><div class="holo-gloss-overlay"></div><div class="holo-sparkle-overlay"></div>` : ''}
+        ${o && bf ? cardBadge(bf.shiny, bf.holo, 'owned') : ''}
         ${o && fullyFiledIds.has(p.id) ? `<img class="filed-badge dexslot-filed-badge" src="${FILED_BADGE_ICON}" alt="" title="${o.count > 1 ? 'All copies filed in a binder' : 'Filed in a binder'}">` : ''}
         <div class="glyph">
           ${o?`<img src="${p.sprite}" alt="${esc(p.name)}" loading="lazy">`:``}
@@ -5938,8 +5983,9 @@ function renderPocketCard(card){
   const rc = RARITY[card.rarity] || RARITY.common;
   return `
     <span class="num mono">#${String(card.id).padStart(3,'0')}</span>
-    ${card.shiny ? `<div class="shiny-sparkle-overlay"></div><span style="position:absolute;top:2px;right:4px;color:gold;font-size:15px;text-shadow:0 0 5px gold;z-index:3;" title="Shiny">&#9733;</span>` : ''}
-    ${card.holo ? `<div class="holo-hex-overlay"></div><div class="holo-gloss-overlay"></div><div class="holo-sparkle-overlay"></div><span style="position:absolute;top:2px;right:4px;color:#8ad0ff;font-size:15px;text-shadow:0 0 5px #8ad0ff;z-index:3;" title="Holo">&#10070;</span>` : ''}
+    ${card.shiny ? `<div class="shiny-sparkle-overlay"></div>` : ''}
+    ${card.holo ? `<div class="holo-hex-overlay"></div><div class="holo-gloss-overlay"></div><div class="holo-sparkle-overlay"></div>` : ''}
+    ${cardBadge(card.shiny, card.holo)}
     <div class="glyph"><img src="${card.sprite}" alt="${esc(card.name)}" loading="lazy"></div>
     <div class="nm">${esc(card.name)}</div>
   `;
@@ -6071,7 +6117,11 @@ function renderCardFace(card, flipped, filed){
               <img src="${card.sprite}" alt="${esc(card.name)}" loading="lazy">
             </div>
             <div class="cf-bottom">
-              <div class="cf-name">${esc(card.name)}${card.holo ? ' <span title="Holo" style="color:#8ad0ff;">&#10070;</span>' : ''}</div>
+              <div class="cf-name">${esc(card.name)}${
+                card.shiny && card.holo ? ' <span class="shinyholo-badge inline" title="Shiny holo"><i></i></span>'
+                : card.shiny ? ' <span title="Shiny" style="color:gold;">&#9733;</span>'
+                : card.holo ? ' <span title="Holo" style="color:#8ad0ff;">&#10070;</span>' : ''
+              }</div>
               <div class="cf-rarity">${rc.label} <span class="cf-num mono">#${String(card.id).padStart(3,'0')}</span></div>
               <div class="cf-value"><i class="hex-icon"></i> ${effectiveCardValue(card.value, card.shiny, card.holo)} HEX</div>
             </div>
