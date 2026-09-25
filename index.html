@@ -2325,7 +2325,12 @@ function renderAuth(){
         if(error) throw error;
         // onAuthStateChange will pick up the session and boot the game
       } else {
-        const { data, error } = await sb.auth.signUp({ email, password });
+        // Without emailRedirectTo, the confirmation link goes to the project's
+        // Site URL (the galactable.github.io launcher), not back to the game.
+        const { data, error } = await sb.auth.signUp({
+          email, password,
+          options: { emailRedirectTo: location.origin + location.pathname }
+        });
         if(error) throw error;
         if(!data.session){
           authBusy = false;
