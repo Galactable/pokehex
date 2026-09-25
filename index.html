@@ -3159,17 +3159,22 @@ async function doSaveBinders(){
   }
 }
 
+// One card's liquidation payout at time now, or null if the client catalog
+// doesn't have its species. Same formula everywhere the vault is valued, so
+// the header total and the Market's tier / stack / card figures agree.
+function cardPayout(inst, now){
+  const p = POKEMON_BY_ID.get(inst.id);
+  if(!p) return null;
+  const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
+  return Math.max(1, Math.round(effectiveCardValue(p.value, inst.shiny, inst.holo) * cardMultiplier(hoursHeld, now)));
+}
+
 function calculateCurrentVaultValue(){
-  const instances = state.instances || [];
   const now = Date.now();
   let total = 0;
-  instances.forEach(inst => {
-    const p = POKEMON.find(x => x.id === inst.id);
-    if(!p) return;
-    const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
-    const multiplier = cardMultiplier(hoursHeld, now);
-    const baseValue = effectiveCardValue(p.value, inst.shiny, inst.holo);
-    total += Math.max(1, Math.round(baseValue * multiplier));
+  (state.instances || []).forEach(inst => {
+    const payout = cardPayout(inst, now);
+    if(payout !== null) total += payout;
   });
   return total;
 }
@@ -3674,7 +3679,21 @@ function renderVaultChart(){
 function updateVaultFeedLive() {
   if (view !== 'market') return;
 
-  const currentTotal = calculateCurrentVaultValue();
+  // Runs every second on the Market. One pass values every card and sums
+  // the stacks, tiers and vault total from that - it used to walk the whole
+  // vault once per figure (seven times), with a catalog scan per card each time.
+  const now = Date.now();
+  const payoutByUid = new Map(), stackTotals = {}, tierTotals = {};
+  let currentTotal = 0;
+  (state.instances || []).forEach(inst => {
+    const payout = cardPayout(inst, now);
+    if(payout === null) return;
+    currentTotal += payout;
+    payoutByUid.set(inst.uid, payout);
+    const key = `${inst.rarity}-${inst.id}`;
+    stackTotals[key] = (stackTotals[key] || 0) + payout;
+    tierTotals[inst.rarity] = (tierTotals[inst.rarity] || 0) + payout;
+  });
   const balanceValEl = document.querySelector('.balance .val');
   if (balanceValEl) {
     balanceValEl.innerHTML = `<i class="hex-icon"></i>${fmtHex(state.hex)}`;
@@ -3707,59 +3726,22 @@ function updateVaultFeedLive() {
     if(valEl){ valEl.textContent = (idxNow*100).toFixed(0); valEl.style.color = phase.color; }
   }
 
-  // Update real-time liquidation price estimates live in the DOM
-  const now = Date.now();
-  (state.instances || []).forEach(inst => {
-    const el = document.getElementById(`price-inst-${inst.uid}`);
-    if (el) {
-      const p = POKEMON.find(x => x.id === inst.id);
-      if (p) {
-        const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
-        const multiplier = cardMultiplier(hoursHeld, now);
-        const baseValue = effectiveCardValue(p.value, inst.shiny, inst.holo);
-        const payout = Math.max(1, Math.round(baseValue * multiplier));
-        el.innerHTML = `<i class="hex-icon"></i>~${fmtHex(payout)}`;
-      }
-    }
+  // Live price labels. renderMarket builds card tiles only inside open
+  // stacks and stack rows only inside open tiers, so update the labels that
+  // are actually on the page rather than looking one up per card. Stack
+  // totals matter most: a collapsed stack's headline number would otherwise
+  // sit frozen while the market moved underneath it.
+  document.querySelectorAll('[id^="price-inst-"]').forEach(el => {
+    const payout = payoutByUid.get(el.id.slice('price-inst-'.length));
+    if (payout !== undefined) el.innerHTML = `<i class="hex-icon"></i>~${fmtHex(payout)}`;
   });
-
-  // Species stack totals. Collapsed stacks hide their instance rows, so without
-  // this the headline number a player is actually reading would sit frozen
-  // while the market moved underneath it.
-  {
-    const stacks = {};
-    (state.instances || []).forEach(inst => {
-      const p = POKEMON.find(x => x.id === inst.id);
-      if (!p) return;
-      const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
-      const baseValue = effectiveCardValue(p.value, inst.shiny, inst.holo);
-      const payout = Math.max(1, Math.round(baseValue * cardMultiplier(hoursHeld, now)));
-      const key = `${inst.rarity}-${inst.id}`;
-      stacks[key] = (stacks[key] || 0) + payout;
-    });
-    Object.entries(stacks).forEach(([key, total]) => {
-      const el = document.getElementById(`price-species-${key}`);
-      if (el) el.innerHTML = `<i class="hex-icon"></i>~${fmtHex(total)}`;
-    });
-  }
-
+  document.querySelectorAll('[id^="price-species-"]').forEach(el => {
+    const total = stackTotals[el.id.slice('price-species-'.length)];
+    if (total !== undefined) el.innerHTML = `<i class="hex-icon"></i>~${fmtHex(total)}`;
+  });
   ['secret', 'ultra', 'rare', 'uncommon', 'common'].forEach(tier => {
     const el = document.getElementById(`price-tier-${tier}`);
-    if (el) {
-      let totalPayout = 0;
-      (state.instances || []).forEach(inst => {
-        if (inst.rarity === tier) {
-          const p = POKEMON.find(x => x.id === inst.id);
-          if (p) {
-            const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
-            const multiplier = cardMultiplier(hoursHeld, now);
-            const baseValue = effectiveCardValue(p.value, inst.shiny, inst.holo);
-            totalPayout += Math.max(1, Math.round(baseValue * multiplier));
-          }
-        }
-      });
-      el.innerHTML = `<i class="hex-icon"></i>~${fmtHex(totalPayout)}`;
-    }
+    if (el) el.innerHTML = `<i class="hex-icon"></i>~${fmtHex(tierTotals[tier] || 0)}`;
   });
 }
 
