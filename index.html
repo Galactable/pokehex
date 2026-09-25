@@ -2128,6 +2128,15 @@ html,body{ max-width:100%; overflow-x:hidden; }
 
 /* ---------- Dex -> binder filing sheet ---------- */
 .dexgrid .dexslot.owned{cursor:pointer;}
+/* The copy list can run to dozens of rows. Cap the panel at the overlay's
+   height and let only the list scroll, so the title and Cancel stay on screen.
+   max-height:100% resolves against .overlay, which is position:fixed with
+   inset:0, so its height is always known. */
+.chooser-panel{margin-top:0;max-height:100%;min-height:0;}
+.chooser-list{
+  display:flex;flex-direction:column;gap:8px;
+  flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+}
 .chooserow{
   display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;
   background:var(--surface2);border:1px solid var(--line);cursor:pointer;
@@ -2135,11 +2144,15 @@ html,body{ max-width:100%; overflow-x:hidden; }
 }
 .chooserow:disabled{opacity:0.45;cursor:default;}
 .chooserow-dot{width:14px;height:14px;border-radius:4px;flex:0 0 auto;}
-.chooserow-num{font-size:11px;color:var(--muted);flex:0 0 auto;}
 .chooserow-text{flex:1;min-width:0;font-size:12.5px;}
 .chooserow-name{font-size:12.5px;font-weight:700;}
 .chooserow-sub{font-size:10px;color:var(--muted);margin-top:1px;}
 .chooserow-thumb{position:relative;width:32px;height:32px;flex:0 0 auto;}
+.chooserow-count{font-size:12px;color:var(--muted);flex:0 0 auto;}
+.chooser-head{
+  font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);margin-top:6px;
+}
 
 /* Filed-in-a-binder marker. Bottom-left everywhere so it never collides with
    a shiny star (top-right).
@@ -2926,8 +2939,7 @@ let deleteBinderConfirm = false; // delete-confirmation step within the edit she
 let binderDraft = { name:'', desc:'', color:'' };
 
 // Dex -> binder filing flow. Tapping an owned Dex tile opens this; which
-// specific copy only needs asking when there's a real choice (a dupe or a
-// shiny alongside a normal one).
+// copy only needs asking when dexAddChoices() offers more than one row.
 let dexAddOpen = false;
 let dexAddSpeciesId = null;
 let dexAddUid = null;
@@ -5736,6 +5748,42 @@ function spineFace(color){
 // .sigil mark in the footer.
 const FILED_BADGE_ICON = "data:image/png;base64,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";
 
+// The "File which X?" picker's rows. Loose copies (not filed, not a favorite)
+// that look the same are interchangeable, so they collapse into one row per
+// variant; tapping it files the newest copy, which has the smallest held
+// bonus, and leaves the older, higher-paying copies free to liquidate. A copy
+// that's filed or a favorite is a specific card the player cares about, so it
+// keeps a row of its own - that's how a filed card stays reachable to move or
+// favorite.
+function dexAddChoices(speciesId){
+  const used = usedBinderUids();
+  const favs = new Set(state.favoriteUids || []);
+  const groups = new Map();
+  const singles = [];
+  for(const inst of instancesFor(speciesId)){
+    if(used.has(inst.uid) || favs.has(inst.uid)){ singles.push(inst); continue; }
+    const key = `${inst.rarity}|${inst.holo?1:0}|${inst.shiny?1:0}`;
+    const g = groups.get(key);
+    if(!g){ groups.set(key, { inst, count:1 }); continue; }
+    g.count++;
+    // no acquiredAt reads as "held 0 hours" in payouts, so treat it as newest here too
+    if((inst.acquiredAt || Infinity) > (g.inst.acquiredAt || Infinity)) g.inst = inst;
+  }
+  // plain first, then holo, shiny, shiny holo
+  const rank = inst => (inst.shiny ? 2 : 0) + (inst.holo ? 1 : 0);
+  return { groups: [...groups.values()].sort((a,b)=>rank(a.inst)-rank(b.inst)), singles, used };
+}
+// The uid to go straight to the binder list with, or null when the player
+// has a real choice to make.
+function dexAddSoleUid(speciesId){
+  const { groups, singles } = dexAddChoices(speciesId);
+  if(groups.length + singles.length !== 1) return null;
+  return groups.length ? groups[0].inst.uid : singles[0].uid;
+}
+function variantLabel(inst){
+  return `${inst.shiny?'&#9733; Shiny ':''}${inst.holo?'&#10070; Holo ':''}${(RARITY[inst.rarity]||RARITY.common).label}`;
+}
+
 function renderDexAddSheet(){
   if(!dexAddOpen) return '';
   const p = POKEMON.find(x=>x.id===dexAddSpeciesId);
@@ -5752,39 +5800,50 @@ function renderDexAddSheet(){
     </div>`;
   }
 
-  // Which copy only needs asking when there's a real choice - a dupe or a
-  // shiny alongside a normal one. Copies already filed are still listed here
-  // (badged) so a filed card stays reachable to favorite or re-file elsewhere.
-  if(avail.length > 1 && !dexAddUid){
-    const used = usedBinderUids();
-    return `<div class="overlay" data-dexaddclose-backdrop>
-      <div class="summary-panel" style="max-width:380px;align-items:stretch;">
-        <div style="font-family:var(--font-display);font-weight:800;font-size:15px;text-transform:uppercase;text-align:center;">File which ${esc(p.name)}?</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          ${avail.map(inst=>`
-            <button class="chooserow" data-dexadd-pick="${inst.uid}">
-              <span class="chooserow-thumb">
+  if(!dexAddUid){
+    const { groups, singles, used } = dexAddChoices(dexAddSpeciesId);
+    const thumb = inst => `<span class="chooserow-thumb">
                 <img src="${p.sprite}" alt="" loading="lazy" style="width:32px;height:32px;image-rendering:pixelated;${inst.shiny ? `filter:hue-rotate(${shinyHue(p.id)}deg) saturate(1.4);` : ''}">
                 ${used.has(inst.uid) ? `<img class="filed-badge chooserow-filed-badge" src="${FILED_BADGE_ICON}" alt="" title="Already filed in a binder">` : ''}
-              </span>
-              <span class="mono chooserow-num">#${String(p.id).padStart(3,'0')}</span>
-              <span class="chooserow-text">${inst.shiny?'&#9733; Shiny ':''}${inst.holo?'&#10070; Holo ':''}${(RARITY[inst.rarity]||RARITY.common).label}</span>
+              </span>`;
+    return `<div class="overlay" data-dexaddclose-backdrop>
+      <div class="summary-panel chooser-panel" style="max-width:380px;align-items:stretch;">
+        <div style="font-family:var(--font-display);font-weight:800;font-size:15px;text-transform:uppercase;text-align:center;">File which ${esc(p.name)}?</div>
+        <div class="chooser-list">
+          ${groups.map(g=>`
+            <button class="chooserow" data-dexadd-pick="${g.inst.uid}">
+              ${thumb(g.inst)}
+              <span class="chooserow-text">${variantLabel(g.inst)}</span>
+              <span class="mono chooserow-count">&times;${g.count}</span>
             </button>
           `).join('')}
+          ${singles.length ? `<div class="chooser-head">Filed &amp; favorites</div>` : ''}
+          ${singles.map(inst=>{
+            const loc = findFiledSlot(inst.uid);
+            const favSlot = (state.favoriteUids || []).indexOf(inst.uid) + 1;
+            const sub = [loc ? `In ${esc(loc.binder.name)}` : '', favSlot ? `Favorite &middot; Slot ${favSlot}` : ''].filter(Boolean).join(' &middot; ');
+            return `<button class="chooserow" data-dexadd-pick="${inst.uid}">
+              ${thumb(inst)}
+              <span class="chooserow-text">
+                <div class="chooserow-name">${variantLabel(inst)}</div>
+                <div class="mono chooserow-sub">${sub}</div>
+              </span>
+            </button>`;
+          }).join('')}
         </div>
         <div class="summary-actions"><button class="sbtn sell" data-dexadd-close>Cancel</button></div>
       </div>
     </div>`;
   }
 
-  const uid = dexAddUid || avail[0].uid;
+  const uid = dexAddUid;
   const binders = state.binders || [];
   const favSlot = (state.favoriteUids || []).indexOf(uid) + 1; // 0 = not favorited
   const isFav = favSlot > 0;
   const slotsFull = (state.favoriteUids || []).length >= FAVORITE_SLOTS;
   const filedLoc = findFiledSlot(uid);
   return `<div class="overlay" data-dexaddclose-backdrop>
-    <div class="summary-panel" style="max-width:380px;align-items:stretch;">
+    <div class="summary-panel chooser-panel" style="max-width:380px;align-items:stretch;">
       <div style="font-family:var(--font-display);font-weight:800;font-size:15px;text-transform:uppercase;text-align:center;">File ${esc(p.name)} in&hellip;</div>
       <button class="fav-toggle ${isFav ? 'on' : ''}" data-fav-toggle="${uid}" title="${isFav ? `Remove from favorite slot ${favSlot}` : (slotsFull ? 'All 3 slots full - pick one to replace' : 'Set as a favorite')}">
         <span class="fav-star">${isFav ? '★' : '☆'}</span>
@@ -5796,7 +5855,7 @@ function renderDexAddSheet(){
         <div style="font-size:12.5px;text-align:center;color:var(--muted);line-height:1.5;">You don't have a binder yet.</div>
         <div class="summary-actions"><button class="sbtn keep" data-dexadd-goto-shelf>Create a Binder</button></div>
       ` : `
-        <div style="display:flex;flex-direction:column;gap:8px;">
+        <div class="chooser-list">
           ${binders.map(b=>{
             const filled = countFilled(b);
             const isFull = filled >= BINDER_MAX_CARDS;
@@ -6704,8 +6763,7 @@ function wire(){
   document.querySelectorAll('.dexgrid .dexslot.owned[data-species]').forEach(el=>{
     el.onclick = ()=>{
       dexAddSpeciesId = Number(el.dataset.species);
-      const avail = instancesFor(dexAddSpeciesId);
-      dexAddUid = avail.length === 1 ? avail[0].uid : null;
+      dexAddUid = dexAddSoleUid(dexAddSpeciesId);
       dexAddFromMarket = null;
       dexAddOpen = true;
       render();
