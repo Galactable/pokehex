@@ -7267,11 +7267,15 @@ function wire(){
       // no longer resolve. cleared locally rather than via the RPC - see notes.
       // equipped_back is a permanent purchase and is NOT cleared by reset_game_state,
       // so carry it across rather than falling back to the pack theme until refresh.
-      // Binders are organizational, not economy state, and reset_game_state never
-      // touches player_binders - carried across so a "burn everything" reset doesn't
-      // silently delete a player's binder setup. Their slots just go empty, since a
-      // reset wipes every instance uid a binder could be pointing at.
-      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[], favoriteUids:[], equippedBack: state.equippedBack || null, binders: state.binders || [] };
+      // Binders are organizational, not economy state, so a "burn everything" reset
+      // keeps each binder - name, colour, page count - but reset_game_state empties
+      // every slot server-side, since every card they pointed at is gone. Mirror that
+      // here: the next saveBinders() writes this whole array back, and stale uids
+      // would put the ghosts straight back into player_binders.
+      const emptiedBinders = (state.binders || []).map(b => b.pages
+        ? Object.assign({}, b, { pages: b.pages.map(pg => pg.map(() => null)) })
+        : b);
+      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[], favoriteUids:[], equippedBack: state.equippedBack || null, binders: emptiedBinders };
       saveState();
       resetConfirmOpen = false;
     } finally {
