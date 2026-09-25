@@ -3911,7 +3911,9 @@ function renderMarketModal() {
 
         <div class="summary-actions" style="margin-top:4px;">
           <button class="sbtn sell" data-modal-cancel>Close</button>
-          <button class="sbtn keep" style="background:#ff4444;box-shadow:0 0 10px rgba(255,68,68,0.4);" data-open-single-modal="${inst.uid}">Liquidate</button>
+          ${filedLoc
+            ? `<button class="sbtn keep" style="background:var(--line);color:var(--muted);cursor:not-allowed;" disabled title="Filed in ${esc(filedLoc.binder.name)} - remove it from the binder to sell">In Binder</button>`
+            : `<button class="sbtn keep" style="background:#ff4444;box-shadow:0 0 10px rgba(255,68,68,0.4);" data-open-single-modal="${inst.uid}">Liquidate</button>`}
         </div>
       </div>
     </div>`;
@@ -4318,9 +4320,11 @@ function renderMarket(){
                                 <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gold);">
                                   <span id="price-inst-${inst.uid}"><i class="hex-icon"></i>~${fmtHex(payout)}</span>
                                 </div>
-                                <button class="buybtn" style="width:100%;padding:6px;font-size:11px;" data-open-single-modal="${inst.uid}">
+                                ${usedUids.has(inst.uid)
+                                  ? `<button class="buybtn" style="width:100%;padding:6px;font-size:11px;" disabled title="Filed in a binder - remove it from the binder to sell">In Binder</button>`
+                                  : `<button class="buybtn" style="width:100%;padding:6px;font-size:11px;" data-open-single-modal="${inst.uid}">
                                   Liquidate
-                                </button>
+                                </button>`}
                               </div>
                             `;
                           }).join('')}
@@ -7048,7 +7052,11 @@ function wire(){
       try{
         const { data, error } = await sb.rpc('liquidate_instance', { p_uid: uid });
         if(error){
-          toast("Couldn't liquidate that card - try again.");
+          // liquidate_instance refuses filed cards - reachable if the binder
+          // changed on another device since this list rendered
+          toast(/filed in a binder/.test(error.message || '')
+            ? 'That card is in a binder - remove it from the binder to sell it.'
+            : "Couldn't liquidate that card - try again.");
           return;
         }
         const inst = state.instances[idx];
