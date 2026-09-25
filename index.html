@@ -455,6 +455,18 @@ body {
 .dexfbtn{font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:5px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--muted);}
 .dexfbtn.on{border-color:var(--foil1);background:rgba(57,255,20,0.12);color:var(--foil1);}
 .dexfsel{font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:5px 8px;border-radius:6px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--text);}
+/* iOS Safari zooms the page when a field under 16px gets focus, and never
+   zooms back out - on the binder page the pockets are touch-action:none (for
+   press-hold drag), so the player can't pinch their way out either. Every
+   field is 16px on touchscreens. !important because most set font-size
+   inline. Desktop keeps the smaller sizes. */
+@media (pointer:coarse){
+  input[type="text"], input[type="email"], input[type="password"],
+  select, textarea{ font-size:16px !important; }
+  /* the text has to stay 16px, so slim the box instead to sit closer to
+     the 10.5px filter buttons beside it */
+  .dexfsel{padding:1px 4px;line-height:1.2;}
+}
 .dexfbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:7px 10px;border:1px solid var(--foil1);border-radius:6px;background:rgba(57,255,20,0.07);color:var(--foil1);}
 
 .dexgrid{
@@ -4224,7 +4236,7 @@ function renderMarket(){
 
     ${instances.length === 0 ? '' : `
       <form id="marketSearchForm" style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
-        <input type="text" id="marketSearchInput" value="${esc(marketSearch)}" placeholder="Search your vault by name or number..." autocomplete="off"
+        <input type="text" id="marketSearchInput" value="${esc(marketSearch)}" placeholder="Search vault: name or #" autocomplete="off"
           style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;" />
         <button type="submit" class="sbtn keep" style="padding:7px 12px;font-size:11px;">Find</button>
         ${marketSearch ? `<button type="button" class="sbtn sell" data-searchclear style="padding:7px 12px;font-size:11px;">Clear</button>` : ''}
@@ -5710,7 +5722,7 @@ function renderDex(){
   </div>
 
   <form id="dexSearchForm" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-    <input type="text" id="dexSearchInput" value="${esc(dexSearch)}" placeholder="Search all gens by name or number..." autocomplete="off"
+    <input type="text" id="dexSearchInput" value="${esc(dexSearch)}" placeholder="Search all gens: name or #" autocomplete="off"
       style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;" />
     <button type="submit" class="sbtn keep" style="padding:7px 12px;font-size:11px;">Find</button>
   </form>
