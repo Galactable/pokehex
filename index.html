@@ -2665,6 +2665,10 @@ const PACKS = [
     desc:'Elite vault box with guaranteed heavy hitters and massive secret odds.',
     weights:{common:5,uncommon:15,rare:45,ultra:27,secret:8},guaranteeTier:'ultra'}
 ];
+// id -> species, built once. POKEMON is never mutated after load, so this
+// can't go stale; use it anywhere a loop over state.instances would
+// otherwise POKEMON.find() per card (649 species x 7000+ cards adds up).
+const POKEMON_BY_ID = new Map(POKEMON.map(p => [p.id, p]));
 
 // Badges are earned by completing a type, not bought.
 // Ownership is derived from state.dex at render time, so a badge is lost
@@ -4166,7 +4170,7 @@ function renderMarket(){
   marketHits = [];
   if(q){
     instances.forEach(inst => {
-      const p = POKEMON.find(x => x.id === inst.id);
+      const p = POKEMON_BY_ID.get(inst.id);
       if(!p) return;
       const byNum = /^\d+$/.test(q) && p.id === parseInt(q, 10);
       const byName = p.name.toLowerCase().includes(q);
@@ -4178,24 +4182,21 @@ function renderMarket(){
     instances.filter(i => hitSet.has(i.uid)).map(i => i.rarity)
   );
 
+  // payout worked out once per card here and reused below - the sort used
+  // to recompute it inside its comparator, O(n log n) times
   instances.forEach((inst) => {
-    const p = POKEMON.find(x => x.id === inst.id);
+    const p = POKEMON_BY_ID.get(inst.id);
     if(!p) return;
     if(groupedByTier[inst.rarity]) {
-      groupedByTier[inst.rarity].push({ p, inst });
+      const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
+      const multiplier = cardMultiplier(hoursHeld, now);
+      const payout = Math.max(1, Math.round(effValue(p, inst) * multiplier));
+      groupedByTier[inst.rarity].push({ p, inst, hoursHeld, multiplier, payout });
     }
   });
 
   tierOrder.forEach(t => {
-    groupedByTier[t].sort((a, b) => {
-      const getPayout = (item) => {
-        const acquired = item.inst.acquiredAt || now;
-        const hoursHeld = Math.max(0, (now - acquired) / (1000 * 60 * 60));
-        const multiplier = cardMultiplier(hoursHeld, now);
-        return Math.max(1, Math.round(effValue(item.p, item.inst) * multiplier));
-      };
-      return getPayout(b) - getPayout(a);
-    });
+    groupedByTier[t].sort((a, b) => b.payout - a.payout);
   });
 
   return `
@@ -4227,23 +4228,28 @@ function renderMarket(){
         if(!items || items.length === 0) return '';
         const rc = RARITY[tier];
 
-        let tierTotalPayout = 0;
-        items.forEach(({ p, inst }) => {
-          const acquired = inst.acquiredAt || now;
-          const hoursHeld = Math.max(0, (now - acquired) / (1000 * 60 * 60));
-          const multiplier = cardMultiplier(hoursHeld, now);
-          tierTotalPayout += Math.max(1, Math.round(effValue(p, inst) * multiplier));
-        });
-        const dupePrev = dupePreview(tier, now);
+        const tierTotalPayout = items.reduce((s, it) => s + it.payout, 0);
+        const tierOpen = tiersWithHits.has(tier) || expandedTiers.has(tier);
 
-        return `
-          <details data-tier="${tier}" ${(tiersWithHits.has(tier) || expandedTiers.has(tier)) ? 'open' : ''} style="margin-bottom:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px;">
+        // A collapsed tier renders its summary line only. Its buttons, species
+        // rows and card tiles are built when it's opened (the toggle handler in
+        // wire() re-renders) - with thousands of cards, building them all up
+        // front was ~20MB of HTML and 200k DOM nodes on every render().
+        const summary = `
             <summary style="font-family:var(--font-display);font-weight:800; font-size:15px; color:${rc.color}; cursor:pointer; text-transform:uppercase; letter-spacing:0.04em; outline:none; display:flex; justify-content:space-between; align-items:center;">
               <span>${tierLabels[tier]} (${items.length})</span>
               <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--gold);">
                 Tier Est: <span id="price-tier-${tier}"><i class="hex-icon"></i>~${fmtHex(tierTotalPayout)}</span>
               </span>
-            </summary>
+            </summary>`;
+        const detailsOpen = `<details data-tier="${tier}" ${tierOpen ? 'open' : ''} style="margin-bottom:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px;">`;
+        if(!tierOpen) return `${detailsOpen}${summary}<div data-lazy></div></details>`;
+
+        const dupePrev = dupePreview(tier, now);
+
+        return `
+          ${detailsOpen}
+            ${summary}
             
             <div style="padding-top:12px;">
               <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
@@ -4265,23 +4271,19 @@ function renderMarket(){
                 // instance tiles below are unchanged - they just live one level
                 // deeper now, behind a per-species <details>.
                 const species = {};
-                items.forEach(({ p, inst }) => {
-                  (species[inst.id] = species[inst.id] || { p, list: [] }).list.push(inst);
+                items.forEach(item => {
+                  (species[item.inst.id] = species[item.inst.id] || { p: item.p, list: [], cards: [] }).list.push(item.inst);
+                  species[item.inst.id].cards.push(item);
                 });
 
-                const payoutOf = (p, inst) => {
-                  const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
-                  return Math.max(1, Math.round(effValue(p, inst) * cardMultiplier(hoursHeld, now)));
-                };
-
                 const rows = Object.values(species).map(g => {
-                  const stackEst = g.list.reduce((s, inst) => s + payoutOf(g.p, inst), 0);
+                  const stackEst = g.cards.reduce((s, c) => s + c.payout, 0);
                   return { ...g, stackEst };
                 });
                 // richest stack first, same ordering intent as the flat grid
                 rows.sort((a, b) => b.stackEst - a.stackEst);
 
-                return rows.map(({ p, list, stackEst }) => {
+                return rows.map(({ p, list, cards, stackEst }) => {
                   const isSingle = list.length === 1;
                   const hasShiny = list.some(x => x.shiny);
                   const hasHolo = list.some(x => x.holo);
@@ -4305,13 +4307,10 @@ function renderMarket(){
                         </span>
                       </summary>
 
-                      <div style="padding:4px 12px 12px;">
+                      ${!open ? '<div data-lazy></div>' : `<div style="padding:4px 12px 12px;">
                         <div class="dexgrid" style="grid-template-columns:repeat(auto-fill,minmax(154px,1fr));">
-                          ${list.map((inst) => {
+                          ${cards.map(({ inst, hoursHeld, multiplier, payout }) => {
                             const acquired = inst.acquiredAt || now;
-                            const hoursHeld = Math.max(0, (now - acquired) / (1000 * 60 * 60));
-                            const multiplier = cardMultiplier(hoursHeld, now);
-                            const payout = Math.max(1, Math.round(effValue(p, inst) * multiplier));
                             const dateStr = new Date(acquired).toLocaleDateString(undefined, {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
 
                             return `
@@ -4338,7 +4337,7 @@ function renderMarket(){
                             `;
                           }).join('')}
                         </div>
-                      </div>
+                      </div>`}
                     </details>
                   `;
                 }).join('');
@@ -7323,10 +7322,16 @@ function wire(){
     };
   });
 
+  // Collapsed tiers and species stacks render a [data-lazy] placeholder
+  // instead of their contents (see renderMarket). Opening one records it and
+  // re-renders, which builds it. Only a placeholder triggers that, so a
+  // details that is already built - or one the render itself created open -
+  // never re-renders on toggle.
   document.querySelectorAll('details[data-tier]').forEach(d => {
     d.ontoggle = () => {
       if(d.open) expandedTiers.add(d.dataset.tier);
       else expandedTiers.delete(d.dataset.tier);
+      if(d.open && d.querySelector(':scope > [data-lazy]')) render();
     };
   });
 
@@ -7334,6 +7339,7 @@ function wire(){
     d.ontoggle = () => {
       if(d.open) expandedSpecies.add(d.dataset.species);
       else expandedSpecies.delete(d.dataset.species);
+      if(d.open && d.querySelector(':scope > [data-lazy]')) render();
     };
   });
 
