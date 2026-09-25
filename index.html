@@ -1949,7 +1949,11 @@ html,body{ max-width:100%; overflow-x:hidden; }
   background:var(--surface2);border:1px solid var(--foil1);
   box-shadow:0 0 10px rgba(57,255,20,0.18);
   display:flex;align-items:center;justify-content:space-between;
+  width:100%;font-family:inherit;color:inherit;text-align:left;
 }
+.shelfentry.open{margin-bottom:0;border-radius:10px 10px 0 0;}
+.shelf-chev{width:12px;height:12px;transition:transform .15s;}
+.shelfentry.open .shelf-chev{transform:rotate(90deg);}
 .shelfentry-label{
   font-family:var(--font-display);font-weight:800;font-size:13px;
   letter-spacing:0.04em;text-transform:uppercase;color:var(--foil1);
@@ -1960,7 +1964,10 @@ html,body{ max-width:100%; overflow-x:hidden; }
   background:var(--surface2);color:var(--text);font-size:16px;line-height:1;
   display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;
 }
-.shelfwrap{display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px 0 30px;}
+.shelfwrap{
+  display:flex;flex-direction:column;align-items:center;gap:14px;padding:10px 12px 16px;margin-bottom:14px;
+  border:1px solid var(--foil1);border-top:0;border-radius:0 0 10px 10px;
+}
 .shelfstage{position:relative;padding-top:22px;width:100%;max-width:520px;}
 .shelf-lighting{
   position:absolute;top:-14px;left:0;right:0;height:120px;
@@ -2927,12 +2934,20 @@ let dexHoloOnly = false;
 let dexSearch = '';
 const titleType = t => t.charAt(0).toUpperCase() + t.slice(1);
 
-// Binder Shelf lives as a tab on the Dex page, not a separate top-level
-// view - 'dex' is the normal collection grid, 'shelf' is the binder shelf.
-// Resets to 'dex' on leaving the Dex page entirely (same [data-nav] hook
-// that clears the dex filters), so returning to Dex always lands on the
-// grid rather than wherever the player left the shelf.
+// 'dex' is the collection grid, 'page' is an open binder. Resets to 'dex' on
+// leaving the Dex page entirely (same [data-nav] hook that clears the dex
+// filters), so returning to Dex always lands on the grid.
 let dexTab = 'dex';
+// The Binder Shelf folds open above the Dex grid rather than being a page of
+// its own, so closing a binder lands straight back on the Dex. Open/closed is
+// a per-browser preference and survives a reload; it defaults to closed so a
+// player who never uses binders keeps the full grid.
+let shelfOpen = false;
+try{ shelfOpen = localStorage.getItem('pokehex_shelf_open') === '1'; }catch(e){}
+function setShelfOpen(v){
+  shelfOpen = v;
+  try{ localStorage.setItem('pokehex_shelf_open', v ? '1' : '0'); }catch(e){}
+}
 let binderSheetOpen = false;
 let editingBinderId = null;      // null = creating a new binder, else the id being edited
 let deleteBinderConfirm = false; // delete-confirmation step within the edit sheet
@@ -5610,7 +5625,6 @@ ${backToTopBtn()}
 }
 
 function renderDex(){
-  if(dexTab === 'shelf') return renderBinderShelf();
   if(dexTab === 'page') return renderBinderPage();
   const owned = state.dex;
   // Shiny indication is ownership-based, derived from instances - not from the
@@ -5677,10 +5691,13 @@ function renderDex(){
     </div>
   </div>
 
-  <div class="shelfentry" data-openshelf>
+  <button class="shelfentry ${shelfOpen?'open':''}" data-shelf-toggle aria-expanded="${shelfOpen}">
     <div class="shelfentry-label">Binder Shelf</div>
-    <div class="shelfentry-sub">${(state.binders||[]).length} / ${BINDER_MAX_COUNT} &rsaquo;</div>
-  </div>
+    <div class="shelfentry-sub">${(state.binders||[]).length} / ${BINDER_MAX_COUNT}
+      <svg class="shelf-chev" viewBox="0 0 12 12" aria-hidden="true"><polyline points="4,2 8,6 4,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </button>
+  ${shelfOpen ? renderBinderShelf() : ''}
 
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
     ${GENS.map(g => tabBtn(g.n, g.label)).join('')}
@@ -5734,6 +5751,7 @@ function renderDex(){
 
   ${backToTopBtn()}
   ${renderDexAddSheet()}
+  ${renderBinderSheet()}
   `;
 }
 
@@ -5931,14 +5949,6 @@ function renderBinderShelf(){
     );
   }
   return `
-  <div class="dexhead">
-    <div class="dexhead-left">
-      <button class="iconbtn" data-closeshelf title="Back to Dex">&lsaquo;</button>
-      <h2 class="disp">Binder Shelf</h2>
-      <div class="dexcount mono">${binders.length} / ${BINDER_MAX_COUNT}</div>
-    </div>
-  </div>
-
   <div class="shelfwrap">
     <div class="shelfstage">
       <div class="shelf-lighting"></div>
@@ -5953,8 +5963,6 @@ function renderBinderShelf(){
     </div>
     <div class="shelfhint">Tap an empty slot to add a binder &middot; up to ${BINDER_MAX_COUNT}</div>
   </div>
-
-  ${renderBinderSheet()}
   `;
 }
 
@@ -6075,8 +6083,8 @@ function renderPocketCard(card){
 function renderBinderPage(){
   const binder = binderById(openBinderId);
   // The binder we had open can vanish out from under us (deleted from its own
-  // edit sheet) - fall back to the shelf rather than render a dangling view.
-  if(!binder){ dexTab = 'shelf'; openBinderId = null; carrying = null; return renderBinderShelf(); }
+  // edit sheet) - fall back to the Dex rather than render a dangling view.
+  if(!binder){ dexTab = 'dex'; openBinderId = null; carrying = null; return renderDex(); }
   const pages = binder.pages && binder.pages.length ? binder.pages : [new Array(9).fill(null)];
   const pageIdx = Math.min(binderPage, pages.length-1);
   const pageArr = pages[pageIdx];
@@ -6123,7 +6131,7 @@ function renderBinderPage(){
   return `
   <div class="dexhead">
     <div class="dexhead-left">
-      <button class="iconbtn" data-closepage title="Back to Shelf">&lsaquo;</button>
+      <button class="iconbtn" data-closepage title="Back to Dex">&lsaquo;</button>
       <h2 class="disp">${esc(binder.name)}</h2>
       <div class="dexcount mono">${countFilled(binder)} / ${9*pages.length}</div>
       <button class="iconbtn editbinder-pencil" data-editbinder="${binder.id}" title="Edit Binder">&#9998;</button>
@@ -6739,10 +6747,8 @@ function wire(){
     render();
   });
 
-  const openShelfBtn = document.querySelector('[data-openshelf]');
-  if(openShelfBtn) openShelfBtn.onclick = ()=>{ dexTab='shelf'; render(); };
-  const closeShelfBtn = document.querySelector('[data-closeshelf]');
-  if(closeShelfBtn) closeShelfBtn.onclick = ()=>{ dexTab='dex'; render(); };
+  const shelfToggle = document.querySelector('[data-shelf-toggle]');
+  if(shelfToggle) shelfToggle.onclick = ()=>{ setShelfOpen(!shelfOpen); render(); };
 
   document.querySelectorAll('[data-createbinder]').forEach(b=>b.onclick=()=>{
     if((state.binders||[]).length>=BINDER_MAX_COUNT) return;
@@ -6782,8 +6788,12 @@ function wire(){
     dexAddSpeciesId = null;
     dexAddUid = null;
     dexAddFromMarket = null;
-    dexTab = 'shelf';
+    dexTab = 'dex';
+    // the sheet was opened from a tile, possibly far down the grid - the
+    // shelf sits above it, so bring it into view
+    setShelfOpen(true);
     render();
+    window.scrollTo(0, 0);
   });
 
   const binderNameInput = document.getElementById('binderNameInput');
@@ -6857,7 +6867,7 @@ function wire(){
 
   const closePageBtn = document.querySelector('[data-closepage]');
   if(closePageBtn) closePageBtn.onclick = ()=>{
-    dexTab = 'shelf';
+    dexTab = 'dex';
     openBinderId = null;
     carrying = null;
     render();
