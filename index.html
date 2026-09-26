@@ -1668,6 +1668,36 @@ body {
   font-family:var(--font-display);font-weight:800;font-size:13px;color:var(--foil1);
   flex:0 0 auto;min-width:18px;
 }
+.howto-quick{border:1px solid var(--foil1);border-radius:12px;background:rgba(57,255,20,0.05);padding:14px 18px;margin:6px 0 16px;}
+.howto-quick-h{font-family:var(--font-display);font-weight:800;font-size:14px;letter-spacing:0.06em;text-transform:uppercase;color:var(--foil1);margin-bottom:6px;}
+.howto-quick ol{margin:0;padding-left:20px;}
+.howto-quick li{color:var(--text);font-size:14px;line-height:1.55;margin:4px 0;}
+.howto-jump{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px;}
+.howto-jump button{font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 10px;border-radius:999px;cursor:pointer;
+  background:var(--surface);border:1px solid var(--line);color:var(--muted);}
+.howto-jump button:hover{border-color:var(--foil1);color:var(--foil1);}
+.howto-sec{border:1px solid var(--line);border-radius:12px;background:var(--surface);margin:0 0 10px;scroll-margin-top:12px;}
+.howto-sec[open]{border-color:rgba(57,255,20,0.35);}
+.howto-sec summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;
+  font-family:var(--font-display);font-weight:800;font-size:16px;letter-spacing:0.05em;text-transform:uppercase;color:var(--foil1);}
+.howto-sec summary::-webkit-details-marker{display:none;}
+.howto-sec summary::after{content:'+';font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--muted);flex:0 0 auto;}
+.howto-sec[open] summary::after{content:'\2212';}
+.howto-sec summary:focus-visible{outline:2px solid var(--foil1);outline-offset:2px;border-radius:12px;}
+.howto-body{padding:0 16px 4px;}
+.howto-cmp{display:grid;gap:8px;margin:0 0 14px;}
+.howto-cmp>div{display:grid;grid-template-columns:150px 1fr;gap:12px;background:var(--surface2);border-left:2px solid var(--foil1);padding:10px 14px;font-size:13.5px;line-height:1.5;}
+.howto-cmp .k{font-family:var(--font-display);font-weight:800;color:var(--foil1);font-size:13px;}
+@media (max-width:520px){.howto-cmp>div{grid-template-columns:1fr;gap:4px;}}
+.howto-table-wrap{overflow-x:auto;margin:0 0 14px;}
+.howto-skills{border-collapse:collapse;width:100%;font-size:13px;line-height:1.45;}
+.howto-skills th{text-align:left;color:var(--muted);font-weight:400;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--line);}
+.howto-skills td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--text);}
+.howto-skills td:first-child{font-family:var(--font-display);font-weight:800;color:var(--foil2);white-space:nowrap;}
+.howto-end{margin-top:26px;text-align:center;}
+.howto-end p{color:var(--muted);}
+.howto-shiny{display:flex;justify-content:center;margin:8px 0 14px;pointer-events:none;}
+.howto-shiny .already-owned-badge{display:none;}
 .howto-sign{
   display:flex;justify-content:center;align-items:center;gap:14px;
   margin-top:38px;padding-top:22px;border-top:1px solid var(--line);
@@ -3155,6 +3185,9 @@ const DEX_TOTAL = GENS[GENS.length - 1].hi;
 const genOf = id => GENS.find(g => id >= g.lo && id <= g.hi);
 let activeModal = null; // Confirmation modal state
 let tierProtectHolo = false; // Liquidate Tier modal's holo-protect checkbox; reset whenever that modal opens
+// How to Play sections the player has opened. render() rebuilds the page
+// (new mail, for one), which would otherwise snap every section shut.
+const howtoOpen = new Set();
 let resetConfirmOpen = false;
 let resetBusy = false;
 
@@ -5621,111 +5654,131 @@ function renderProfile(){
 }
 
 function renderHowTo(){
-  // Counts are derived from POKEMON so this copy can't go stale when the pool grows.
+  // Counts come from the game's own data so this copy can't go stale when
+  // the pool or the price list changes.
   const ofType = t => POKEMON.filter(p => p.type === t);
   const secretsOf = t => ofType(t).filter(p => p.rarity === 'secret').length;
   const nWater = ofType('water').length;
   const nPsychic = ofType('psychic').length, sPsychic = secretsOf('psychic');
-  const nPoison = ofType('poison').length, sPoison = secretsOf('poison');
   const nDragon = ofType('dragon').length, sDragon = secretsOf('dragon');
+  const packLine = PACKS.map(p => `${p.name} (${fmtHex(p.price)} HEX${p.guaranteeTier ? `, guaranteed ${RARITY[p.guaranteeTier].label} or better` : ''})`).join(', ');
+  const sec = (id, title, body) => `
+    <details class="howto-sec" id="ht-${id}" data-howto-sec="${id}" ${howtoOpen.has(id) ? 'open' : ''}>
+      <summary><span>${title}</span></summary>
+      <div class="howto-body">${body}</div>
+    </details>`;
+  const TOPICS = [
+    ['goal','The goal'], ['packs','Packs'], ['market','Selling & the market'], ['rare','Shinies & holos'],
+    ['binders','Binders & favorites'], ['badges','Badges'], ['skills','Skills'], ['social','Profile, friends & mail'],
+    ['backs','Card backs'], ['tips','Three tips']
+  ];
   return `
   <div class="howto">
     <h2 class="disp" style="font-size:26px;margin:0 0 6px;">How to Play</h2>
+    <p class="lead">A card-collecting game with a fake stock market bolted on. Here's the whole thing in five lines. Tap a topic below when you want the details.</p>
 
-<h3>The Goal</h3>
-<p>Collect all ${DEX_TOTAL}. That's it. That's the game. Or set your own goals.</p>
-<p>You need to be <strong>holding</strong> one of each. Not "pulled it once." Not "had it for a while." Holding it. Right now. This is a binder, not a diary &mdash; sell your only Charizard and #006 goes dark like you never met him.</p>
-<p>${GENS.length} generations, one pool, ${GENS.length} tabs. Everyone who finished Kanto and Johto watched their dex sprout a few hundred holes and their badges vanish overnight. That wasn't a bug. You'd got comfortable.</p>
-<p>And when the binder's full, fill it again &mdash; shiny. Nobody has. The odds would like it kept that way.</p>
+    <div class="howto-quick">
+      <div class="howto-quick-h">The short version</div>
+      <ol>
+        <li><strong>Collect all ${DEX_TOTAL} cards.</strong> You have to be holding each one to count it.</li>
+        <li><strong>Open packs</strong> with HEX, the only currency.</li>
+        <li><strong>Sell duplicates</strong> for HEX, ideally when the market is high.</li>
+        <li><strong>Spin the free wheel every hour.</strong> It's your real income.</li>
+        <li><strong>Never sell your last copy</strong> of a card, and file the ones you love in a binder so they can't be sold by accident.</li>
+      </ol>
+    </div>
 
-<hr>
+    <nav class="howto-jump" aria-label="How to Play topics">
+      ${TOPICS.map(t => `<button data-howto-jump="${t[0]}">${t[1]}</button>`).join('')}
+    </nav>
 
-<h3><i class="hex-icon"></i> HEX</h3>
-<p>HEX is the only currency. HEX buys packs. Packs contain cards. Cards, when you no longer want them, become HEX again.</p>
-<p>You were given some to start. It was not enough and it was never going to be.</p>
+    ${sec('goal', 'The goal', `
+      <p>Collect all ${DEX_TOTAL}. That's the game. You're welcome to set your own goals too.</p>
+      <p>You need to be <strong>holding</strong> one of each, right now. Pulling a card once doesn't count forever: sell your only Charizard and #006 goes dark again. Think of the Dex as a binder, not a diary.</p>
+      <p>There are ${GENS.length} generations in one shared pool, one tab each. And when the Dex is full, you can go for it again in shiny. Nobody has yet.</p>
+      <p><i class="hex-icon"></i> <strong>HEX</strong> is the only currency. HEX buys packs, packs give cards, and cards you don't need turn back into HEX. You start with a little. It won't last, and that's by design.</p>
+    `)}
 
-<hr>
+    ${sec('packs', 'Packs', `
+      <p>Three kinds, from sensible to reckless: ${packLine}. Every pack has five cards.</p>
+      <p>Drag across the top of a pack to tear it open slowly. Tap it to open it all at once.</p>
+      <p>After the reveal you choose, card by card, what to <strong>keep</strong> and what to <strong>sell right there</strong>. That choice matters more than it looks; the next topic explains why.</p>
+      <p class="lead">Honest note: on average, a pack is worth less than it costs. That's how every card shop works, this one included. The market and the wheel are how you make up the difference.</p>
+    `)}
 
-    <h3>The Three Things You Can Do</h3>
-    <p><strong>Open packs.</strong> Basic, Diamond, Whale Vault, in ascending order of price and descending order of financial responsibility. Five cards each. Diamond guarantees a Rare or better. Whale guarantees an Ultra or better.</p>
-    <p>Drag the top of the pack to tear it. Slowly, if you want to hear it go. Tap it instead and it opens all at once, which is faster and worse.</p>
-    <p><strong>Sell cards.</strong> Every card you're holding sits in your Vault. The Vault is not a display case. It's inventory.</p>
-    <p><strong>Spin the wheel.</strong> Once an hour. Free.</p>
-    <p>Three things. There is no fourth &mdash; and there's no separate place to go and grind, because all three of them are already training you. Every pack, every sale, every spin feeds a skill. You don't choose whether to train. You choose <em>what</em>, by choosing which of the three you do and how you do it.</p>
+    ${sec('market', 'Selling & the market', `
+      <p>Card prices move all the time. The Market page has a live index that rises and falls in overlapping cycles, some short and some long. It's the same market for every player at the same moment, so nobody gets luckier prices than you. Reading it well is the skill.</p>
+      <p><strong>There are two places to sell, and they pay differently:</strong></p>
+      <div class="howto-cmp">
+        <div><span class="k">Reveal screen</span><span>Pays the card's <strong>fixed base price</strong>. The market is ignored completely: no gain when it's high, no loss when it's low.</span></div>
+        <div><span class="k">Vault (Market page)</span><span>Pays <strong>base price &times; the live market index</strong>, plus up to <strong>+30%</strong> for holding (+1% per hour held).</span></div>
+      </div>
+      <p>So when the market is <em>below</em> normal, selling off the reveal screen is the safer deal. When it's high, or when you've held a card for a day or more, the Vault pays better. The Attack and Defense skills reward each style, so you'll see the difference in your XP too.</p>
+      <p><strong>Bulk selling.</strong> The Vault has two shortcuts for each rarity tier. <strong>Liquidate Duplicates</strong> keeps one copy of every card and sells the extras. <strong>Liquidate Tier</strong> sells everything in that tier. Both always skip shinies and anything filed in a binder. Duplicates also prefers to keep a holo as your one copy, and Tier has a box to protect holos.</p>
+      <p><strong>The wheel is the economy.</strong> Packs lose money on average; the market just decides how much. Your steady income is the free wheel, once an hour. Its cooldown survives a game reset, so resetting won't get you an extra spin.</p>
+    `)}
 
-<hr>
+    ${sec('rare', 'Shinies & holos', `
+      <div class="howto-shiny">${(()=>{ const p = POKEMON.find(x => x.id === 6); return renderCardFace({ id:p.id, name:p.name, rarity:p.rarity, value:p.value, shiny:true, type:p.type, sprite:p.sprite }, true); })()}</div>
+      <p><strong>Shinies</strong> come out oddly colored and sparkling, with a <strong>&#9733;</strong> mark. They're worth <strong>10&times;</strong> a normal copy, and they're pure luck: nothing makes one more likely, and there's no hidden counter building up.</p>
+      <p><strong>Holos</strong> have a foil shimmer and a <strong>&#10070;</strong> mark. They're worth <strong>3&times;</strong>.</p>
+      <p>A card can be both. A shiny holo is worth <strong>30&times;</strong>, which is about as good as a pull gets.</p>
+      <p>Bulk selling never touches shinies. The only way one leaves your collection is if you sell it yourself.</p>
+    `)}
 
-<h3>The Market (Read This One)</h3>
-<p>Card prices move. Constantly. There's a live index at the top of the Market page and it is going up or down at all times.</p>
-<p>When you sell a card, you get:</p>
-<div class="howto-payout">its base value &times; whatever the market feels like right now</div>
-<p>The index moves in cycles. Some short, some long, all of them stacked on top of each other. It is completely deterministic &mdash; the <em>same</em> market for every player at the same moment, so nobody is getting a better roll than you. You are just reading it worse.</p>
-<p><strong>The HODL bonus.</strong> Cards gain <strong>+1% per hour</strong> you hold them, up to <strong>+30%</strong>. Thirty hours of doing nothing is the most reliable return in the game. It softens a dip. It will not turn a bear market into a profit.</p>
-<p><strong>One more thing.</strong> The sell button on the pack reveal screen and the sell button in your Vault do not do the same math. That's not a bug. Figure out which one you want and when. I'm not going to tell you.</p>
+    ${sec('binders', 'Binders & favorites', `
+      <p>The Dex shows what you have. Binders are where you <em>keep</em> it. Open the <strong>Binder Shelf</strong> at the top of the Dex page: up to ${BINDER_MAX_COUNT} binders, ${BINDER_MAX_CARDS} pockets each, with your own names and colors.</p>
+      <p>To file a card, tap it in the Dex and pick a binder, then tap the pocket you want. Press and hold a card on a page to move it around.</p>
+      <p><strong>Filing a card protects it.</strong> Bulk selling skips it, and the Vault shows <strong>In Binder</strong> instead of a sell button. To sell it, take it out of the binder first. That extra step is the point.</p>
+      <p>Resetting your game keeps your binders, but every pocket comes back empty.</p>
+      <p><strong>Favorites:</strong> star up to ${FAVORITE_SLOTS} cards. They show on your profile, and they make you look twice before doing anything drastic.</p>
+    `)}
 
-<hr>
+    ${sec('badges', 'Badges', `
+      <p>${BADGES.length} badges, one per type. The Volcano Badge means holding every Fire card. The Cascade Badge means every Water card, all ${nWater} of them. The shop doesn't sell badges and never will.</p>
+      <p>They give no bonus and unlock nothing. They're bragging rights. They're also <strong>not permanent</strong>: sell a card a badge depends on and the badge goes with it.</p>
+      <p>Progress is on the Stats page, and the badges fill at very different speeds. Marsh needs ${nPsychic} Psychics, ${sPsychic} of them secret rares. Dragon is only ${nDragon} cards, but ${sDragon} of those are secrets.</p>
+    `)}
 
-<h3>Skills</h3>
-    <p>Six skills. Each one has its own 99, and they train on what you actually do &mdash; not on what you spend. A rich player and a broke player earn the same XP for the same action. Levels are not a wealth readout and they are not going to become one.</p>
-<p><strong>Attack</strong> trains when you sell a card straight off the reveal screen, before it ever reaches your Vault. Flat rate per card. No patience, no market read, no waiting.</p>
-<p><strong>Defense</strong> trains when you sell a card you've held, scaled by how long you held it. Nothing accrues while you wait &mdash; it pays on the sale, which means the XP costs you the card.</p>
-<p>Read those two again. They are opposites, and both of them are correct. Everything above this section told you to be patient &mdash; and there is an entire skill that only rewards you for not being. You cannot max both quickly. Pick a way to play, or split the difference and be mediocre at two things instead of good at one.</p>
-<p><strong>Strength</strong> is nerve. It trains on every pack, scaled by how much of <em>what you have</em> you just put on it. Whale Vaults on a fat balance barely register. Whale Vaults on a thin one are the whole skill.</p>
-<p><strong>Magic</strong> trains by liquidating, scaled by rarity. Bulk liquidation pays the full rate per card. It is the only skill that grows by destroying the collection, which is either a nice piece of symmetry or a warning, depending on how the dex is going.</p>
-<p><strong>Prayer</strong> trains on wheel spins and shinies &mdash; every shiny you pull, whether you keep it or not. Spins are steady and small. Shinies are rare and enormous. It is the slowest 99 in the game by a wide margin, and if you are chasing a shiny dex it is the one that will define your account.</p>
-<p><!-- SIXTH-SKILL --><strong>Agility</strong> only pays when you sell <em>above</em> the market average, scaled by how far above. Sell into a dip and it earns nothing. You can't grind it. You can only time it, which makes it the closest thing here to a verdict on whether you're any good.</p>
-<p>The hexagon on your Stats page shows which way you lean. <strong>Trainer Level</strong> summarizes all six; Total Level is just the sum. A reset wipes all of it &mdash; every level, every point of XP, back to the start.</p>
+    ${sec('skills', 'Skills', `
+      <p>Six skills, each leveling to 99. They train on <em>what you do</em>, not on what you spend, so a broke player and a rich one earn the same XP for the same action.</p>
+      <div class="howto-table-wrap"><table class="howto-skills">
+        <thead><tr><th>Skill</th><th>Trains when you&hellip;</th><th>The catch</th></tr></thead>
+        <tbody>
+          <tr><td>Attack</td><td>sell straight off the reveal screen</td><td>Flat rate per card. The fast, no-patience style.</td></tr>
+          <tr><td>Defense</td><td>sell a card you've held, scaled by how long</td><td>The opposite of Attack. You can't max both quickly.</td></tr>
+          <tr><td>Strength</td><td>open a pack, scaled by how much of your balance it costs</td><td>A big pack on a thin balance counts most.</td></tr>
+          <tr><td>Magic</td><td>liquidate, scaled by rarity</td><td>Bulk selling pays the full rate per card.</td></tr>
+          <tr><td>Prayer</td><td>spin the wheel, or pull a shiny</td><td>Shinies count even if you sell them. The slowest 99.</td></tr>
+          <tr><td>Agility</td><td>sell <em>above</em> the market average, scaled by how far</td><td>Selling into a dip earns nothing. You can't grind it, only time it.</td></tr>
+        </tbody>
+      </table></div>
+      <p>The hexagon on your Stats page shows which way you lean. <strong>Trainer Level</strong> sums up all six. A reset wipes every level back to the start.</p>
+    `)}
 
-<hr>
+    ${sec('social', 'Profile, friends & mail', `
+      <p>Your <strong>Stats</strong> page is your profile: collection progress, badges, skills, favorites and binders. Use the <strong>Public / Private</strong> switch at the top. Public means anyone can view it; private means friends only.</p>
+      <p>The <strong>mail icon</strong> next to your HEX balance opens your mailbox. It has friend requests, your friends list (tap a friend to visit their profile and browse their binders), and messages. Some messages come with a gift to claim.</p>
+      <p>Viewing a profile is read-only. Nobody can touch your cards but you.</p>
+    `)}
 
-<h3>Shinies</h3>
-<style>.howto-shiny{display:flex;justify-content:center;margin:8px 0 14px;pointer-events:none;}.howto-shiny .already-owned-badge{display:none;}</style>
-<div class="howto-shiny">${(()=>{ const p = POKEMON.find(x => x.id === 6); return renderCardFace({ id:p.id, name:p.name, rarity:p.rarity, value:p.value, shiny:true, type:p.type, sprite:p.sprite }, true); })()}</div>
-<p>Some cards come out wrong. Funky colored, sparkling, and rare enough that it matters when you see one.</p>
-<p>They're worth <strong>ten times</strong> a normal copy of the same card. That is the largest single swing available to you and it is entirely luck. Nothing you do makes one more likely, and there is no counter quietly filling up on your behalf.</p>
-<p>The bulk liquidators will not touch them. Where a shiny exists, it's kept as your copy until you sell it yourself.</p>
+    ${sec('backs', 'Card backs', `
+      <p>In <strong>Shop and Bonuses</strong> you can buy card backs with HEX, from cheap and simple to very expensive and animated. The one you equip shows on every card you flip and next to your name on your profile.</p>
+      <p>They're purely cosmetic. They don't change odds or prices. You keep them even if you reset your game.</p>
+    `)}
 
-<hr>
+    ${sec('tips', 'Three tips', `
+      <div class="howto-tip"><span class="n">1</span><span><strong>Never sell your last copy.</strong> Duplicates are income; singles are the whole game. The Market page stacks your copies and flags anything you only have one of. Trust it over a quick glance.</span></div>
+      <div class="howto-tip"><span class="n">2</span><span><strong>Spin every hour you're around.</strong> It's free, it out-earns everything else, and it trains Prayer.</span></div>
+      <div class="howto-tip"><span class="n">3</span><span><strong>Sell when the market is high, not when you need HEX.</strong> Those are rarely the same moment. Sell high and sit on the HEX. Agility agrees.</span></div>
+    `)}
 
-<h3>The Wheel Is The Economy</h3>
-<p class="lead">Here's the part the UI doesn't say out loud:</p>
-<p><strong>Packs lose money.</strong> On average, a pack contains less value than it costs. That's not a flaw, that's the whole design &mdash; it's how a card shop works and how every card shop has always worked. The house edge is the point.</p>
-<p>So the market isn't how you get rich. The market is how you lose <em>less</em>. A good sell turns a bad pack into a survivable one, and a great sell &mdash; held long, timed right &mdash; can actually come out ahead. That's the skill.</p>
-<p>Your income is the wheel. Every hour, free, no strings. The cooldown survives a game reset, so don't get clever.</p>
-
-<hr>
-
-<h3>Badges</h3>
-<p>Sixteen badges, one per type. The Volcano Badge is every Fire card. The Cascade Badge is every Water card &mdash; all ${nWater} of them. There is no shortcut, and the shop doesn't sell them. It never will.</p>
-<p>They do <strong>nothing</strong>. No bonus, no multiplier, no secret unlock. You can't buy your way out of earning one, which most people will find is worse.</p>
-<p>They are also <strong>not permanent</strong>. A badge is a statement about what you're holding right now. Check what a card is doing for you before you liquidate it.</p>
-<p>Progress is on the Stats page. Read it carefully. Marsh needs ${nPsychic} Psychics and ${sPsychic} of them are secrets. Soul needs ${nPoison} Poisons and ${sPoison ? sPoison + ' of them are' : 'none of them are'}. Dragon is only ${nDragon} cards, and ${sDragon} of those are secrets. The bars fill at wildly different speeds and none of them mention it.</p>
-
-<hr>
-
-<h3>Binders</h3>
-<p>The dex tells you what you have. Binders are where you <em>keep</em> it. Up to ${BINDER_MAX_COUNT} on the shelf, ${BINDER_MAX_CARDS} pockets each, named and colored however you like. Pick up a card, drop it in a pocket, swap it around until the page looks right.</p>
-<p>They are organization, not economy. A card in a binder is still a card in your Vault &mdash; it sells exactly like any other, and when it goes, its pocket goes empty.</p>
-<p>A reset keeps your binders on the shelf. Every pocket in them comes back empty.</p>
-
-<hr>
-
-<h3>Three Things That Will Save You</h3>
-<div class="howto-tip"><span class="n">1</span><span><strong>Never sell your last copy.</strong> Duplicates are income. Singles are the entire point of the game. The Market page stacks your copies and flags anything you only hold one of &mdash; trust it over your own read. Star up to three favorites too: they go on your profile, and, more usefully, they make you look at them before you do something stupid.</span></div>
-<div class="howto-tip"><span class="n">2</span><span><strong>Spin every hour you're awake.</strong> It's free money, it outearns everything else you can do, and it's half of Prayer.</span></div>
-<div class="howto-tip"><span class="n">3</span><span><strong>Sell into strength, not into need.</strong> The moment you <em>need</em> HEX is almost never the moment the market wants to give you any. Sell when it's high and sit on the cash. Agility agrees.</span></div>
-
-<hr>
-
-<h3>That's It</h3>
-<p>Open packs. Watch the line. Hold when it's low, dump when it's high, never sell your last one, spin every hour.</p>
-<p>${DEX_TOTAL} cards. Sixteen badges you can lose. Six skills that don't agree with each other. One market that doesn't care about you.</p>
-<p>Good luck.</p>
-
-<div class="howto-sign">
-  <span>[dungeon]</span>
-</div>
-${backToTopBtn()}
+    <div class="howto-end">
+      <p>${DEX_TOTAL} cards. ${BADGES.length} badges you can lose. Six skills that don't agree with each other. One market that doesn't care about you.</p>
+      <p>Good luck.</p>
+    </div>
+    <div class="howto-sign"><span>[dungeon]</span></div>
+    ${backToTopBtn()}
   </div>`;
 }
 
@@ -7056,6 +7109,18 @@ function wire(){
 
   document.querySelectorAll('[data-scrolltop]').forEach(b=>b.onclick=()=>{
     window.scrollTo({top:0,behavior:'smooth'});
+  });
+
+  // How to Play: remember which sections are open across re-renders, and
+  // let the topic chips open a section and bring it into view.
+  document.querySelectorAll('[data-howto-sec]').forEach(d=>d.addEventListener('toggle', ()=>{
+    if(d.open) howtoOpen.add(d.dataset.howtoSec); else howtoOpen.delete(d.dataset.howtoSec);
+  }));
+  document.querySelectorAll('[data-howto-jump]').forEach(b=>b.onclick=()=>{
+    const d = document.getElementById('ht-' + b.dataset.howtoJump);
+    if(!d) return;
+    d.open = true;
+    d.scrollIntoView({behavior:'smooth', block:'start'});
   });
 
   document.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{
