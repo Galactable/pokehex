@@ -1668,14 +1668,10 @@ body {
   font-family:var(--font-display);font-weight:800;font-size:13px;color:var(--foil1);
   flex:0 0 auto;min-width:18px;
 }
-.howto-quick{border:1px solid var(--foil1);border-radius:12px;background:rgba(57,255,20,0.05);padding:14px 18px;margin:6px 0 16px;}
+.howto-quick{border:1px solid var(--foil1);border-radius:12px;background:rgba(57,255,20,0.05);padding:14px 18px;margin:12px 0 18px;}
 .howto-quick-h{font-family:var(--font-display);font-weight:800;font-size:14px;letter-spacing:0.06em;text-transform:uppercase;color:var(--foil1);margin-bottom:6px;}
 .howto-quick ol{margin:0;padding-left:20px;}
 .howto-quick li{color:var(--text);font-size:14px;line-height:1.55;margin:4px 0;}
-.howto-jump{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px;}
-.howto-jump button{font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 10px;border-radius:999px;cursor:pointer;
-  background:var(--surface);border:1px solid var(--line);color:var(--muted);}
-.howto-jump button:hover{border-color:var(--foil1);color:var(--foil1);}
 .howto-sec{border:1px solid var(--line);border-radius:12px;background:var(--surface);margin:0 0 10px;scroll-margin-top:12px;}
 .howto-sec[open]{border-color:rgba(57,255,20,0.35);}
 .howto-sec summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -5667,30 +5663,18 @@ function renderHowTo(){
       <summary><span>${title}</span></summary>
       <div class="howto-body">${body}</div>
     </details>`;
-  const TOPICS = [
-    ['goal','The goal'], ['packs','Packs'], ['market','Selling & the market'], ['rare','Shinies & holos'],
-    ['binders','Binders & favorites'], ['badges','Badges'], ['skills','Skills'], ['social','Profile, friends & mail'],
-    ['backs','Card backs'], ['tips','Three tips']
-  ];
   return `
   <div class="howto">
     <h2 class="disp" style="font-size:26px;margin:0 0 6px;">How to Play</h2>
-    <p class="lead">A card-collecting game with a fake stock market bolted on. Here's the whole thing in five lines. Tap a topic below when you want the details.</p>
 
     <div class="howto-quick">
       <div class="howto-quick-h">The short version</div>
       <ol>
         <li><strong>Collect all ${DEX_TOTAL} cards.</strong> You have to be holding each one to count it.</li>
         <li><strong>Open packs</strong> with HEX, the only currency.</li>
-        <li><strong>Sell duplicates</strong> for HEX, ideally when the market is high.</li>
         <li><strong>Spin the free wheel every hour.</strong> It's your real income.</li>
-        <li><strong>Never sell your last copy</strong> of a card, and file the ones you love in a binder so they can't be sold by accident.</li>
       </ol>
     </div>
-
-    <nav class="howto-jump" aria-label="How to Play topics">
-      ${TOPICS.map(t => `<button data-howto-jump="${t[0]}">${t[1]}</button>`).join('')}
-    </nav>
 
     ${sec('goal', 'The goal', `
       <p>Collect all ${DEX_TOTAL}. That's the game. You're welcome to set your own goals too.</p>
@@ -5758,6 +5742,7 @@ function renderHowTo(){
 
     ${sec('social', 'Profile, friends & mail', `
       <p>Your <strong>Stats</strong> page is your profile: collection progress, badges, skills, favorites and binders. Use the <strong>Public / Private</strong> switch at the top. Public means anyone can view it; private means friends only.</p>
+      <p>That same switch is also your entry for the <strong>leaderboards</strong> that are on the way: public profiles will be ranked, private ones won't appear.</p>
       <p>The <strong>mail icon</strong> next to your HEX balance opens your mailbox. It has friend requests, your friends list (tap a friend to visit their profile and browse their binders), and messages. Some messages come with a gift to claim.</p>
       <p>Viewing a profile is read-only. Nobody can touch your cards but you.</p>
     `)}
@@ -7111,17 +7096,10 @@ function wire(){
     window.scrollTo({top:0,behavior:'smooth'});
   });
 
-  // How to Play: remember which sections are open across re-renders, and
-  // let the topic chips open a section and bring it into view.
+  // How to Play: remember which sections are open across re-renders.
   document.querySelectorAll('[data-howto-sec]').forEach(d=>d.addEventListener('toggle', ()=>{
     if(d.open) howtoOpen.add(d.dataset.howtoSec); else howtoOpen.delete(d.dataset.howtoSec);
   }));
-  document.querySelectorAll('[data-howto-jump]').forEach(b=>b.onclick=()=>{
-    const d = document.getElementById('ht-' + b.dataset.howtoJump);
-    if(!d) return;
-    d.open = true;
-    d.scrollIntoView({behavior:'smooth', block:'start'});
-  });
 
   document.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{
     const pack = PACKS.find(p=>p.id===b.dataset.buy);
