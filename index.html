@@ -2195,13 +2195,30 @@ html,body{ max-width:100%; overflow-x:hidden; }
 // Fill these in with your own project's values (Project Settings > API in the Supabase dashboard).
 const SUPABASE_URL = 'https://tiqtsxlavdxswpqponsv.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_ClOzUl8Nj3z9R02gDc91cA_r8TMa4rA';
+// Email links (confirm signup, reset password) land here with their result in
+// the URL hash. Read it BEFORE createClient: the client consumes the hash
+// while it signs the player in from the link.
+const authLinkParams = new URLSearchParams(location.hash.slice(1));
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ---------- auth state & UI ----------
 let authUser = null;      // current logged-in Supabase user, or null
-let authMode = 'signin';  // 'signin' | 'signup'
+let authMode = 'signin';  // 'signin' | 'signup' | 'forgot' | 'recovery'
 let authBusy = false;
 let authMsg = null;       // {type:'err'|'ok', text}
+// A reset-password link signs the player in with a recovery session. They
+// must choose a new password before the game boots, so while this is true
+// the sign-in handler and render() both show the new-password screen instead.
+let recoveryPending = authLinkParams.get('type') === 'recovery';
+if(recoveryPending) authMode = 'recovery';
+// An expired or already-used link comes back with an error instead of a
+// session - say so on the sign-in card rather than dropping it silently.
+const authLinkError = authLinkParams.get('error_description');
+if(authLinkError){
+  authMsg = { type:'err', text: authLinkError + ' - sign in, or request a new link.' };
+  // drop the error from the address so a reload doesn't show it again
+  history.replaceState(null, '', location.pathname + location.search);
+}
 let needsUsername = false;
 let usernameMsg = null;
 let usernameCheckTimer = null;
@@ -2291,51 +2308,94 @@ function renderUsernameGate(){
 
 function renderAuth(){
   const el = document.getElementById('app');
+  const m = authMode;
+  const sub = {
+    signin:   'Sign in to load your vault',
+    signup:   'Create an account to save your progress',
+    forgot:   'We\'ll email you a link to reset your password',
+    recovery: 'Choose a new password for your vault'
+  }[m];
+  const btnLabel = { signin:'Sign in', signup:'Create account', forgot:'Send reset link', recovery:'Save new password' }[m];
   el.innerHTML = `
     <div class="authwrap">
       <div class="authcard">
         <div class="brand-hexmark auth-hexmark"></div>
         <h1>PokéHex</h1>
-        <p class="sub">${authMode==='signin' ? 'Sign in to load your vault' : 'Create an account to save your progress'}</p>
+        <p class="sub">${sub}</p>
         <form id="authform">
+          ${m !== 'recovery' ? `
           <div class="authfield">
             <label>Email</label>
             <input type="email" id="authEmail" autocomplete="email" required />
-          </div>
+          </div>` : ''}
+          ${m !== 'forgot' ? `
           <div class="authfield">
-            <label>Password</label>
-            <input type="password" id="authPassword" autocomplete="${authMode==='signin'?'current-password':'new-password'}" minlength="6" required />
-          </div>
+            <label>${m === 'recovery' ? 'New password' : 'Password'}</label>
+            <input type="password" id="authPassword" autocomplete="${m==='signin'?'current-password':'new-password'}" minlength="6" required />
+          </div>` : ''}
+          ${m === 'recovery' ? `
+          <div class="authfield">
+            <label>Confirm new password</label>
+            <input type="password" id="authPassword2" autocomplete="new-password" minlength="6" required />
+          </div>` : ''}
           <button type="submit" class="authbtn" ${authBusy?'disabled':''}>
-            ${authBusy ? 'Please wait…' : (authMode==='signin' ? 'Sign in' : 'Create account')}
+            ${authBusy ? 'Please wait…' : btnLabel}
           </button>
         </form>
-        <button class="authtoggle" id="authToggleBtn">
-          ${authMode==='signin' ? "No account yet? Create one" : "Already have an account? Sign in"}
-        </button>
-        ${authMsg ? `<div class="authmsg ${authMsg.type}">${authMsg.text}</div>` : ''}
-        ${!authUser ? `<button class="authtoggle" id="authBackBtn" style="margin-top:4px;">&larr; Back to browsing</button>` : ''}
+        ${m === 'signin' ? `<button class="authtoggle" id="authForgotBtn">Forgot password?</button>` : ''}
+        ${m !== 'recovery' ? `<button class="authtoggle" id="authToggleBtn" ${m==='signin'?'style="margin-top:4px;"':''}>
+          ${m === 'signin' ? "No account yet? Create one" : m === 'signup' ? "Already have an account? Sign in" : "Back to sign in"}
+        </button>` : ''}
+        ${authMsg ? `<div class="authmsg ${authMsg.type}">${esc(authMsg.text)}</div>` : ''}
+        ${!authUser && m !== 'recovery' ? `<button class="authtoggle" id="authBackBtn" style="margin-top:4px;">&larr; Back to browsing</button>` : ''}
       </div>
     </div>
   `;
-  document.getElementById('authToggleBtn').onclick = ()=>{
+  const toggleBtn = document.getElementById('authToggleBtn');
+  if(toggleBtn) toggleBtn.onclick = ()=>{
     authMode = authMode==='signin' ? 'signup' : 'signin';
     authMsg = null;
     renderAuth();
   };
+  const forgotBtn = document.getElementById('authForgotBtn');
+  if(forgotBtn) forgotBtn.onclick = ()=>{ authMode = 'forgot'; authMsg = null; renderAuth(); };
   const backBtn = document.getElementById('authBackBtn');
   if(backBtn) backBtn.onclick = ()=>{ authMsg = null; render(); };
 
   document.getElementById('authform').onsubmit = async (e)=>{
     e.preventDefault();
-    const email = document.getElementById('authEmail').value.trim();
-    const password = document.getElementById('authPassword').value;
+    const emailEl = document.getElementById('authEmail');
+    const email = emailEl ? emailEl.value.trim() : '';
+    const passEl = document.getElementById('authPassword');
+    const password = passEl ? passEl.value : '';
+    if(authMode === 'recovery' && password !== document.getElementById('authPassword2').value){
+      authMsg = { type:'err', text:'Those passwords don\'t match.' };
+      renderAuth();
+      return;
+    }
     authBusy = true; authMsg = null; renderAuth();
     try{
       if(authMode==='signin'){
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if(error) throw error;
         // onAuthStateChange will pick up the session and boot the game
+      } else if(authMode==='forgot'){
+        const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+        if(error) throw error;
+        // same message whether or not the address has an account, so this
+        // form can't be used to find out who plays
+        authBusy = false;
+        authMsg = { type:'ok', text:'If that email has an account, a reset link is on its way.' };
+        authMode = 'signin';
+        renderAuth();
+      } else if(authMode==='recovery'){
+        const { error } = await sb.auth.updateUser({ password });
+        if(error) throw error;
+        recoveryPending = false;
+        authMode = 'signin';
+        authBusy = false;
+        toast('Password updated.');
+        enterGame(authUser);
       } else {
         // Without emailRedirectTo, the confirmation link goes to the project's
         // Site URL (the galactable.github.io launcher), not back to the game.
@@ -2346,7 +2406,7 @@ function renderAuth(){
         if(error) throw error;
         if(!data.session){
           authBusy = false;
-          authMsg = { type:'ok', text:'Check your email to confirm your account, then sign in.' };
+          authMsg = { type:'ok', text:'Check your email - the link in it signs you straight in.' };
           authMode = 'signin';
           renderAuth();
           return;
@@ -2379,19 +2439,36 @@ function requireAuth(){
   return true;
 }
 
+// Signed in (by password, a confirm link, or after setting a new password):
+// first-timers pick a username, everyone else boots their saved game.
+async function enterGame(user){
+  authBusy = false; authMsg = null;
+  const { data: profile } = await sb.from('profiles').select('username').eq('user_id', user.id).maybeSingle();
+  // the reset link's PASSWORD_RECOVERY event can land while that lookup is in
+  // flight - the new-password screen wins
+  if(recoveryPending) return;
+  if(!profile){
+    needsUsername = true;
+    renderUsernameGate();
+  } else {
+    loadState(); // boots the real, saved game state now that we have a user
+  }
+}
+
 sb.auth.onAuthStateChange(async (event, session)=>{
   const user = session ? session.user : null;
   const wasLoggedIn = !!authUser;
   authUser = user;
+  if(event === 'PASSWORD_RECOVERY'){
+    recoveryPending = true;
+    authMode = 'recovery';
+    authBusy = false;
+    renderAuth();
+    return;
+  }
   if(user && !wasLoggedIn){
-    authBusy = false; authMsg = null;
-    const { data: profile } = await sb.from('profiles').select('username').eq('user_id', user.id).maybeSingle();
-    if(!profile){
-      needsUsername = true;
-      renderUsernameGate();
-    } else {
-      loadState(); // boots the real, saved game state now that we have a user
-    }
+    if(recoveryPending){ renderAuth(); return; }
+    enterGame(user);
   } else if(!user && wasLoggedIn){
     // user just signed out - drop back to guest browsing of the Packs page, not the login screen
     authBusy = false;
@@ -6497,6 +6574,9 @@ window.addEventListener('mouseup', ()=>{
 });
 
 function render(){
+  // a timer or late loadState() must not draw the game over the
+  // new-password screen before the player has set one
+  if(recoveryPending){ renderAuth(); return; }
   const app = document.getElementById('app');
   app.innerHTML = `
     <div class="topbar">
@@ -7520,7 +7600,10 @@ setInterval(()=>{
 setInterval(pollMailbox, MAIL_POLL_MS);
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) pollMailbox(); });
 
-render(); // guest view of the Packs page shown immediately; onAuthStateChange loads the real saved state if a session is restored
+// guest view of the Packs page shown immediately; onAuthStateChange loads the
+// real saved state if a session is restored. A dead email link opens the
+// sign-in card instead, so its error message is actually seen.
+if(authLinkError) renderAuth(); else render();
 })();
 </script>
 </body>
