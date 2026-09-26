@@ -1709,6 +1709,7 @@ body {
 .howto-skills th{text-align:left;color:var(--muted);font-weight:400;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--line);}
 .howto-skills td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--text);}
 .howto-skills td:first-child{font-family:var(--font-display);font-weight:800;color:var(--foil2);white-space:nowrap;}
+.howto-sk-ico{display:inline-flex;vertical-align:-3px;margin-right:6px;color:var(--foil1);}
 .howto-end{margin-top:26px;text-align:center;}
 .howto-end p{color:var(--muted);}
 .howto-shiny{display:flex;justify-content:center;margin:8px 0 14px;pointer-events:none;}
@@ -2009,6 +2010,48 @@ html,body{ max-width:100%; overflow-x:hidden; }
 .visibility-pill.is-public{color:var(--foil1);border-color:var(--foil1);}
 .visibility-pill.is-private{color:var(--gold);border-color:var(--gold);}
 .skillmap{max-width:340px;margin:0 auto 14px;}
+/* ---------- leaderboards ---------- */
+:root{--vislb-gutter:24px;}  /* room at the right for the connector bracket */
+.lb-link-row{position:relative;display:flex;justify-content:flex-end;margin-top:12px;padding-right:var(--vislb-gutter);}
+.lb-link{display:inline-flex;align-items:center;gap:8px;background:transparent;border:1px solid var(--foil2);border-radius:999px;
+  padding:8px 16px;font-family:'JetBrains Mono',monospace;font-size:13.5px;font-weight:700;color:var(--gold);cursor:pointer;}
+.lb-link:hover{border-color:var(--gold);background:rgba(157,78,221,0.10);}
+/* Connector from the privacy pill to Leaderboards: out of the pill's right
+   side, down, and back into Leaderboards' right side, fading purple to
+   green with an arrowhead into each pill - privacy decides whether you're
+   on the boards. An SVG drawn by sizeVisLbLink() from the pills' real
+   positions, since their widths and the rows' spacing vary. */
+.vis-lb-link{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none;}
+.lb-head{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.lb-note{border:1px solid var(--gold);border-radius:10px;padding:10px 14px;margin-bottom:14px;color:var(--gold);font-size:12.5px;line-height:1.5;}
+.lb-group-label{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:10px 0 6px;}
+.lb-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.lb-chip{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11.5px;padding:6px 11px;border-radius:999px;
+  cursor:pointer;background:var(--surface);border:1px solid var(--line);color:var(--muted);}
+.lb-chip:hover{color:var(--text);border-color:var(--muted);}
+.lb-chip.on{color:var(--foil1);border-color:var(--foil1);background:rgba(57,255,20,0.08);}
+.lb-chip-ico,.lb-title-ico{display:inline-flex;color:var(--foil1);}
+.lb-board-title{display:flex;align-items:center;gap:8px;margin:20px 0 8px;font-family:var(--font-display);font-weight:800;
+  font-size:18px;letter-spacing:.05em;text-transform:uppercase;color:var(--foil1);}
+.lb-table-wrap{overflow-x:auto;}
+.lb-table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;}
+.lb-table th{text-align:left;font-weight:400;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line);}
+.lb-table td{padding:9px 8px;border-bottom:1px solid var(--line);color:var(--text);white-space:nowrap;}
+.lb-table .lb-num{text-align:right;font-family:'JetBrains Mono',monospace;}
+.lb-table .lb-sec{color:var(--muted);font-size:12px;}
+.lb-table .lb-rank{width:36px;font-family:'JetBrains Mono',monospace;color:var(--muted);}
+.lb-table .lb-name{font-weight:700;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+.lb-top1 .lb-rank{color:#f3d98a;} .lb-top2 .lb-rank{color:#c9d3dc;} .lb-top3 .lb-rank{color:#d08a55;}
+.lb-top .lb-rank{font-weight:700;}
+.lb-me td{background:rgba(57,255,20,0.07);}
+.lb-player{font:inherit;font-weight:700;color:var(--text);background:none;border:none;padding:0;cursor:pointer;
+  text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+.lb-player:hover{color:var(--foil1);text-decoration-color:var(--foil1);}
+.lb-you{font-size:10px;font-weight:700;color:#05100a;background:var(--foil1);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:1px;}
+.lb-empty{color:var(--muted);padding:22px 4px;font-size:13px;}
+.lb-retry{font:inherit;color:var(--foil1);background:none;border:none;text-decoration:underline;cursor:pointer;}
+.lb-foot{color:var(--muted);font-size:11.5px;margin-top:14px;}
+@media (max-width:480px){ .lb-table .lb-sec{display:none;} .lb-table .lb-name{max-width:120px;} }
 .skillmap svg{width:100%;height:auto;display:block;overflow:visible;}
 
 /* ---------- Binder Shelf ---------- */
@@ -3049,6 +3092,11 @@ let profileSkills = null;
 // which skill's info panel is open; null = none. one at a time, so the page
 // never grows by six panels at once.
 let skillInfoFor = null;
+// Leaderboards open over the Stats page (a drill-in, not a nav tab). Boards
+// are fetched per category on first view and cached for a minute.
+let leaderboardOpen = false;
+let lbCategory = 'net_worth';
+const lbCache = {};   // category -> {rows, at} | {loading:true} | {error}
 let profileLoading = false;
 let opening = null;
 let wheelSpinning = false;
@@ -5558,10 +5606,130 @@ function renderMailbox(){
   </div>`;
 }
 
+// The boards get_leaderboard serves. primary/secondary say how to read its
+// two numbers for each one; skills reuse SKILL_META's icons.
+const LB_BOARDS = [
+  { key:'net_worth',     label:'Net Worth',     group:'overall', head:['Net worth','Cash'],
+    primary: v => `<i class="hex-icon"></i> ${fmtHex(v)}`, secondary: v => `${fmtHex(v)} HEX` },
+  { key:'vault_value',   label:'Vault Value',   group:'overall', head:['Vault',''],
+    primary: v => `<i class="hex-icon"></i> ${fmtHex(v)}`, secondary: () => '' },
+  { key:'dex_percent',   label:'Dex',           group:'overall', head:['Dex','Cards'],
+    primary: v => `${Number(v).toFixed(1)}%`, secondary: v => `${fmtHex(v)} / ${DEX_TOTAL}` },
+  { key:'shiny_pulls',   label:'Shinies',       group:'overall', head:['Shinies pulled',''],
+    primary: v => fmtHex(v), secondary: () => '' },
+  { key:'trainer_level', label:'Trainer Level', group:'overall', head:['Trainer','Total XP'],
+    primary: v => `Lv ${v}`, secondary: v => `${fmtHex(v)} XP` },
+  ...SKILL_META.map(m => ({ key:m.key, label:m.label, group:'skills', icon:m.icon, head:['Level','XP'],
+    primary: v => `Lv ${v}`, secondary: v => `${fmtHex(v)} XP` }))
+];
+const LB_TTL_MS = 60 * 1000;
+// Draws the ] connector between the privacy pill and the Leaderboards pill.
+// Coordinates are relative to the Leaderboards row, which holds the SVG.
+function sizeVisLbLink(){
+  const svg = document.querySelector('.vis-lb-link');
+  const pillEl = document.querySelector('[data-profile-visibility]');
+  const lbEl = document.querySelector('[data-open-leaderboards]');
+  if(!svg || !pillEl || !lbEl) return;
+  const o = svg.getBoundingClientRect(), p = pillEl.getBoundingClientRect(), l = lbEl.getBoundingClientRect();
+  const y1 = p.top + p.height / 2 - o.top, y2 = l.top + l.height / 2 - o.top;
+  const x1 = p.right - o.left + 3, x2 = l.right - o.left + 3;     // arrow tips, just off each pill
+  const xe = Math.max(x1, x2) + 14;                                 // the vertical run
+  const r = 5;                                                      // corner rounding
+  svg.innerHTML = `
+    <defs><linearGradient id="vislbGrad" gradientUnits="userSpaceOnUse" x1="0" y1="${y1}" x2="0" y2="${y2}">
+      <stop offset="0" stop-color="#9d4edd"/><stop offset="1" stop-color="#39ff14"/></linearGradient></defs>
+    <path d="M${x1 + 6} ${y1} H${xe - r} Q${xe} ${y1} ${xe} ${y1 + r} V${y2 - r} Q${xe} ${y2} ${xe - r} ${y2} H${x2 + 6}"
+      fill="none" stroke="url(#vislbGrad)" stroke-width="2" stroke-linecap="round"/>
+    <path d="M${x1} ${y1} l7 -4.5 v9 z" fill="#9d4edd"/>
+    <path d="M${x2} ${y2} l7 -4.5 v9 z" fill="#39ff14"/>`;
+}
+window.addEventListener('resize', sizeVisLbLink);
+// The boards return usernames only, so a tap looks the account up by name
+// (profiles is readable, same as the friend search). Cached per session.
+const lbUserIds = {};
+async function openLeaderboardPlayer(username){
+  if(username === profileUsername){ leaderboardOpen = false; window.scrollTo(0, 0); render(); return; }
+  let uid = lbUserIds[username];
+  if(!uid){
+    const { data, error } = await sb.from('profiles').select('user_id').eq('username', username).maybeSingle();
+    if(error || !data){ toast("Couldn't open that profile - try again."); return; }
+    uid = lbUserIds[username] = data.user_id;
+  }
+  // leaderboardOpen stays set, so closing their profile lands back on this board
+  window.scrollTo(0, 0);
+  openPublicProfile(uid);
+}
+
+async function loadLeaderboard(cat, force){
+  const c = lbCache[cat];
+  if(!force && c && (c.loading || (c.rows && Date.now() - c.at < LB_TTL_MS))) return;
+  lbCache[cat] = { loading:true, rows: c && c.rows };
+  if(leaderboardOpen) render();
+  try{
+    const { data, error } = await sb.rpc('get_leaderboard', { p_category: cat, p_limit: 100 });
+    if(error) throw error;
+    lbCache[cat] = { rows: data || [], at: Date.now() };
+  }catch(e){
+    console.error('get_leaderboard failed:', cat, e && e.message, e);
+    lbCache[cat] = { error: true, rows: c && c.rows };
+  }
+  if(leaderboardOpen) render();
+}
+
+function skillIconSvg(icon, size){
+  return `<svg viewBox="0 0 20 20" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icon}</svg>`;
+}
+
+function renderLeaderboards(){
+  const board = LB_BOARDS.find(b => b.key === lbCategory) || LB_BOARDS[0];
+  const c = lbCache[board.key] || {};
+  const rows = c.rows || null;
+  const chip = b => `<button class="lb-chip ${b.key === board.key ? 'on' : ''}" data-lb-cat="${b.key}" aria-pressed="${b.key === board.key}">
+      ${b.icon ? `<span class="lb-chip-ico">${skillIconSvg(b.icon, 14)}</span>` : ''}${esc(b.label)}</button>`;
+  const me = profileUsername;
+  let body;
+  if(!rows && c.loading){
+    body = `<div class="lb-empty">Loading the ${esc(board.label)} board&hellip;</div>`;
+  } else if(!rows && c.error){
+    body = `<div class="lb-empty">Couldn't load this board just now. <button class="lb-retry" data-lb-retry>Try again</button></div>`;
+  } else if(rows && !rows.length){
+    body = `<div class="lb-empty">Nobody's on this board yet.</div>`;
+  } else if(rows){
+    const hasSecondary = !!board.head[1];
+    body = `
+      <div class="lb-table-wrap"><table class="lb-table">
+        <thead><tr><th class="lb-rank">#</th><th>Player</th><th class="lb-num">${esc(board.head[0])}</th>${hasSecondary ? `<th class="lb-num lb-sec">${esc(board.head[1])}</th>` : ''}</tr></thead>
+        <tbody>${rows.map(r => `
+          <tr class="${r.username === me ? 'lb-me' : ''} ${r.rank <= 3 ? 'lb-top lb-top' + r.rank : ''}">
+            <td class="lb-rank">${r.rank}</td>
+            <td class="lb-name"><button class="lb-player" data-lb-player="${esc(r.username)}" title="${r.username === me ? 'Back to your Stats' : 'View ' + esc(r.username) + '\u2019s profile'}">${esc(r.username)}</button>${r.username === me ? ' <span class="lb-you">you</span>' : ''}</td>
+            <td class="lb-num">${board.primary(r.primary_value)}</td>
+            ${hasSecondary ? `<td class="lb-num lb-sec">${r.secondary_value == null ? '' : board.secondary(r.secondary_value)}</td>` : ''}
+          </tr>`).join('')}
+        </tbody>
+      </table></div>`;
+  }
+  return `
+  <div class="lb-head">
+    <button class="iconbtn" data-close-leaderboards title="Back to Stats" aria-label="Back to Stats">&lsaquo;</button>
+    <h2 class="disp" style="margin:0;">Leaderboards</h2>
+  </div>
+  ${profileIsPublic ? '' : `<div class="lb-note">Your profile is private, so you're not on the boards. Make it public from your Stats page to join them.</div>`}
+  <div class="lb-group-label">Overall</div>
+  <div class="lb-chips">${LB_BOARDS.filter(b => b.group === 'overall').map(chip).join('')}</div>
+  <div class="lb-group-label">Skills</div>
+  <div class="lb-chips">${LB_BOARDS.filter(b => b.group === 'skills').map(chip).join('')}</div>
+  <div class="lb-board-title">${board.icon ? `<span class="lb-title-ico">${skillIconSvg(board.icon, 18)}</span>` : ''}${esc(board.label)}</div>
+  ${body}
+  <p class="lb-foot">Public profiles only. Ties share a rank. ${board.key === 'vault_value' || board.key === 'net_worth' ? "Vault values are priced at each player's last sale or pack, not live." : ''}</p>
+  ${backToTopBtn()}`;
+}
+
 function renderProfile(){
   if(!authUser){
     return `<div class="section-label">Profile</div><div style="color:var(--muted);padding:20px 0;">Sign in to view your profile and stats.</div>`;
   }
+  if(leaderboardOpen) return renderLeaderboards();
   if(profileLoading || !profileStats){
     return `<div class="section-label">Profile</div><div style="color:var(--muted);padding:20px 0;">Loading your stats…</div>`;
   }
@@ -5618,9 +5786,16 @@ function renderProfile(){
       return `<div class="cb-swatch card-face card-back ${eq ? 'back-' + esc(state.equippedBack) : ''}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;">${eq ? '' : '<span class="back-hex" aria-hidden="true"></span>'}</div>`;
     })()}
     <h2 class="disp" style="margin:0;">${esc(profileUsername || 'Profile')}</h2>
-    <button class="visibility-pill ${profileIsPublic?'is-public':'is-private'}" style="margin-left:auto;" data-profile-visibility
+    <button class="visibility-pill ${profileIsPublic?'is-public':'is-private'}" style="margin-left:auto;margin-right:var(--vislb-gutter);" data-profile-visibility
       title="${profileIsPublic ? 'Anyone can view your profile and stats. Click to make it visible to friends only.' : 'Only friends can view your profile and stats. Click to make it public.'}">
       ${lockIcon(profileIsPublic)}<span>${profileIsPublic ? 'Public' : 'Private'}</span>
+    </button>
+  </div>
+  <div class="lb-link-row">
+    <svg class="vis-lb-link" aria-hidden="true"></svg>
+    <button class="lb-link" data-open-leaderboards>
+      <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17V10M10 17V4M16 17v-5"/></svg>
+      Leaderboards <span aria-hidden="true">&rsaquo;</span>
     </button>
   </div>
 
@@ -5677,6 +5852,8 @@ function renderHowTo(){
   const nPsychic = ofType('psychic').length, sPsychic = secretsOf('psychic');
   const nDragon = ofType('dragon').length, sDragon = secretsOf('dragon');
   const packLine = PACKS.map(p => `${p.name} (${fmtHex(p.price)} HEX${p.guaranteeTier ? `, guaranteed ${RARITY[p.guaranteeTier].label} or better` : ''})`).join(', ');
+  // the same icons as the Stats page and the leaderboard chips
+  const skIco = k => `<span class="howto-sk-ico">${skillIconSvg(SKILL_META.find(m => m.key === k).icon, 16)}</span>`;
   const sec = (id, title, body) => `
     <details class="howto-sec" id="ht-${id}" data-howto-sec="${id}" ${howtoOpen.has(id) ? 'open' : ''}>
       <summary><span>${title}</span></summary>
@@ -5748,12 +5925,12 @@ function renderHowTo(){
       <div class="howto-table-wrap"><table class="howto-skills">
         <thead><tr><th>Skill</th><th>Trains when you&hellip;</th><th>The catch</th></tr></thead>
         <tbody>
-          <tr><td>Attack</td><td>sell straight off the reveal screen</td><td>Flat rate per card. The fast, no-patience style.</td></tr>
-          <tr><td>Defense</td><td>sell a card you've held, scaled by how long</td><td>The opposite of Attack. You can't max both quickly.</td></tr>
-          <tr><td>Strength</td><td>open a pack, scaled by how much of your balance it costs</td><td>A big pack on a thin balance counts most.</td></tr>
-          <tr><td>Magic</td><td>liquidate, scaled by rarity</td><td>Bulk selling pays the full rate per card.</td></tr>
-          <tr><td>Prayer</td><td>spin the wheel, or pull a shiny</td><td>Shinies count even if you sell them. The slowest 99.</td></tr>
-          <tr><td>Agility</td><td>sell <em>above</em> the market average, scaled by how far</td><td>Selling into a dip earns nothing. You can't grind it, only time it.</td></tr>
+          <tr><td>${skIco('attack')}Attack</td><td>sell straight off the reveal screen</td><td>Flat rate per card. The fast, no-patience style.</td></tr>
+          <tr><td>${skIco('defense')}Defense</td><td>sell a card you've held, scaled by how long</td><td>The opposite of Attack. You can't max both quickly.</td></tr>
+          <tr><td>${skIco('strength')}Strength</td><td>open a pack, scaled by how much of your balance it costs</td><td>A big pack on a thin balance counts most.</td></tr>
+          <tr><td>${skIco('magic')}Magic</td><td>liquidate, scaled by rarity</td><td>Bulk selling pays the full rate per card.</td></tr>
+          <tr><td>${skIco('prayer')}Prayer</td><td>spin the wheel, or pull a shiny</td><td>Shinies count even if you sell them. The slowest 99.</td></tr>
+          <tr><td>${skIco('agility')}Agility</td><td>sell <em>above</em> the market average, scaled by how far</td><td>Selling into a dip earns nothing. You can't grind it, only time it.</td></tr>
         </tbody>
       </table></div>
       <p>The hexagon on your Stats page shows which way you lean. <strong>Trainer Level</strong> sums up all six. A reset wipes every level back to the start.</p>
@@ -5761,7 +5938,7 @@ function renderHowTo(){
 
     ${sec('social', 'Profile, friends & mail', `
       <p>Your <strong>Stats</strong> page is your profile: collection progress, badges, skills, favorites and binders. Use the <strong>Public / Private</strong> switch at the top. Public means anyone can view it; private means friends only.</p>
-      <p>That same switch is also your entry for the <strong>leaderboards</strong> that are on the way: public profiles will be ranked, private ones won't appear.</p>
+      <p>That same switch is your entry for the <strong>Leaderboards</strong> (the link under it on your Stats page): public profiles are ranked, private ones don't appear. New accounts start private.</p>
       <p>The <strong>mail icon</strong> next to your HEX balance opens your mailbox. It has friend requests, your friends list (tap a friend to visit their profile and browse their binders), and messages. Some messages come with a gift to claim.</p>
       <p>Viewing a profile is read-only. Nobody can touch your cards but you.</p>
     `)}
@@ -6906,6 +7083,7 @@ function wire(){
     viewingBinders = [];
     viewingFiledInstances = [];
     viewingOpenBinderId = null;
+    leaderboardOpen = false;
     view=b.dataset.nav;
     if(view==='profile' && authUser) loadProfileStats();
     if(view==='market' && authUser && !pnlSeries && !pnlLoading) loadPnlSeries();
@@ -7224,6 +7402,18 @@ function wire(){
       render();
     };
   });
+
+  sizeVisLbLink();
+  const openLb = document.querySelector('[data-open-leaderboards]');
+  if(openLb) openLb.onclick = () => { leaderboardOpen = true; window.scrollTo(0, 0); render(); loadLeaderboard(lbCategory); };
+  const closeLb = document.querySelector('[data-close-leaderboards]');
+  if(closeLb) closeLb.onclick = () => { leaderboardOpen = false; render(); };
+  document.querySelectorAll('[data-lb-cat]').forEach(b => b.onclick = () => {
+    lbCategory = b.dataset.lbCat; render(); loadLeaderboard(lbCategory);
+  });
+  document.querySelectorAll('[data-lb-player]').forEach(b => b.onclick = () => openLeaderboardPlayer(b.dataset.lbPlayer));
+  const lbRetry = document.querySelector('[data-lb-retry]');
+  if(lbRetry) lbRetry.onclick = () => loadLeaderboard(lbCategory, true);
 
   document.querySelectorAll('[data-skill-info]').forEach(btn => {
     btn.onclick = (e) => {
