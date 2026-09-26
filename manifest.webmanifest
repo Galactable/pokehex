@@ -1,7 +1,7 @@
 {
-  "name": "PokéHex",
-  "short_name": "PokéHex",
-  "description": "Pokémon card pack opening, dex building, and simulated market trading game.",
+  "name": "HexDex",
+  "short_name": "HexDex",
+  "description": "Card pack opening, dex building, and simulated market trading game.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

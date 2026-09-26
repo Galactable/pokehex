@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>PokéHex</title>
+<title>HexDex</title>
   
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#07090a">
@@ -11,7 +11,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="PokéHex">
+<meta name="apple-mobile-web-app-title" content="HexDex">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="icon" href="./icon-192.png">
 
@@ -162,10 +162,12 @@ body {
   height:0.72em;
   position:relative;
   vertical-align:baseline;
-  margin:0 0.03em;
+  /* the joint between HEX and DEX, not a stand-in letter, so it gets more
+     room than letter spacing would give it */
+  margin:0 0.09em;
   filter: drop-shadow(0 0 0.18em rgba(57,255,20,0.45));
 }
-.brand h1 .hexo::before, .authcard h1 .hexo::before{
+.brand h1 .hexo::before, .authcard h1 .hexo::before, .card-back .back-hex::before{
   content:'';
   position:absolute;
   /* percentages, so the inner diamond tracks any change to the box above */
@@ -175,7 +177,7 @@ body {
   clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
   z-index:2;
 }
-.brand h1 .hexo::after, .authcard h1 .hexo::after{
+.brand h1 .hexo::after, .authcard h1 .hexo::after, .card-back .back-hex::after{
   content:'';
   position:absolute;
   inset:0;
@@ -199,7 +201,7 @@ body {
   font-weight: 800;
   letter-spacing: 0.01em;
   /* the hexagon is an inline-block, which is a legal line-break opportunity -
-     without this the wordmark splits as P / hex / KeHEX */
+     without this the wordmark splits as HEX / hex / DEX */
   white-space: nowrap;
   color: var(--foil1);
   text-shadow: 0 0 12px rgba(57, 255, 20, 0.7), 0 0 25px rgba(57, 255, 20, 0.4);
@@ -1029,6 +1031,15 @@ body {
    larger cards like the inspect view change. Shop/profile swatches sit
    outside any .card-slot and keep the flat 9px above. */
 .card-slot .card-back span{font-size:max(9px, 6.9cqw);}
+/* The hexagon mark in the middle of a plain back, in place of a wordmark.
+   Sized from the card's width, so it scales from the 46px profile swatch up
+   to the inspect view with no breakpoints; the aspect ratio is the header
+   hexagon's (0.63em x 0.72em). Its ::before/::after layers are shared with
+   .hexo above. */
+.card-back .back-hex{
+  display:block;position:relative;width:32%;aspect-ratio:0.63/0.72;
+  filter:drop-shadow(0 0 4px rgba(57,255,20,0.45));
+}
 
 /* ---------- card back shelf (shop) ---------- */
 /* Tiles are full card size so the swatch IS the preview - no separate
@@ -1742,7 +1753,7 @@ body {
   border-radius:16px;padding:28px 24px;text-align:center;
 }
 /* The shared .brand/.authcard h1 rule above sets white-space:nowrap so the
-   inline hexagon glyph can't split the PokeHex wordmark. No auth heading
+   inline hexagon glyph can't split the HexDex wordmark. No auth heading
    contains that glyph, so here we undo it: these are real sentences and must
    be free to wrap. Fluid size too - the rule above is overridden by this one,
    so a flat 36px here defeated its clamp and overflowed the 360px card. */
@@ -2029,7 +2040,7 @@ html,body{ max-width:100%; overflow-x:hidden; }
 }
 .shelfhint{text-align:center;font-size:11px;color:var(--muted);}
 
-/* ---------- Binder color picker: a hexagon of hexagons, PokeHex-style ---------- */
+/* ---------- Binder color picker: a hexagon of hexagons, HexDex-style ---------- */
 .hexwrap{display:flex;flex-direction:column;align-items:center;gap:0;padding:4px 0;}
 .hexrow{display:flex;gap:5px;}
 .hexrow:not(:first-child){margin-top:-7px;}
@@ -2320,7 +2331,7 @@ function renderAuth(){
     <div class="authwrap">
       <div class="authcard">
         <div class="brand-hexmark auth-hexmark"></div>
-        <h1>PokéHex</h1>
+        <h1>HexDex</h1>
         <p class="sub">${sub}</p>
         <form id="authform">
           ${m !== 'recovery' ? `
@@ -2884,7 +2895,7 @@ const WHEEL_COOLDOWN = 60*60*1000; // 1 hour
 // drawn. Deliberately a SEPARATE class namespace from theme-*: theme-* also
 // styles .packcard and .pack-visual (the pack wrapper art), which must stay
 // tied to the pack and must never be swapped by an equipped back.
-// wordmark:false suppresses the POKeHEX span for full-art backs.
+// wordmark:false suppresses the hexagon mark for full-art backs.
 // Render metadata ONLY. Name, price and ownership come from get_card_backs so
 // there is no client/DB price to drift out of sync - retuning the ladder is an
 // UPDATE with no client release. A row the client doesn't know about is skipped.
@@ -4517,7 +4528,7 @@ function renderCardBackShelf(){
       }
       return `
       <div class="${cls}">
-        <div class="cb-swatch card-face card-back back-${esc(r.id)}">${meta.wordmark===false?'':`<span>POKéHEX</span>`}</div>
+        <div class="cb-swatch card-face card-back back-${esc(r.id)}">${meta.wordmark===false?'':`<span class="back-hex" aria-hidden="true"></span>`}</div>
         <div class="cb-price">${r.owned ? 'Owned' : `<i class="hex-icon" style="width:10px;height:12px;"></i>${fmtHex(r.price)}`}</div>
         ${btn}
       </div>`;
@@ -5342,7 +5353,7 @@ function renderPublicProfile(){
       const eq = d.equippedBack && cardBackById(d.equippedBack);
       // no purchase yet -> plain striped back, same fallback pack-opening
       // uses. Rendering it (instead of nothing) is the nudge to buy one.
-      return `<div class="cb-swatch card-face card-back ${eq ? 'back-' + esc(d.equippedBack) : ''}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;">${eq ? '' : '<span>POKéHEX</span>'}</div>`;
+      return `<div class="cb-swatch card-face card-back ${eq ? 'back-' + esc(d.equippedBack) : ''}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;">${eq ? '' : '<span class="back-hex" aria-hidden="true"></span>'}</div>`;
     })()}
     <h2 class="disp" style="margin:0;">${esc(d.username || 'Player')}</h2>
   </div>
@@ -5556,7 +5567,7 @@ function renderProfile(){
       const eq = state.equippedBack && cardBackById(state.equippedBack);
       // no purchase yet -> plain striped back, same fallback pack-opening
       // uses. Rendering it (instead of nothing) is the nudge to buy one.
-      return `<div class="cb-swatch card-face card-back ${eq ? 'back-' + esc(state.equippedBack) : ''}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;">${eq ? '' : '<span>POKéHEX</span>'}</div>`;
+      return `<div class="cb-swatch card-face card-back ${eq ? 'back-' + esc(state.equippedBack) : ''}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;">${eq ? '' : '<span class="back-hex" aria-hidden="true"></span>'}</div>`;
     })()}
     <h2 class="disp" style="margin:0;">${esc(profileUsername || 'Profile')}</h2>
     <button class="visibility-pill ${profileIsPublic?'is-public':'is-private'}" style="margin-left:auto;" data-profile-visibility
@@ -6286,7 +6297,7 @@ function renderCardFace(card, flipped, filed){
       <div class="already-owned-badge" style="visibility: ${flipped && isAlreadyOwned ? 'visible' : 'hidden'};">ALREADY OWNED</div>
       <div class="card-slot ${flipped?'flipped':''}" data-flip>
         <div class="card-inner">
-          <div class="card-face card-back ${cardBack.cls} ${shineTiers.includes(card.rarity)?'flame-aura':''}">${cardBack.wordmark ? `<span>POKéHEX</span>` : ''}</div>
+          <div class="card-face card-back ${cardBack.cls} ${shineTiers.includes(card.rarity)?'flame-aura':''}">${cardBack.wordmark ? `<span class="back-hex" aria-hidden="true"></span>` : ''}</div>
           <div class="card-face card-front ${card.shiny?'shiny-card':''} ${shineTiers.includes(card.rarity)?'shine flame-aura':''}"
                style="--card-color:${rc.color};--type-color:${TYPE_COLORS[card.type]};${card.shiny ? `--shiny-hue:${shinyHue(card.id)}deg;` : ''}">
             ${card.shiny ? `<div class="shiny-sparkle-overlay"></div>` : ''}
@@ -6582,7 +6593,7 @@ function render(){
     <div class="topbar">
       <div class="brand">
         <div>
-          <h1>P<span class="hexo" aria-hidden="true"></span><span class="sr-only">O</span>KéHEX</h1>
+          <h1>HEX<span class="hexo" aria-hidden="true"></span>DEX</h1>
           <span>rip packs &middot; fill your dex <br>risk fake currency &middot; 0.8.5 beta </span>
         </div>
       </div>
