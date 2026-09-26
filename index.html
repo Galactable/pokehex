@@ -6062,13 +6062,13 @@ function renderDex(){
     </div>
   </div>
 
-  <button class="shelfentry ${shelfOpen?'open':''}" data-shelf-toggle aria-expanded="${shelfOpen}">
+  <button class="shelfentry ${shelfOpen && authUser?'open':''}" data-shelf-toggle aria-expanded="${!!(shelfOpen && authUser)}">
     <div class="shelfentry-label">Binder Shelf</div>
     <div class="shelfentry-sub">${(state.binders||[]).length} / ${BINDER_MAX_COUNT}
       <svg class="shelf-chev" viewBox="0 0 12 12" aria-hidden="true"><polyline points="4,2 8,6 4,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
   </button>
-  ${shelfOpen ? renderBinderShelf() : ''}
+  ${shelfOpen && authUser ? renderBinderShelf() : ''}
 
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
     ${GENS.map(g => tabBtn(g.n, g.label)).join('')}
@@ -7123,7 +7123,11 @@ function wire(){
   });
 
   const shelfToggle = document.querySelector('[data-shelf-toggle]');
-  if(shelfToggle) shelfToggle.onclick = ()=>{ setShelfOpen(!shelfOpen); render(); };
+  if(shelfToggle) shelfToggle.onclick = ()=>{
+    // binders belong to an account - signed out, the bar goes to sign-up like every other action
+    if(!requireAuth()) return;
+    setShelfOpen(!shelfOpen); render();
+  };
 
   document.querySelectorAll('[data-createbinder]').forEach(b=>b.onclick=()=>{
     if((state.binders||[]).length>=BINDER_MAX_COUNT) return;
