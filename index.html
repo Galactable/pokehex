@@ -2047,6 +2047,8 @@ html,body{ max-width:100%; overflow-x:hidden; }
 .lb-player{font:inherit;font-weight:700;color:var(--text);background:none;border:none;padding:0;cursor:pointer;
   text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
 .lb-player:hover{color:var(--foil1);text-decoration-color:var(--foil1);}
+.lb-back{position:relative;inset:auto;display:inline-flex;vertical-align:middle;width:13px;height:18px;
+  border-radius:3px;margin:-3px 8px -3px 0;box-shadow:0 1px 3px rgba(0,0,0,.6);}  /* negative block margins: it never adds row height */
 .lb-you{font-size:10px;font-weight:700;color:#05100a;background:var(--foil1);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:1px;}
 .lb-empty{color:var(--muted);padding:22px 4px;font-size:13px;}
 .lb-retry{font:inherit;color:var(--foil1);background:none;border:none;text-decoration:underline;cursor:pointer;}
@@ -5676,6 +5678,14 @@ async function loadLeaderboard(cat, force){
   if(leaderboardOpen) render();
 }
 
+// A player's equipped card back, card-shaped and small enough to sit in the
+// name cell without making the row taller. Only ids the game knows become a
+// class; anything else (or none) shows the plain back, same as the profile swatch.
+function lbBack(id){
+  const known = id && cardBackById(id);
+  return `<span class="lb-back card-face card-back ${known ? 'back-' + esc(id) : ''}" aria-hidden="true">${known ? '' : '<span class="back-hex"></span>'}</span>`;
+}
+
 function skillIconSvg(icon, size){
   return `<svg viewBox="0 0 20 20" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icon}</svg>`;
 }
@@ -5702,7 +5712,7 @@ function renderLeaderboards(){
         <tbody>${rows.map(r => `
           <tr class="${r.username === me ? 'lb-me' : ''} ${r.rank <= 3 ? 'lb-top lb-top' + r.rank : ''}">
             <td class="lb-rank">${r.rank}</td>
-            <td class="lb-name"><button class="lb-player" data-lb-player="${esc(r.username)}" title="${r.username === me ? 'Back to your Stats' : 'View ' + esc(r.username) + '\u2019s profile'}">${esc(r.username)}</button>${r.username === me ? ' <span class="lb-you">you</span>' : ''}</td>
+            <td class="lb-name">${lbBack(r.equipped_back)}<button class="lb-player" data-lb-player="${esc(r.username)}" title="${r.username === me ? 'Back to your Stats' : 'View ' + esc(r.username) + '\u2019s profile'}">${esc(r.username)}</button>${r.username === me ? ' <span class="lb-you">you</span>' : ''}</td>
             <td class="lb-num">${board.primary(r.primary_value)}</td>
             ${hasSecondary ? `<td class="lb-num lb-sec">${r.secondary_value == null ? '' : board.secondary(r.secondary_value)}</td>` : ''}
           </tr>`).join('')}
