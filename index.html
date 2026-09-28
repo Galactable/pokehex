@@ -2589,11 +2589,15 @@ sb.auth.onAuthStateChange(async (event, session)=>{
 });
 const TYPE_COLORS = {
   normal:'#A8A878',fire:'#F08030',water:'#6890F0',electric:'#F0C020',grass:'#78C850',
-  ice:'#98D8D8',fighting:'#C03028',poison:'#A040A0',ground:'#E0C068',flying:'#A890F0',
+  ice:'#98D8D8',fighting:'#C03028',poison:'#A040A0',ground:'#E0C068',flying:'#C58EF5',
   psychic:'#F85888',bug:'#A8B820',rock:'#B8A038',ghost:'#705898',dragon:'#7038F8',
   // Gen 2 additions. steel is deepened from the canonical #B8B8D0, which sits
   // only dE 26 from ice and reads as the same pale cool tone on a dex tile.
-  dark:'#705848',steel:'#8C8CA8'
+  dark:'#705848',steel:'#8C8CA8',
+  // Gen 6 addition, canonical color (dE 33 from psychic, its nearest).
+  // flying above is lifted from the canonical #A890F0, which sits only dE 18
+  // from water; it had no cards until Normal/Flying birds became Flying.
+  fairy:'#EE99AC'
 };
 
 const RARITY = {
@@ -2610,15 +2614,15 @@ const POKEMON = [
 [7,'Squirtle','water','common'],[8,'Wartortle','water','uncommon'],[9,'Blastoise','water','ultra'],
 [10,'Caterpie','bug','common'],[11,'Metapod','bug','common'],[12,'Butterfree','bug','rare'],
 [13,'Weedle','bug','common'],[14,'Kakuna','bug','common'],[15,'Beedrill','bug','rare'],
-[16,'Pidgey','normal','common'],[17,'Pidgeotto','normal','uncommon'],[18,'Pidgeot','normal','rare'],
+[16,'Pidgey','flying','common'],[17,'Pidgeotto','flying','uncommon'],[18,'Pidgeot','flying','rare'],
 [19,'Rattata','normal','common'],[20,'Raticate','normal','uncommon'],
-[21,'Spearow','normal','common'],[22,'Fearow','normal','uncommon'],
+[21,'Spearow','flying','common'],[22,'Fearow','flying','uncommon'],
 [23,'Ekans','poison','common'],[24,'Arbok','poison','uncommon'],
 [25,'Pikachu','electric','rare'],[26,'Raichu','electric','rare'],
 [27,'Sandshrew','ground','common'],[28,'Sandslash','ground','uncommon'],
 [29,'Nidoran F','poison','common'],[30,'Nidorina','poison','uncommon'],[31,'Nidoqueen','poison','rare'],
 [32,'Nidoran M','poison','common'],[33,'Nidorino','poison','uncommon'],[34,'Nidoking','poison','rare'],
-[35,'Clefairy','normal','common'],[36,'Clefable','normal','rare'],
+[35,'Clefairy','fairy','common'],[36,'Clefable','fairy','rare'],
 [37,'Vulpix','fire','common'],[38,'Ninetales','fire','rare'],
 [39,'Jigglypuff','normal','common'],[40,'Wigglytuff','normal','uncommon'],
 [41,'Zubat','poison','common'],[42,'Golbat','poison','uncommon'],
@@ -2639,8 +2643,8 @@ const POKEMON = [
 [77,'Ponyta','fire','common'],[78,'Rapidash','fire','uncommon'],
 [79,'Slowpoke','water','common'],[80,'Slowbro','water','rare'],
 [81,'Magnemite','electric','common'],[82,'Magneton','electric','uncommon'],
-[83,'Farfetchd','normal','uncommon'],
-[84,'Doduo','normal','common'],[85,'Dodrio','normal','uncommon'],
+[83,'Farfetchd','flying','uncommon'],
+[84,'Doduo','flying','common'],[85,'Dodrio','flying','uncommon'],
 [86,'Seel','water','common'],[87,'Dewgong','water','uncommon'],
 [88,'Grimer','poison','common'],[89,'Muk','poison','uncommon'],
 [90,'Shellder','water','common'],[91,'Cloyster','water','rare'],
@@ -2688,12 +2692,12 @@ const POKEMON = [
 [152,'Chikorita','grass','common'],[153,'Bayleef','grass','uncommon'],[154,'Meganium','grass','ultra'],
 [155,'Cyndaquil','fire','common'],[156,'Quilava','fire','uncommon'],[157,'Typhlosion','fire','ultra'],
 [158,'Totodile','water','common'],[159,'Croconaw','water','uncommon'],[160,'Feraligatr','water','ultra'],
-[161,'Sentret','normal','common'],[162,'Furret','normal','rare'],[163,'Hoothoot','normal','common'],
-[164,'Noctowl','normal','rare'],[165,'Ledyba','bug','common'],[166,'Ledian','bug','rare'],
+[161,'Sentret','normal','common'],[162,'Furret','normal','rare'],[163,'Hoothoot','flying','common'],
+[164,'Noctowl','flying','rare'],[165,'Ledyba','bug','common'],[166,'Ledian','bug','rare'],
 [167,'Spinarak','bug','common'],[168,'Ariados','bug','rare'],[169,'Crobat','poison','rare'],
 [170,'Chinchou','water','common'],[171,'Lanturn','water','rare'],[172,'Pichu','electric','common'],
-[173,'Cleffa','normal','common'],[174,'Igglybuff','normal','common'],[175,'Togepi','normal','common'],
-[176,'Togetic','normal','uncommon'],[177,'Natu','psychic','common'],[178,'Xatu','psychic','rare'],
+[173,'Cleffa','fairy','common'],[174,'Igglybuff','normal','common'],[175,'Togepi','fairy','common'],
+[176,'Togetic','fairy','uncommon'],[177,'Natu','psychic','common'],[178,'Xatu','psychic','rare'],
 [179,'Mareep','electric','common'],[180,'Flaaffy','electric','uncommon'],[181,'Ampharos','electric','rare'],
 [182,'Bellossom','grass','rare'],[183,'Marill','water','common'],[184,'Azumarill','water','rare'],
 [185,'Sudowoodo','rock','uncommon'],[186,'Politoed','water','ultra'],[187,'Hoppip','grass','common'],
@@ -2704,7 +2708,7 @@ const POKEMON = [
 [200,'Misdreavus','ghost','uncommon'],[201,'Unown','psychic','uncommon'],[202,'Wobbuffet','psychic','uncommon'],
 [203,'Girafarig','normal','uncommon'],[204,'Pineco','bug','common'],[205,'Forretress','bug','uncommon'],
 [206,'Dunsparce','normal','uncommon'],[207,'Gligar','ground','uncommon'],[208,'Steelix','steel','ultra'],
-[209,'Snubbull','normal','common'],[210,'Granbull','normal','rare'],[211,'Qwilfish','water','uncommon'],
+[209,'Snubbull','fairy','common'],[210,'Granbull','fairy','rare'],[211,'Qwilfish','water','uncommon'],
 [212,'Scizor','bug','ultra'],[213,'Shuckle','bug','uncommon'],[214,'Heracross','bug','rare'],
 [215,'Sneasel','dark','uncommon'],[216,'Teddiursa','normal','common'],[217,'Ursaring','normal','rare'],
 [218,'Slugma','fire','common'],[219,'Magcargo','fire','rare'],[220,'Swinub','ice','common'],
@@ -2728,7 +2732,7 @@ const POKEMON = [
 [267,'Beautifly','bug','rare'],[268,'Cascoon','bug','uncommon'],[269,'Dustox','bug','rare'],
 [270,'Lotad','water','common'],[271,'Lombre','water','uncommon'],[272,'Ludicolo','water','rare'],
 [273,'Seedot','grass','common'],[274,'Nuzleaf','grass','uncommon'],[275,'Shiftry','grass','rare'],
-[276,'Taillow','normal','common'],[277,'Swellow','normal','rare'],[278,'Wingull','water','common'],
+[276,'Taillow','flying','common'],[277,'Swellow','flying','rare'],[278,'Wingull','water','common'],
 [279,'Pelipper','water','rare'],[280,'Ralts','psychic','common'],[281,'Kirlia','psychic','uncommon'],
 [282,'Gardevoir','psychic','ultra'],[283,'Surskit','bug','common'],[284,'Masquerain','bug','rare'],
 [285,'Shroomish','grass','common'],[286,'Breloom','grass','uncommon'],[287,'Slakoth','normal','common'],
@@ -2747,7 +2751,7 @@ const POKEMON = [
 [324,'Torkoal','fire','uncommon'],[325,'Spoink','psychic','common'],[326,'Grumpig','psychic','rare'],
 [327,'Spinda','normal','uncommon'],[328,'Trapinch','ground','common'],[329,'Vibrava','ground','uncommon'],
 [330,'Flygon','ground','ultra'],[331,'Cacnea','grass','common'],[332,'Cacturne','grass','rare'],
-[333,'Swablu','normal','common'],[334,'Altaria','dragon','rare'],[335,'Zangoose','normal','uncommon'],
+[333,'Swablu','flying','common'],[334,'Altaria','dragon','rare'],[335,'Zangoose','normal','uncommon'],
 [336,'Seviper','poison','uncommon'],[337,'Lunatone','rock','rare'],[338,'Solrock','rock','rare'],
 [339,'Barboach','water','common'],[340,'Whiscash','water','rare'],[341,'Corphish','water','common'],
 [342,'Crawdaunt','water','uncommon'],[343,'Baltoy','ground','common'],[344,'Claydol','ground','uncommon'],
@@ -2769,7 +2773,7 @@ const POKEMON = [
 [387,'Turtwig','grass','common'],[388,'Grotle','grass','uncommon'],[389,'Torterra','grass','ultra'],
 [390,'Chimchar','fire','common'],[391,'Monferno','fire','uncommon'],[392,'Infernape','fire','ultra'],
 [393,'Piplup','water','common'],[394,'Prinplup','water','uncommon'],[395,'Empoleon','water','ultra'],
-[396,'Starly','normal','common'],[397,'Staravia','normal','uncommon'],[398,'Staraptor','normal','rare'],
+[396,'Starly','flying','common'],[397,'Staravia','flying','uncommon'],[398,'Staraptor','flying','rare'],
 [399,'Bidoof','normal','common'],[400,'Bibarel','normal','uncommon'],[401,'Kricketot','bug','common'],
 [402,'Kricketune','bug','rare'],[403,'Shinx','electric','common'],[404,'Luxio','electric','uncommon'],
 [405,'Luxray','electric','rare'],[406,'Budew','grass','common'],[407,'Roserade','grass','rare'],
@@ -2784,7 +2788,7 @@ const POKEMON = [
 [432,'Purugly','normal','rare'],[433,'Chingling','psychic','common'],[434,'Stunky','poison','common'],
 [435,'Skuntank','poison','rare'],[436,'Bronzor','steel','common'],[437,'Bronzong','steel','uncommon'],
 [438,'Bonsly','rock','common'],[439,'Mime Jr.','psychic','common'],[440,'Happiny','normal','common'],
-[441,'Chatot','normal','rare'],[442,'Spiritomb','ghost','uncommon'],[443,'Gible','dragon','common'],
+[441,'Chatot','flying','rare'],[442,'Spiritomb','ghost','uncommon'],[443,'Gible','dragon','common'],
 [444,'Gabite','dragon','uncommon'],[445,'Garchomp','dragon','secret'],[446,'Munchlax','normal','common'],
 [447,'Riolu','fighting','common'],[448,'Lucario','fighting','ultra'],[449,'Hippopotas','ground','common'],
 [450,'Hippowdon','ground','rare'],[451,'Skorupi','poison','common'],[452,'Drapion','poison','rare'],
@@ -2793,8 +2797,8 @@ const POKEMON = [
 [459,'Snover','grass','common'],[460,'Abomasnow','grass','rare'],[461,'Weavile','dark','ultra'],
 [462,'Magnezone','electric','ultra'],[463,'Lickilicky','normal','rare'],[464,'Rhyperior','ground','ultra'],
 [465,'Tangrowth','grass','rare'],[466,'Electivire','electric','ultra'],[467,'Magmortar','fire','ultra'],
-[468,'Togekiss','normal','ultra'],[469,'Yanmega','bug','rare'],[470,'Leafeon','grass','rare'],
-[471,'Glaceon','ice','rare'],[472,'Gliscor','ground','rare'],[473,'Mamoswine','ice','ultra'],
+[468,'Togekiss','fairy','ultra'],[469,'Yanmega','bug','rare'],[470,'Leafeon','grass','ultra'],
+[471,'Glaceon','ice','ultra'],[472,'Gliscor','ground','rare'],[473,'Mamoswine','ice','ultra'],
 [474,'Porygon-Z','normal','ultra'],[475,'Gallade','psychic','ultra'],[476,'Probopass','rock','rare'],
 [477,'Dusknoir','ghost','ultra'],[478,'Froslass','ice','rare'],[479,'Rotom','electric','rare'],
 [480,'Uxie','psychic','secret'],[481,'Mesprit','psychic','secret'],[482,'Azelf','psychic','secret'],
@@ -2811,8 +2815,8 @@ const POKEMON = [
 [509,'Purrloin','dark','common'],[510,'Liepard','dark','uncommon'],[511,'Pansage','grass','common'],
 [512,'Simisage','grass','rare'],[513,'Pansear','fire','common'],[514,'Simisear','fire','rare'],
 [515,'Panpour','water','common'],[516,'Simipour','water','rare'],[517,'Munna','psychic','common'],
-[518,'Musharna','psychic','rare'],[519,'Pidove','normal','common'],[520,'Tranquill','normal','uncommon'],
-[521,'Unfezant','normal','rare'],[522,'Blitzle','electric','common'],[523,'Zebstrika','electric','rare'],
+[518,'Musharna','psychic','rare'],[519,'Pidove','flying','common'],[520,'Tranquill','flying','uncommon'],
+[521,'Unfezant','flying','rare'],[522,'Blitzle','electric','common'],[523,'Zebstrika','electric','rare'],
 [524,'Roggenrola','rock','common'],[525,'Boldore','rock','uncommon'],[526,'Gigalith','rock','rare'],
 [527,'Woobat','psychic','common'],[528,'Swoobat','psychic','rare'],[529,'Drilbur','ground','common'],
 [530,'Excadrill','ground','ultra'],[531,'Audino','normal','uncommon'],[532,'Timburr','fighting','common'],
@@ -2847,14 +2851,144 @@ const POKEMON = [
 [617,'Accelgor','bug','rare'],[618,'Stunfisk','ground','rare'],[619,'Mienfoo','fighting','common'],
 [620,'Mienshao','fighting','rare'],[621,'Druddigon','dragon','rare'],[622,'Golett','ground','common'],
 [623,'Golurk','ground','ultra'],[624,'Pawniard','dark','common'],[625,'Bisharp','dark','ultra'],
-[626,'Bouffalant','normal','rare'],[627,'Rufflet','normal','common'],[628,'Braviary','normal','rare'],
+[626,'Bouffalant','normal','rare'],[627,'Rufflet','flying','common'],[628,'Braviary','flying','rare'],
 [629,'Vullaby','dark','common'],[630,'Mandibuzz','dark','rare'],[631,'Heatmor','fire','uncommon'],
 [632,'Durant','bug','uncommon'],[633,'Deino','dark','common'],[634,'Zweilous','dark','uncommon'],
 [635,'Hydreigon','dark','secret'],[636,'Larvesta','bug','common'],[637,'Volcarona','bug','ultra'],
 [638,'Cobalion','steel','secret'],[639,'Terrakion','rock','secret'],[640,'Virizion','grass','secret'],
-[641,'Tornadus','normal','secret'],[642,'Thundurus','electric','secret'],[643,'Reshiram','dragon','secret'],
+[641,'Tornadus','flying','secret'],[642,'Thundurus','electric','secret'],[643,'Reshiram','dragon','secret'],
 [644,'Zekrom','dragon','secret'],[645,'Landorus','ground','secret'],[646,'Kyurem','dragon','secret'],
-[647,'Keldeo','water','secret'],[648,'Meloetta','normal','secret'],[649,'Genesect','bug','secret']
+[647,'Keldeo','water','secret'],[648,'Meloetta','normal','secret'],[649,'Genesect','bug','secret'],
+// ---------- Gen 6 (Kalos, 650-721) ----------
+[650,'Chespin','grass','common'],[651,'Quilladin','grass','uncommon'],[652,'Chesnaught','grass','ultra'],
+[653,'Fennekin','fire','common'],[654,'Braixen','fire','uncommon'],[655,'Delphox','fire','ultra'],
+[656,'Froakie','water','common'],[657,'Frogadier','water','uncommon'],[658,'Greninja','water','ultra'],
+[659,'Bunnelby','normal','common'],[660,'Diggersby','normal','rare'],[661,'Fletchling','flying','common'],
+[662,'Fletchinder','fire','uncommon'],[663,'Talonflame','fire','rare'],[664,'Scatterbug','bug','common'],
+[665,'Spewpa','bug','uncommon'],[666,'Vivillon','bug','rare'],[667,'Litleo','fire','common'],
+[668,'Pyroar','fire','rare'],[669,'Flabebe','fairy','common'],[670,'Floette','fairy','uncommon'],
+[671,'Florges','fairy','rare'],[672,'Skiddo','grass','common'],[673,'Gogoat','grass','rare'],
+[674,'Pancham','fighting','common'],[675,'Pangoro','fighting','rare'],[676,'Furfrou','normal','rare'],
+[677,'Espurr','psychic','common'],[678,'Meowstic','psychic','rare'],[679,'Honedge','steel','common'],
+[680,'Doublade','steel','uncommon'],[681,'Aegislash','steel','ultra'],[682,'Spritzee','fairy','common'],
+[683,'Aromatisse','fairy','rare'],[684,'Swirlix','fairy','common'],[685,'Slurpuff','fairy','rare'],
+[686,'Inkay','dark','common'],[687,'Malamar','dark','rare'],[688,'Binacle','rock','common'],
+[689,'Barbaracle','rock','rare'],[690,'Skrelp','poison','common'],[691,'Dragalge','poison','rare'],
+[692,'Clauncher','water','common'],[693,'Clawitzer','water','rare'],[694,'Helioptile','electric','common'],
+[695,'Heliolisk','electric','rare'],[696,'Tyrunt','rock','common'],[697,'Tyrantrum','rock','rare'],
+[698,'Amaura','rock','common'],[699,'Aurorus','rock','rare'],[700,'Sylveon','fairy','ultra'],
+[701,'Hawlucha','fighting','rare'],[702,'Dedenne','electric','uncommon'],[703,'Carbink','rock','rare'],
+[704,'Goomy','dragon','common'],[705,'Sliggoo','dragon','uncommon'],[706,'Goodra','dragon','secret'],
+[707,'Klefki','steel','rare'],[708,'Phantump','ghost','common'],[709,'Trevenant','ghost','rare'],
+[710,'Pumpkaboo','ghost','common'],[711,'Gourgeist','ghost','rare'],[712,'Bergmite','ice','common'],
+[713,'Avalugg','ice','rare'],[714,'Noibat','flying','common'],[715,'Noivern','flying','rare'],
+[716,'Xerneas','fairy','secret'],[717,'Yveltal','dark','secret'],[718,'Zygarde','dragon','secret'],
+[719,'Diancie','rock','secret'],[720,'Hoopa','psychic','secret'],[721,'Volcanion','fire','secret'],
+// ---------- Gen 7 (Alola, 722-809) ----------
+[722,'Rowlet','grass','common'],[723,'Dartrix','grass','uncommon'],[724,'Decidueye','grass','ultra'],
+[725,'Litten','fire','common'],[726,'Torracat','fire','uncommon'],[727,'Incineroar','fire','ultra'],
+[728,'Popplio','water','common'],[729,'Brionne','water','uncommon'],[730,'Primarina','water','ultra'],
+[731,'Pikipek','flying','common'],[732,'Trumbeak','flying','uncommon'],[733,'Toucannon','flying','rare'],
+[734,'Yungoos','normal','common'],[735,'Gumshoos','normal','rare'],[736,'Grubbin','bug','common'],
+[737,'Charjabug','bug','uncommon'],[738,'Vikavolt','bug','rare'],[739,'Crabrawler','fighting','common'],
+[740,'Crabominable','fighting','rare'],[741,'Oricorio','fire','rare'],[742,'Cutiefly','bug','common'],
+[743,'Ribombee','bug','rare'],[744,'Rockruff','rock','common'],[745,'Lycanroc','rock','ultra'],
+[746,'Wishiwashi','water','uncommon'],[747,'Mareanie','poison','common'],[748,'Toxapex','poison','rare'],
+[749,'Mudbray','ground','common'],[750,'Mudsdale','ground','rare'],[751,'Dewpider','water','common'],
+[752,'Araquanid','water','rare'],[753,'Fomantis','grass','common'],[754,'Lurantis','grass','rare'],
+[755,'Morelull','grass','common'],[756,'Shiinotic','grass','rare'],[757,'Salandit','poison','common'],
+[758,'Salazzle','poison','rare'],[759,'Stufful','normal','common'],[760,'Bewear','normal','rare'],
+[761,'Bounsweet','grass','common'],[762,'Steenee','grass','uncommon'],[763,'Tsareena','grass','rare'],
+[764,'Comfey','fairy','rare'],[765,'Oranguru','normal','rare'],[766,'Passimian','fighting','rare'],
+[767,'Wimpod','bug','common'],[768,'Golisopod','bug','rare'],[769,'Sandygast','ghost','common'],
+[770,'Palossand','ghost','rare'],[771,'Pyukumuku','water','uncommon'],[772,'Type: Null','normal','secret'],
+[773,'Silvally','normal','secret'],[774,'Minior','rock','uncommon'],[775,'Komala','normal','rare'],
+[776,'Turtonator','fire','rare'],[777,'Togedemaru','electric','uncommon'],[778,'Mimikyu','ghost','ultra'],
+[779,'Bruxish','water','rare'],[780,'Drampa','normal','rare'],[781,'Dhelmise','ghost','rare'],
+[782,'Jangmo-o','dragon','common'],[783,'Hakamo-o','dragon','uncommon'],[784,'Kommo-o','dragon','secret'],
+[785,'Tapu Koko','electric','secret'],[786,'Tapu Lele','psychic','secret'],[787,'Tapu Bulu','grass','secret'],
+[788,'Tapu Fini','water','secret'],[789,'Cosmog','psychic','secret'],[790,'Cosmoem','psychic','secret'],
+[791,'Solgaleo','psychic','secret'],[792,'Lunala','psychic','secret'],[793,'Nihilego','rock','ultra'],
+[794,'Buzzwole','bug','ultra'],[795,'Pheromosa','bug','ultra'],[796,'Xurkitree','electric','ultra'],
+[797,'Celesteela','steel','ultra'],[798,'Kartana','grass','ultra'],[799,'Guzzlord','dark','ultra'],
+[800,'Necrozma','psychic','secret'],[801,'Magearna','steel','secret'],[802,'Marshadow','fighting','secret'],
+[803,'Poipole','poison','ultra'],[804,'Naganadel','poison','ultra'],[805,'Stakataka','rock','ultra'],
+[806,'Blacephalon','fire','ultra'],[807,'Zeraora','electric','secret'],[808,'Meltan','steel','secret'],
+[809,'Melmetal','steel','secret'],
+// ---------- Gen 8 (Galar, 810-905) ----------
+[810,'Grookey','grass','common'],[811,'Thwackey','grass','uncommon'],[812,'Rillaboom','grass','ultra'],
+[813,'Scorbunny','fire','common'],[814,'Raboot','fire','uncommon'],[815,'Cinderace','fire','ultra'],
+[816,'Sobble','water','common'],[817,'Drizzile','water','uncommon'],[818,'Inteleon','water','ultra'],
+[819,'Skwovet','normal','common'],[820,'Greedent','normal','rare'],[821,'Rookidee','flying','common'],
+[822,'Corvisquire','flying','uncommon'],[823,'Corviknight','flying','ultra'],[824,'Blipbug','bug','common'],
+[825,'Dottler','bug','uncommon'],[826,'Orbeetle','bug','rare'],[827,'Nickit','dark','common'],
+[828,'Thievul','dark','rare'],[829,'Gossifleur','grass','common'],[830,'Eldegoss','grass','rare'],
+[831,'Wooloo','normal','common'],[832,'Dubwool','normal','rare'],[833,'Chewtle','water','common'],
+[834,'Drednaw','water','rare'],[835,'Yamper','electric','common'],[836,'Boltund','electric','rare'],
+[837,'Rolycoly','rock','common'],[838,'Carkol','rock','uncommon'],[839,'Coalossal','rock','rare'],
+[840,'Applin','grass','common'],[841,'Flapple','grass','rare'],[842,'Appletun','grass','rare'],
+[843,'Silicobra','ground','common'],[844,'Sandaconda','ground','rare'],[845,'Cramorant','flying','rare'],
+[846,'Arrokuda','water','common'],[847,'Barraskewda','water','rare'],[848,'Toxel','electric','common'],
+[849,'Toxtricity','electric','rare'],[850,'Sizzlipede','fire','common'],[851,'Centiskorch','fire','rare'],
+[852,'Clobbopus','fighting','common'],[853,'Grapploct','fighting','rare'],[854,'Sinistea','ghost','common'],
+[855,'Polteageist','ghost','rare'],[856,'Hatenna','psychic','common'],[857,'Hattrem','psychic','uncommon'],
+[858,'Hatterene','psychic','rare'],[859,'Impidimp','dark','common'],[860,'Morgrem','dark','uncommon'],
+[861,'Grimmsnarl','dark','rare'],[862,'Obstagoon','dark','rare'],[863,'Perrserker','steel','rare'],
+[864,'Cursola','ghost','rare'],[865,'Sirfetchd','fighting','rare'],[866,'Mr. Rime','ice','rare'],
+[867,'Runerigus','ground','rare'],[868,'Milcery','fairy','common'],[869,'Alcremie','fairy','rare'],
+[870,'Falinks','fighting','rare'],[871,'Pincurchin','electric','uncommon'],[872,'Snom','ice','common'],
+[873,'Frosmoth','ice','rare'],[874,'Stonjourner','rock','rare'],[875,'Eiscue','ice','rare'],
+[876,'Indeedee','psychic','rare'],[877,'Morpeko','electric','uncommon'],[878,'Cufant','steel','common'],
+[879,'Copperajah','steel','rare'],[880,'Dracozolt','electric','rare'],[881,'Arctozolt','electric','rare'],
+[882,'Dracovish','water','rare'],[883,'Arctovish','water','rare'],[884,'Duraludon','steel','common'],
+[885,'Dreepy','dragon','common'],[886,'Drakloak','dragon','uncommon'],[887,'Dragapult','dragon','secret'],
+[888,'Zacian','fairy','secret'],[889,'Zamazenta','fighting','secret'],[890,'Eternatus','poison','secret'],
+[891,'Kubfu','fighting','secret'],[892,'Urshifu','fighting','secret'],[893,'Zarude','dark','secret'],
+[894,'Regieleki','electric','secret'],[895,'Regidrago','dragon','secret'],[896,'Glastrier','ice','secret'],
+[897,'Spectrier','ghost','secret'],[898,'Calyrex','psychic','secret'],[899,'Wyrdeer','normal','rare'],
+[900,'Kleavor','bug','ultra'],[901,'Ursaluna','ground','ultra'],[902,'Basculegion','water','rare'],
+[903,'Sneasler','fighting','rare'],[904,'Overqwil','dark','rare'],[905,'Enamorus','fairy','secret'],
+// ---------- Gen 9 (Paldea, 906-1025) ----------
+[906,'Sprigatito','grass','common'],[907,'Floragato','grass','uncommon'],[908,'Meowscarada','grass','ultra'],
+[909,'Fuecoco','fire','common'],[910,'Crocalor','fire','uncommon'],[911,'Skeledirge','fire','ultra'],
+[912,'Quaxly','water','common'],[913,'Quaxwell','water','uncommon'],[914,'Quaquaval','water','ultra'],
+[915,'Lechonk','normal','common'],[916,'Oinkologne','normal','rare'],[917,'Tarountula','bug','common'],
+[918,'Spidops','bug','rare'],[919,'Nymble','bug','common'],[920,'Lokix','bug','rare'],
+[921,'Pawmi','electric','common'],[922,'Pawmo','electric','uncommon'],[923,'Pawmot','electric','rare'],
+[924,'Tandemaus','normal','common'],[925,'Maushold','normal','rare'],[926,'Fidough','fairy','common'],
+[927,'Dachsbun','fairy','rare'],[928,'Smoliv','grass','common'],[929,'Dolliv','grass','uncommon'],
+[930,'Arboliva','grass','rare'],[931,'Squawkabilly','flying','uncommon'],[932,'Nacli','rock','common'],
+[933,'Naclstack','rock','uncommon'],[934,'Garganacl','rock','rare'],[935,'Charcadet','fire','common'],
+[936,'Armarouge','fire','rare'],[937,'Ceruledge','fire','rare'],[938,'Tadbulb','electric','common'],
+[939,'Bellibolt','electric','rare'],[940,'Wattrel','electric','common'],[941,'Kilowattrel','electric','rare'],
+[942,'Maschiff','dark','common'],[943,'Mabosstiff','dark','rare'],[944,'Shroodle','poison','common'],
+[945,'Grafaiai','poison','rare'],[946,'Bramblin','grass','common'],[947,'Brambleghast','grass','rare'],
+[948,'Toedscool','ground','common'],[949,'Toedscruel','ground','rare'],[950,'Klawf','rock','uncommon'],
+[951,'Capsakid','grass','common'],[952,'Scovillain','grass','rare'],[953,'Rellor','bug','common'],
+[954,'Rabsca','bug','rare'],[955,'Flittle','psychic','common'],[956,'Espathra','psychic','rare'],
+[957,'Tinkatink','fairy','common'],[958,'Tinkatuff','fairy','uncommon'],[959,'Tinkaton','fairy','ultra'],
+[960,'Wiglett','water','common'],[961,'Wugtrio','water','rare'],[962,'Bombirdier','flying','rare'],
+[963,'Finizen','water','common'],[964,'Palafin','water','rare'],[965,'Varoom','steel','common'],
+[966,'Revavroom','steel','rare'],[967,'Cyclizar','dragon','rare'],[968,'Orthworm','steel','rare'],
+[969,'Glimmet','rock','common'],[970,'Glimmora','rock','rare'],[971,'Greavard','ghost','common'],
+[972,'Houndstone','ghost','rare'],[973,'Flamigo','flying','rare'],[974,'Cetoddle','ice','common'],
+[975,'Cetitan','ice','rare'],[976,'Veluza','water','rare'],[977,'Dondozo','water','rare'],
+[978,'Tatsugiri','dragon','rare'],[979,'Annihilape','fighting','rare'],[980,'Clodsire','poison','rare'],
+[981,'Farigiraf','normal','rare'],[982,'Dudunsparce','normal','rare'],[983,'Kingambit','dark','ultra'],
+[984,'Great Tusk','ground','ultra'],[985,'Scream Tail','fairy','ultra'],[986,'Brute Bonnet','grass','ultra'],
+[987,'Flutter Mane','ghost','ultra'],[988,'Slither Wing','bug','ultra'],[989,'Sandy Shocks','electric','ultra'],
+[990,'Iron Treads','ground','ultra'],[991,'Iron Bundle','ice','ultra'],[992,'Iron Hands','fighting','ultra'],
+[993,'Iron Jugulis','dark','ultra'],[994,'Iron Moth','fire','ultra'],[995,'Iron Thorns','rock','ultra'],
+[996,'Frigibax','dragon','common'],[997,'Arctibax','dragon','uncommon'],[998,'Baxcalibur','dragon','secret'],
+[999,'Gimmighoul','ghost','common'],[1000,'Gholdengo','steel','ultra'],[1001,'Wo-Chien','dark','secret'],
+[1002,'Chien-Pao','dark','secret'],[1003,'Ting-Lu','dark','secret'],[1004,'Chi-Yu','dark','secret'],
+[1005,'Roaring Moon','dragon','ultra'],[1006,'Iron Valiant','fairy','ultra'],[1007,'Koraidon','fighting','secret'],
+[1008,'Miraidon','electric','secret'],[1009,'Walking Wake','water','ultra'],[1010,'Iron Leaves','grass','ultra'],
+[1011,'Dipplin','grass','uncommon'],[1012,'Poltchageist','grass','common'],[1013,'Sinistcha','grass','rare'],
+[1014,'Okidogi','poison','secret'],[1015,'Munkidori','poison','secret'],[1016,'Fezandipiti','poison','secret'],
+[1017,'Ogerpon','grass','secret'],[1018,'Archaludon','steel','rare'],[1019,'Hydrapple','grass','rare'],
+[1020,'Gouging Fire','fire','ultra'],[1021,'Raging Bolt','electric','ultra'],[1022,'Iron Boulder','rock','ultra'],
+[1023,'Iron Crown','steel','ultra'],[1024,'Terapagos','normal','secret'],[1025,'Pecharunt','poison','secret']
 ].map(p => {
   const id = p[0];
   const name = p[1];
@@ -2889,7 +3023,7 @@ const PACKS = [
 ];
 // id -> species, built once. POKEMON is never mutated after load, so this
 // can't go stale; use it anywhere a loop over state.instances would
-// otherwise POKEMON.find() per card (649 species x 7000+ cards adds up).
+// otherwise POKEMON.find() per card (1025 species x 7000+ cards adds up).
 const POKEMON_BY_ID = new Map(POKEMON.map(p => [p.id, p]));
 
 // Badges are earned by completing a type, not bought.
@@ -2903,22 +3037,24 @@ const POKEMON_BY_ID = new Map(POKEMON.map(p => [p.id, p]));
 // there. Changing one alone fails silently -- the page just renders wrong.
 // Badge color is TYPE_COLORS[type]; there are no per-badge color vars.
 const BADGES = [
-  {id:'boulder', name:'Boulder Badge', type:'rock',     difficulty:'Gym Leader', desc:'Collect every Rock type.'},
+  {id:'boulder', name:'Boulder Badge', type:'rock',     difficulty:'Elite Four', desc:'Collect every Rock type.'},
   {id:'cascade', name:'Cascade Badge', type:'water',    difficulty:'Champion',   desc:'Collect every Water type. The largest pool in the game.'},
   {id:'thunder', name:'Thunder Badge', type:'electric', difficulty:'Champion',   desc:'Collect every Electric type.'},
   {id:'rainbow', name:'Rainbow Badge', type:'grass',    difficulty:'Elite Four', desc:'Collect every Grass type.'},
-  {id:'soul',    name:'Soul Badge',    type:'poison',   difficulty:'Gym Leader', desc:'Collect every Poison type. No rares hide here.'},
-  {id:'marsh',   name:'Marsh Badge',   type:'psychic',  difficulty:'Champion',   desc:'Collect every Psychic type. Four secrets are in the way.'},
-  {id:'volcano', name:'Volcano Badge', type:'fire',     difficulty:'Champion',   desc:'Collect every Fire type. Four secrets are in the way.'},
-  {id:'earth',   name:'Earth Badge',   type:'ground',   difficulty:'Gym Leader', desc:'Collect every Ground type. No rares hide here.'},
-  {id:'zephyr',  name:'Zephyr Badge',  type:'dark',     difficulty:'Gym Leader', desc:'Collect every Dark type. Johto only.'},
-  {id:'hive',    name:'Hive Badge',    type:'bug',      difficulty:'Elite Four', desc:'Collect every Bug type.'},
+  {id:'soul',    name:'Soul Badge',    type:'poison',   difficulty:'Elite Four', desc:'Collect every Poison type.'},
+  {id:'marsh',   name:'Marsh Badge',   type:'psychic',  difficulty:'Champion',   desc:'Collect every Psychic type.'},
+  {id:'volcano', name:'Volcano Badge', type:'fire',     difficulty:'Elite Four', desc:'Collect every Fire type.'},
+  {id:'earth',   name:'Earth Badge',   type:'ground',   difficulty:'Gym Leader', desc:'Collect every Ground type.'},
+  {id:'zephyr',  name:'Zephyr Badge',  type:'dark',     difficulty:'Champion',   desc:'Collect every Dark type.'},
+  {id:'hive',    name:'Hive Badge',    type:'bug',      difficulty:'Gym Leader', desc:'Collect every Bug type.'},
   {id:'plain',   name:'Plain Badge',   type:'normal',   difficulty:'Elite Four', desc:'Collect every Normal type.'},
   {id:'fog',     name:'Fog Badge',     type:'ghost',    difficulty:'Gym Leader', desc:'Collect every Ghost type.'},
-  {id:'storm',   name:'Storm Badge',   type:'fighting', difficulty:'Gym Leader', desc:'Collect every Fighting type.'},
-  {id:'mineral', name:'Mineral Badge', type:'steel',    difficulty:'Gym Leader', desc:'Collect every Steel type. Small pool, expensive cards.'},
-  {id:'glacier', name:'Glacier Badge', type:'ice',      difficulty:'Elite Four', desc:'Collect every Ice type.'},
-  {id:'rising',  name:'Rising Badge',  type:'dragon',   difficulty:'Elite Four', desc:'Collect every Dragon type. No commons.'}
+  {id:'storm',   name:'Storm Badge',   type:'fighting', difficulty:'Elite Four', desc:'Collect every Fighting type.'},
+  {id:'mineral', name:'Mineral Badge', type:'steel',    difficulty:'Champion',   desc:'Collect every Steel type.'},
+  {id:'glacier', name:'Glacier Badge', type:'ice',      difficulty:'Gym Leader', desc:'Collect every Ice type.'},
+  {id:'rising',  name:'Rising Badge',  type:'dragon',   difficulty:'Champion',   desc:'Collect every Dragon type.'},
+  {id:'fairy',   name:'Fairy Badge',   type:'fairy',    difficulty:'Gym Leader', desc:'Collect every Fairy type.'},
+  {id:'feather', name:'Feather Badge', type:'flying',   difficulty:'Gym Leader', desc:'Collect every Flying type.'}
 ];
 
 // need counts are derived from POKEMON, never hardcoded, so expanding the
@@ -3252,6 +3388,10 @@ const GENS = [
   { n:3, label:'Gen 3', lo:252, hi:386 },
   { n:4, label:'Gen 4', lo:387, hi:493 },
   { n:5, label:'Gen 5', lo:494, hi:649 },
+  { n:6, label:'Gen 6', lo:650, hi:721 },
+  { n:7, label:'Gen 7', lo:722, hi:809 },
+  { n:8, label:'Gen 8', lo:810, hi:905 },
+  { n:9, label:'Gen 9', lo:906, hi:1025 },
 ];
 const DEX_TOTAL = GENS[GENS.length - 1].hi;
 const genOf = id => GENS.find(g => id >= g.lo && id <= g.hi);
@@ -3458,8 +3598,11 @@ async function openPack(pack){
     }
     // server already rolled + charged; enrich with local cosmetic data (type/sprite) for display only
     const cards = data.cards.map(c=>{
-      const p = POKEMON.find(x=>x.id===c.id);
-      return { ...c, type: p.type, sprite: p.sprite };
+      // an id this client doesn't know (catalog newer than this page) must
+      // not break the reveal - fall back to the sprite URL pattern
+      const p = POKEMON_BY_ID.get(c.id);
+      return { ...c, type: p ? p.type : 'normal',
+               sprite: p ? p.sprite : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${c.id}.png` };
     });
     opening = {pack, cards, flipped:[], stage:'closed', keep:cards.map(()=>true), openingId:data.opening_id};
     // mirror the server's deduction locally so the rest of the (not-yet-migrated) UI stays in sync
@@ -4155,6 +4298,7 @@ function renderMarketModal() {
     const inst = (state.instances || []).find(x => x.uid === activeModal.uid);
     if (!inst) { activeModal = null; return ''; }
     const p = POKEMON.find(x => x.id === inst.id);
+    if (!p) { activeModal = null; return ''; }
     const now = Date.now();
     const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
     const multiplier = cardMultiplier(hoursHeld, now);
@@ -4305,7 +4449,7 @@ function dupePreview(tier, now){
     filedKept += g.filter(x => !x.shiny && usedUids.has(x.uid)).length;
 
     // candidates: anything that could actually be sold - not shiny, not filed
-    const candidates = g.filter(x => !x.shiny && !usedUids.has(x.uid)).map(inst => {
+    const candidates = g.filter(x => !x.shiny && !usedUids.has(x.uid) && POKEMON_BY_ID.has(x.id)).map(inst => {
       const p = POKEMON.find(x => x.id === inst.id);
       const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
       return { inst, hoursHeld,
@@ -7514,19 +7658,19 @@ function wire(){
           return;
         }
         const inst = state.instances[idx];
-        const p = POKEMON.find(x => x.id === inst.id);
+        const p = POKEMON_BY_ID.get(inst.id);
 
         state.instances.splice(idx, 1);
-        const dexEntry = state.dex[p.id];
+        const dexEntry = state.dex[inst.id];
         if (dexEntry) {
           dexEntry.count--;
-          if (dexEntry.count <= 0) delete state.dex[p.id];
+          if (dexEntry.count <= 0) delete state.dex[inst.id];
         }
 
         state.hex += data.payout; // authoritative payout from the server, not a local recompute
         recordVaultValue();
         saveState();
-        toast(`Liquidated ${p.name} for <i class="hex-icon"></i>${fmtHex(data.payout)} HEX!`);
+        toast(`Liquidated ${p ? p.name : 'card #' + inst.id} for <i class="hex-icon"></i>${fmtHex(data.payout)} HEX!`);
       } finally {
         liquidateBusy = false;
         activeModal = null;
