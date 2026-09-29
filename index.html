@@ -1404,7 +1404,7 @@ body {
   filter: hue-rotate(var(--shiny-hue, 150deg)) saturate(1.25);
 }
 
-/* ---------- shadow palette (20x, 1-in-4096, never also shiny) ----------
+/* ---------- shadow palette (20x, 1-in-1024 like shiny, never also shiny) ----------
    Static like shiny, not animated. The purple bloom lives on the sprite
    itself; img.shadow-sprite covers the small inline sprites (binder slot,
    leaderboard, chooser, carry bar) that aren't inside a .shadow-card. */
@@ -1419,9 +1419,13 @@ img.shadow-sprite{
 .shadow-card .glyph,
 .shadow-card .cf-glyph{
   overflow:visible;
+  /* a flex item's automatic minimum size is 0 only while overflow isn't
+     visible; without these the box grows to the sprite's natural 96px on
+     small tiles and cards and pushes the name and value down */
+  min-width:0;min-height:0;
 }
 
-/* ---------- white sparkle overlay for shiny (1-in-4096) card variants ---------- */
+/* ---------- white sparkle overlay for shiny (1-in-1024) card variants ---------- */
 /* Distinct from .shine (rarity-tier glow) so a shiny ultra/secret shows both */
 .shiny-sparkle-overlay{
   position:absolute;inset:0;pointer-events:none;z-index:2;
@@ -1766,8 +1770,15 @@ img.shadow-sprite{
 .howto-sk-ico{display:inline-flex;vertical-align:-3px;margin-right:6px;color:var(--foil1);}
 .howto-end{margin-top:26px;text-align:center;}
 .howto-end p{color:var(--muted);}
-.howto-shiny{display:flex;justify-content:center;margin:8px 0 14px;pointer-events:none;}
+/* Three secret-tier examples side by side: shiny, shadow, holo. The card
+   face sizes everything in cqw, so shrinking the slot shrinks the whole card;
+   clamp keeps all three on one row down to phone width, and wrap is the
+   fallback below that. 18/13 is the card's own 180x130 ratio. */
+.howto-shiny{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin:8px 0 14px;pointer-events:none;}
 .howto-shiny .already-owned-badge{display:none;}
+.howto-shiny .card-slot{--hw:clamp(92px, 26vw, 130px);width:var(--hw);height:calc(var(--hw) * 18 / 13);}
+.howto-variant{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.howto-variant figcaption{font-family:var(--font-mono);font-size:10.5px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;}
 .howto-sign{
   display:flex;justify-content:center;align-items:center;gap:14px;
   margin-top:38px;padding-top:22px;border-top:1px solid var(--line);
@@ -6156,7 +6167,14 @@ function renderHowTo(){
     `)}
 
     ${sec('rare', 'Shinies, shadows & holos', `
-      <div class="howto-shiny">${(()=>{ const p = POKEMON.find(x => x.id === 6); return renderCardFace({ id:p.id, name:p.name, rarity:p.rarity, value:p.value, shiny:true, type:p.type, sprite:p.sprite }, true); })()}</div>
+      <div class="howto-shiny">${[
+        [6,   { shiny:true },  'Shiny',  '10&times;', 'gold'],
+        [150, { shadow:true }, 'Shadow', '20&times;', '#b04cff'],
+        [249, { holo:true },   'Holo',   '3&times;',  '#8ad0ff'],
+      ].map(([id, variant, label, mult, color]) => {
+        const p = POKEMON_BY_ID.get(id);
+        return `<figure class="howto-variant">${renderCardFace({ id:p.id, name:p.name, rarity:p.rarity, value:p.value, ...variant, type:p.type, sprite:p.sprite }, true)}<figcaption style="color:${color};">${label} &middot; ${mult}</figcaption></figure>`;
+      }).join('')}</div>
       <p><strong>Shinies</strong> come out oddly colored and sparkling, with a <strong>&#9733;</strong> mark. They're worth <strong>10&times;</strong> a normal copy, and they're pure luck: nothing makes one more likely, and there's no hidden counter building up.</p>
       <p><strong>Shadows</strong> come out dark, glowing purple, with a <strong>&#9790;</strong> mark. They're just as rare as shinies and worth <strong>20&times;</strong>. A card is never both shiny and shadow.</p>
       <p><strong>Holos</strong> have a foil shimmer and a <strong>&#10070;</strong> mark. They're worth <strong>3&times;</strong>.</p>
