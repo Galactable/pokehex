@@ -6801,6 +6801,7 @@ function renderInspect(){
 
 function renderCardFace(card, flipped, filed){
   const rc = RARITY[card.rarity];
+  const auraTiers = ['ultra', 'secret'];
   const shineTiers = ['secret'];
   const isAlreadyOwned = !!state.dex[card.id];
   const cardBack = resolveCardBack();
@@ -6809,8 +6810,8 @@ function renderCardFace(card, flipped, filed){
       <div class="already-owned-badge" style="visibility: ${flipped && isAlreadyOwned ? 'visible' : 'hidden'};">ALREADY OWNED</div>
       <div class="card-slot ${flipped?'flipped':''}" data-flip>
         <div class="card-inner">
-          <div class="card-face card-back ${cardBack.cls} ${shineTiers.includes(card.rarity)?'flame-aura':''}">${cardBack.wordmark ? `<span class="back-hex" aria-hidden="true"></span>` : ''}</div>
-          <div class="card-face card-front ${card.shiny?'shiny-card':''} ${card.shadow?'shadow-card':''} ${shineTiers.includes(card.rarity)?'shine flame-aura':''}"
+          <div class="card-face card-back ${cardBack.cls} ${auraTiers.includes(card.rarity)?'flame-aura':''}">${cardBack.wordmark ? `<span class="back-hex" aria-hidden="true"></span>` : ''}</div>
+          <div class="card-face card-front ${card.shiny?'shiny-card':''} ${card.shadow?'shadow-card':''} ${auraTiers.includes(card.rarity)?'flame-aura':''} ${shineTiers.includes(card.rarity)?'shine':''}"
                style="--card-color:${rc.color};--type-color:${TYPE_COLORS[card.type]};${card.shiny ? `--shiny-hue:${shinyHue(card.id)}deg;` : ''}">
             ${variantOverlays(card)}
             <div class="cf-top">
