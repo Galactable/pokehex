@@ -1404,6 +1404,23 @@ body {
   filter: hue-rotate(var(--shiny-hue, 150deg)) saturate(1.25);
 }
 
+/* ---------- shadow palette (20x, 1-in-4096, never also shiny) ----------
+   Static like shiny, not animated. The purple bloom lives on the sprite
+   itself; img.shadow-sprite covers the small inline sprites (binder slot,
+   leaderboard, chooser, carry bar) that aren't inside a .shadow-card. */
+.shadow-card .cf-glyph img,
+.shadow-card .glyph img,
+img.shadow-sprite{
+  filter: grayscale(1) hue-rotate(250deg) saturate(4) brightness(0.7) contrast(2.35) drop-shadow(0 0 0.5px #b04cff) drop-shadow(0 0 14px #b04cff);
+}
+/* The glyph boxes clip with overflow:hidden, which cut the 14px bloom off in
+   a hard square. The sprite itself never overflows (it's 100% x 100% with
+   object-fit:contain), so on a shadow card the clip only ever hid the glow. */
+.shadow-card .glyph,
+.shadow-card .cf-glyph{
+  overflow:visible;
+}
+
 /* ---------- white sparkle overlay for shiny (1-in-4096) card variants ---------- */
 /* Distinct from .shine (rarity-tier glow) so a shiny ultra/secret shows both */
 .shiny-sparkle-overlay{
@@ -1430,6 +1447,26 @@ body {
   border-radius:10px;
   background-size: 28px 28px, 42px 42px, 56px 56px, 35px 35px;
   background-position: 6px 10px, 28px 42px, 49px 14px, 14px 56px;
+}
+/* Shadow's sparkles: the shiny pattern in purple, offset so the two never
+   read as the same effect, on a slower twinkle. Same 0.7x dex-tile scaling. */
+.shadow-sparkle-overlay{
+  position:absolute;inset:0;pointer-events:none;z-index:2;
+  background-image:
+    radial-gradient(circle, #e9c8ff 1px, transparent 1.5px),
+    radial-gradient(circle, #c77dff 1px, transparent 1.5px),
+    radial-gradient(circle, #f3e0ff 1.5px, transparent 2px),
+    radial-gradient(circle, #b04cff 1px, transparent 1.5px);
+  background-size: 40px 40px, 60px 60px, 80px 80px, 50px 50px;
+  background-position: 25px 5px, 5px 45px, 55px 65px, 35px 30px;
+  filter: drop-shadow(0 0 2px #b04cff);
+  animation: shinytwinkle 2.4s ease-in-out infinite;
+  mix-blend-mode:screen;
+}
+.dexslot .shadow-sparkle-overlay{
+  border-radius:10px;
+  background-size: 28px 28px, 42px 42px, 56px 56px, 35px 35px;
+  background-position: 18px 4px, 4px 32px, 38px 46px, 24px 21px;
 }
 .dexslot .holo-hex-overlay,
 .dexslot .holo-gloss-overlay,
@@ -1520,6 +1557,7 @@ body {
 .corner-badge svg{display:block;width:100%;height:100%;fill:currentColor;}
 .corner-badge.shiny{color:gold;filter:drop-shadow(0 0 3px gold);}
 .corner-badge.holo{color:#8ad0ff;filter:drop-shadow(0 0 3px #8ad0ff);}
+.corner-badge.shadow{color:#b04cff;filter:drop-shadow(0 0 3px #b04cff);}
 .shinyholo-badge{
   position:absolute;top:5px;right:5px;width:16px;height:16px;z-index:3;pointer-events:none;
   filter:drop-shadow(0 0 1px rgba(0,0,0,.9)) drop-shadow(0 0 3px rgba(255,190,0,.7));
@@ -1532,6 +1570,22 @@ body {
 /* Inline variant for the card-face name line, shared by all three badges.
    Sized in em so it scales with .cf-name's cqw font size across pack
    reveal, detail and stats cards. */
+/* Shadow holo: the crescent, filled with the same kind of gradient as the
+   shiny holo mark (violet -> pink -> holo blue). The shape is a CSS mask of
+   the crescent SVG rather than a clip-path, since clip-path has no arcs that
+   scale with the box - and still no text, so it renders identically everywhere. */
+.shadowholo-badge{
+  position:absolute;top:5px;right:5px;width:16px;height:16px;z-index:3;pointer-events:none;
+  filter:drop-shadow(0 0 1px rgba(0,0,0,.9)) drop-shadow(0 0 3px rgba(176,76,255,.7));
+}
+.shadowholo-badge i{
+  --moon-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M62 6a46 46 0 1 0 32 74A40 40 0 0 1 62 6Z'/%3E%3C/svg%3E");
+  display:block;width:100%;height:100%;
+  -webkit-mask:var(--moon-mask) center/contain no-repeat;
+          mask:var(--moon-mask) center/contain no-repeat;
+  background:linear-gradient(135deg,#b04cff 0%,#ff9fd0 50%,#8ad0ff 100%);
+}
+.shadowholo-badge.inline,
 .shinyholo-badge.inline,
 .corner-badge.inline{
   position:relative;top:auto;right:auto;display:inline-block;
@@ -3210,22 +3264,39 @@ function cardMultiplier(hoursHeld, tNow){
 }
 // Client-side mirror of the server's effective_card_value() - display/estimate
 // only, the server recalculates authoritatively on every payout. Shiny and
-// holo multiply independently, so a card can be both (10 * 3 = 30x).
-function effectiveCardValue(baseValue, shiny, holo){
-  return baseValue * (shiny ? 10 : 1) * (holo ? 3 : 1);
+// holo multiply independently, so a card can be both (10 * 3 = 30x). Shadow
+// is 20x and stacks with holo (60x), but open_pack never rolls a card both
+// shiny and shadow.
+function effectiveCardValue(baseValue, shiny, holo, shadow){
+  return baseValue * (shiny ? 10 : 1) * (holo ? 3 : 1) * (shadow ? 20 : 1);
 }
 
 const SHINY_STAR_SVG = `<svg viewBox="0 -4.5 100 100" aria-hidden="true"><polygon points="50,0 61,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 39,35"/></svg>`;
 const HOLO_SVG = `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 4 71 25 50 46 29 25Z M75 29 96 50 75 71 54 50Z M50 54 71 75 50 96 29 75Z M25 29 46 50 25 71 4 50Z"/></svg>`;
 
-// Corner badge for dex/binder tiles. Exactly one badge per tile; a card
-// that is both shiny and holo gets its own mark instead of both glyphs.
-function cardBadge(shiny, holo, titleSuffix){
+const SHADOW_MOON_SVG = `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M62 6a46 46 0 1 0 32 74A40 40 0 0 1 62 6Z"/></svg>`;
+
+// The one place a card's variant mark is drawn: the corner of dex/binder
+// tiles, and (inline) the card-face name line and the leaderboard. Exactly
+// one mark per card; shiny holo and shadow holo each get their own combined
+// mark instead of two glyphs.
+function cardBadge(card, titleSuffix, inline){
   const t = titleSuffix ? ' ' + titleSuffix : '';
-  if (shiny && holo) return `<span class="shinyholo-badge" title="Shiny holo${t}"><i></i></span>`;
-  if (shiny) return `<span class="corner-badge shiny" title="Shiny${t}">${SHINY_STAR_SVG}</span>`;
-  if (holo)  return `<span class="corner-badge holo" title="Holo${t}">${HOLO_SVG}</span>`;
+  const il = inline ? ' inline' : '';
+  if (card.shiny && card.holo)  return `<span class="shinyholo-badge${il}" title="Shiny holo${t}"><i></i></span>`;
+  if (card.shadow && card.holo) return `<span class="shadowholo-badge${il}" title="Shadow holo${t}"><i></i></span>`;
+  if (card.shiny)  return `<span class="corner-badge shiny${il}" title="Shiny${t}">${SHINY_STAR_SVG}</span>`;
+  if (card.shadow) return `<span class="corner-badge shadow${il}" title="Shadow${t}">${SHADOW_MOON_SVG}</span>`;
+  if (card.holo)   return `<span class="corner-badge holo${il}" title="Holo${t}">${HOLO_SVG}</span>`;
   return '';
+}
+
+// The sparkle/foil layers for a card's variants, shared by card faces, dex
+// tiles and binder pockets so every surface gets the same effects.
+function variantOverlays(card){
+  return (card.shiny ? `<div class="shiny-sparkle-overlay"></div>` : '')
+       + (card.shadow ? `<div class="shadow-sparkle-overlay"></div>` : '')
+       + (card.holo ? `<div class="holo-hex-overlay"></div><div class="holo-gloss-overlay"></div><div class="holo-sparkle-overlay"></div>` : '');
 }
 
 let state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[], favoriteUids:[] }; // hex:0 until signed in - real balance loads after auth
@@ -3269,10 +3340,11 @@ let dexGen = 1;
 // leaving the Dex page, so nobody comes back tomorrow to a half-empty grid and
 // reports missing cards. dexSearch is submitted, not live-typed: render()
 // rebuilds innerHTML, so filtering per keystroke would drop input focus.
-// Search spans ALL gens and overrides the tab; type, shiny and holo stay inside it.
+// Search spans ALL gens and overrides the tab; type, shiny, shadow and holo stay inside it.
 let dexHideEmpty = false;
 let dexTypeFilter = '';
 let dexShinyOnly = false;
+let dexShadowOnly = false;
 let dexHoloOnly = false;
 let dexSearch = '';
 const titleType = t => t.charAt(0).toUpperCase() + t.slice(1);
@@ -3373,10 +3445,10 @@ let viewingOpenBinderId = null; // null = shelf, else that binder's page
 let viewingBinderPageIdx = 0;
 
 function dexFiltersActive(){
-  return dexHideEmpty || !!dexTypeFilter || dexShinyOnly || dexHoloOnly || !!dexSearch;
+  return dexHideEmpty || !!dexTypeFilter || dexShinyOnly || dexShadowOnly || dexHoloOnly || !!dexSearch;
 }
 function resetDexFilters(){
-  dexHideEmpty = false; dexTypeFilter = ''; dexShinyOnly = false; dexHoloOnly = false; dexSearch = '';
+  dexHideEmpty = false; dexTypeFilter = ''; dexShinyOnly = false; dexShadowOnly = false; dexHoloOnly = false; dexSearch = '';
 }
 
 // One pool, five views. Every gen boundary in the client reads from here, so
@@ -3543,7 +3615,7 @@ function cardPayout(inst, now){
   const p = POKEMON_BY_ID.get(inst.id);
   if(!p) return null;
   const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
-  return Math.max(1, Math.round(effectiveCardValue(p.value, inst.shiny, inst.holo) * cardMultiplier(hoursHeld, now)));
+  return Math.max(1, Math.round(effectiveCardValue(p.value, inst.shiny, inst.holo, inst.shadow) * cardMultiplier(hoursHeld, now)));
 }
 
 function calculateCurrentVaultValue(){
@@ -4217,7 +4289,7 @@ function renderMarketModal() {
     const acquired = inst.acquiredAt || now;
     const hoursHeld = Math.max(0, (now - acquired) / (1000 * 60 * 60));
     const baseValue = p.value;
-    const effective = effectiveCardValue(p.value, inst.shiny, inst.holo);
+    const effective = effectiveCardValue(p.value, inst.shiny, inst.holo, inst.shadow);
     const multiplier = cardMultiplier(hoursHeld, now);
     const payout = Math.max(1, Math.round(effective * multiplier));
     // derived from heldBonusFor / the MARKET_* constants rather than restating
@@ -4258,19 +4330,20 @@ function renderMarketModal() {
 
         <div class="detail-card-display" data-open-inspect="${inst.uid}" style="cursor:pointer;" title="Tap to view full-size">${renderCardFace({
           id: p.id, name: p.name, rarity: inst.rarity, value: p.value,
-          shiny: inst.shiny, holo: inst.holo, type: p.type, sprite: p.sprite
+          shiny: inst.shiny, holo: inst.holo, shadow: inst.shadow, type: p.type, sprite: p.sprite
         }, true, filed)}</div>
 
         <div style="font-family:var(--font-display);font-weight:800;font-size:16px;color:${rc.color};text-transform:uppercase;letter-spacing:0.04em;">
-          ${esc(p.name)}${inst.shiny ? ' \u2605' : ''}${inst.holo ? ' \u2756' : ''}
+          ${esc(p.name)}${inst.shiny ? ' \u2605' : ''}${inst.shadow ? ' \u263E' : ''}${inst.holo ? ' \u2756' : ''}
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:-6px;">
-          #${String(p.id).padStart(3,'0')} &middot; ${p.type} &middot; ${rc.label}${inst.shiny ? ' &middot; SHINY' : ''}${inst.holo ? ' &middot; HOLO' : ''}
+          #${String(p.id).padStart(3,'0')} &middot; ${p.type} &middot; ${rc.label}${inst.shiny ? ' &middot; SHINY' : ''}${inst.shadow ? ' &middot; SHADOW' : ''}${inst.holo ? ' &middot; HOLO' : ''}
         </div>
 
         <div style="background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;width:100%;">
-          ${(inst.shiny || inst.holo) ? row('Base Value', `<i class="hex-icon"></i>${fmtHex(baseValue)}`) : ''}
+          ${(inst.shiny || inst.holo || inst.shadow) ? row('Base Value', `<i class="hex-icon"></i>${fmtHex(baseValue)}`) : ''}
           ${inst.shiny ? row('Shiny Multiplier', '&times;10', 'gold') : ''}
+          ${inst.shadow ? row('Shadow Multiplier', '&times;20', '#b04cff') : ''}
           ${inst.holo ? row('Holo Multiplier', '&times;3', '#8ad0ff') : ''}
           ${row('Card Value', `<i class="hex-icon"></i>${fmtHex(effective)}`)}
           ${row('Pulled', acquiredStr)}
@@ -4302,14 +4375,14 @@ function renderMarketModal() {
     const now = Date.now();
     const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
     const multiplier = cardMultiplier(hoursHeld, now);
-    const baseValue = effectiveCardValue(p.value, inst.shiny, inst.holo);
+    const baseValue = effectiveCardValue(p.value, inst.shiny, inst.holo, inst.shadow);
     const estPayout = Math.max(1, Math.round(baseValue * multiplier));
 
     return `
     <div class="overlay" data-modalclose-backdrop>
       <div class="summary-panel" style="max-width:440px;">
         <div style="font-family:var(--font-display);font-weight:800;font-size:18px;color:var(--gold);text-transform:uppercase;">Confirm Liquidation</div>
-        <div style="font-size:13px;text-align:center;">Liquidate <b>${esc(p.name)}${inst.shiny ? ' ✨' : ''}${inst.holo ? ' ❖' : ''}</b>?</div>
+        <div style="font-size:13px;text-align:center;">Liquidate <b>${esc(p.name)}${inst.shiny ? ' ✨' : ''}${inst.shadow ? ' ☾' : ''}${inst.holo ? ' ❖' : ''}</b>?</div>
         
         <div style="background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:12px;width:100%;text-align:center;">
           <div style="font-size:11px;color:var(--muted);">Estimated Current Price:</div>
@@ -4334,6 +4407,7 @@ function renderMarketModal() {
     const prev = dupePreview(targetTier, now);
     const protectedParts = [
       prev.shinyKept > 0 ? `${prev.shinyKept} shiny ${prev.shinyKept === 1 ? 'card' : 'cards'}` : '',
+      prev.shadowKept > 0 ? `${prev.shadowKept} shadow ${prev.shadowKept === 1 ? 'card' : 'cards'}` : '',
       prev.holoKept > 0 ? `${prev.holoKept} holo ${prev.holoKept === 1 ? 'card' : 'cards'}` : '',
       prev.filedKept > 0 ? `${prev.filedKept} filed ${prev.filedKept === 1 ? 'card' : 'cards'}` : ''
     ].filter(Boolean);
@@ -4357,7 +4431,7 @@ function renderMarketModal() {
 
         <div style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.35);border-radius:8px;padding:10px;width:100%;text-align:center;">
           <div style="font-size:10px;color:#c084fc;line-height:1.4;">
-            &#10024; <b>Shinies, holos, and anything filed in a binder are never sold in bulk executions.</b>
+            &#10024; <b>Shinies, shadows, holos, and anything filed in a binder are never sold in bulk executions.</b>
             ${protectedParts.length
               ? ` Protected in this tier: ${protectedParts.join(', ')}.`
               : ` Nothing in this tier needs protecting right now.`}
@@ -4381,6 +4455,7 @@ function renderMarketModal() {
     const totalEstPayout = prev.est;
     const protectedParts = [
       prev.shinyKept > 0 ? `${prev.shinyKept} shiny ${prev.shinyKept === 1 ? 'card' : 'cards'}` : '',
+      prev.shadowKept > 0 ? `${prev.shadowKept} shadow ${prev.shadowKept === 1 ? 'card' : 'cards'}` : '',
       prev.holoKept > 0 ? `${prev.holoKept} holo ${prev.holoKept === 1 ? 'card' : 'cards'}` : '',
       prev.filedKept > 0 ? `${prev.filedKept} filed ${prev.filedKept === 1 ? 'card' : 'cards'}` : ''
     ].filter(Boolean);
@@ -4406,7 +4481,7 @@ function renderMarketModal() {
 
         <div style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.35);border-radius:8px;padding:10px;width:100%;text-align:center;">
           <div style="font-size:10px;color:#c084fc;line-height:1.4;">
-            &#10024; <b>Shinies and anything filed in a binder are never sold in bulk executions.</b>${tierProtectHolo ? ' Holos are protected too, since you checked the box above.' : ''}
+            &#10024; <b>Shinies, shadows and anything filed in a binder are never sold in bulk executions.</b>${tierProtectHolo ? ' Holos are protected too, since you checked the box above.' : ''}
             ${protectedParts.length
               ? ` Protected in this tier: ${protectedParts.join(', ')}.`
               : ` Nothing in this tier needs protecting right now.`}
@@ -4425,7 +4500,8 @@ function renderMarketModal() {
 }
 
 // Preview for Liquidate Duplicates. Mirrors the server's liquidate_duplicates
-// exactly: shinies are always kept, filed-in-a-binder copies are always kept
+// exactly: shinies and shadows are always kept (a shadow represents its
+// species just as a shiny does), filed-in-a-binder copies are always kept
 // (and still count toward whether the species "has" a shiny/holo even though
 // they're excluded from the sellable pool), and a holo - anywhere in the
 // species, filed or not - always outranks a plain copy as the one kept
@@ -4440,21 +4516,23 @@ function dupePreview(tier, now){
     (groups[inst.id] = groups[inst.id] || []).push(inst);
   });
 
-  let count = 0, est = 0, shinyKept = 0, holoKept = 0, filedKept = 0;
+  let count = 0, est = 0, shinyKept = 0, shadowKept = 0, holoKept = 0, filedKept = 0;
   Object.values(groups).forEach(g => {
     const hasShiny = g.some(x => x.shiny);
     if (hasShiny) shinyKept += g.filter(x => x.shiny).length;
+    const hasShadow = g.some(x => x.shadow);
+    if (hasShadow) shadowKept += g.filter(x => x.shadow).length;
     const hasHolo = g.some(x => x.holo);
     const hasFiled = g.some(x => usedUids.has(x.uid));
-    filedKept += g.filter(x => !x.shiny && usedUids.has(x.uid)).length;
+    filedKept += g.filter(x => !x.shiny && !x.shadow && usedUids.has(x.uid)).length;
 
-    // candidates: anything that could actually be sold - not shiny, not filed
-    const candidates = g.filter(x => !x.shiny && !usedUids.has(x.uid) && POKEMON_BY_ID.has(x.id)).map(inst => {
+    // candidates: anything that could actually be sold - not shiny, not shadow, not filed
+    const candidates = g.filter(x => !x.shiny && !x.shadow && !usedUids.has(x.uid) && POKEMON_BY_ID.has(x.id)).map(inst => {
       const p = POKEMON.find(x => x.id === inst.id);
       const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
       return { inst, hoursHeld,
         // effValue is local to renderMarket(), so the same rule is inlined here
-        payout: Math.max(1, Math.round((effectiveCardValue(p.value, inst.shiny, inst.holo)) * cardMultiplier(hoursHeld, now))) };
+        payout: Math.max(1, Math.round((effectiveCardValue(p.value, inst.shiny, inst.holo, inst.shadow)) * cardMultiplier(hoursHeld, now))) };
     });
     // same tiebreak chain as the RPC: payout asc, hours asc, uid asc
     candidates.sort((a, b) => a.payout - b.payout || a.hoursHeld - b.hoursHeld
@@ -4469,30 +4547,31 @@ function dupePreview(tier, now){
         const keptUid = holoCandidates[0].inst.uid;
         doomed = candidates.filter(d => d.inst.uid !== keptUid);
       } else {
-        // the species' only holo is filed or shiny - already protected,
+        // the species' only holo is filed, shiny or shadow - already protected,
         // nothing floating needs to be spared on its behalf
         doomed = candidates;
       }
     } else {
-      // a filed copy already represents the species, same as a shiny does
-      doomed = (hasShiny || hasFiled) ? candidates : candidates.slice(1);
+      // a filed copy already represents the species, same as a shiny or shadow does
+      doomed = (hasShiny || hasShadow || hasFiled) ? candidates : candidates.slice(1);
     }
 
     doomed.forEach(d => { est += d.payout; count++; });
   });
-  return { count, est, shinyKept, holoKept, filedKept };
+  return { count, est, shinyKept, shadowKept, holoKept, filedKept };
 }
 
-// Preview for Liquidate Tier. Mirrors the server's liquidate_tier: shinies
-// and filed-in-a-binder copies are always kept; holos are additionally kept
+// Preview for Liquidate Tier. Mirrors the server's liquidate_tier: shinies,
+// shadows and filed-in-a-binder copies are always kept; holos are additionally kept
 // only when protectHolo is true (this function's tier has no per-species
 // grouping, so it's a blanket skip, not a "keep one" rule like duplicates).
 function tierPreview(tier, now, protectHolo){
   const usedUids = usedBinderUids();
-  let count = 0, est = 0, shinyKept = 0, holoKept = 0, filedKept = 0;
+  let count = 0, est = 0, shinyKept = 0, shadowKept = 0, holoKept = 0, filedKept = 0;
   (state.instances || []).forEach(inst => {
     if (inst.rarity !== tier) return;
     if (inst.shiny) { shinyKept++; return; }
+    if (inst.shadow) { shadowKept++; return; }
     if (usedUids.has(inst.uid)) { filedKept++; return; }
     if (protectHolo && inst.holo) { holoKept++; return; }
     const p = POKEMON.find(x => x.id === inst.id);
@@ -4501,10 +4580,10 @@ function tierPreview(tier, now, protectHolo){
     // was p.value alone here, silently dropping the holo 3x multiplier from
     // the estimate even before this feature - now matches effective_card_value
     // the RPC actually uses
-    est += Math.max(1, Math.round(effectiveCardValue(p.value, inst.shiny, inst.holo) * cardMultiplier(hoursHeld, now)));
+    est += Math.max(1, Math.round(effectiveCardValue(p.value, inst.shiny, inst.holo, inst.shadow) * cardMultiplier(hoursHeld, now)));
     count++;
   });
-  return { count, est, shinyKept, holoKept, filedKept };
+  return { count, est, shinyKept, shadowKept, holoKept, filedKept };
 }
 
 function renderMarket(){
@@ -4524,7 +4603,7 @@ function renderMarket(){
   const groupedByTier = {};
   tierOrder.forEach(t => groupedByTier[t] = []);
 
-  const effValue = (p, inst) => effectiveCardValue(p.value, inst.shiny, inst.holo);
+  const effValue = (p, inst) => effectiveCardValue(p.value, inst.shiny, inst.holo, inst.shadow);
 
   // Resolve the submitted query to a set of instance uids. Matches on dex
   // number (exact) or name (substring, case-insensitive). A player can hold
@@ -4649,6 +4728,7 @@ function renderMarket(){
                 return rows.map(({ p, list, cards, stackEst }) => {
                   const isSingle = list.length === 1;
                   const hasShiny = list.some(x => x.shiny);
+                  const hasShadow = list.some(x => x.shadow);
                   const hasHolo = list.some(x => x.holo);
                   const hasHit = list.some(x => hitSet.has(x.uid));
                   const key = `${tier}:${p.id}`;
@@ -4660,7 +4740,7 @@ function renderMarket(){
                         <span class="mono" style="color:var(--muted);font-size:11px;min-width:38px;">#${String(p.id).padStart(3,'0')}</span>
                         <span class="cf-type" style="background:${TYPE_COLORS[p.type]};color:#000;font-size:9px;">${p.type}</span>
                         <span style="font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                          ${esc(p.name)}${hasShiny ? ' <span style="color:gold;text-shadow:0 0 5px gold;" title="Shiny in stack">&#9733;</span>' : ''}${hasHolo ? ' <span style="color:#8ad0ff;text-shadow:0 0 5px #8ad0ff;" title="Holo in stack">&#10070;</span>' : ''}
+                          ${esc(p.name)}${hasShiny ? ' <span style="color:gold;text-shadow:0 0 5px gold;" title="Shiny in stack">&#9733;</span>' : ''}${hasShadow ? ' <span style="color:#b04cff;text-shadow:0 0 5px #b04cff;" title="Shadow in stack">&#9790;</span>' : ''}${hasHolo ? ' <span style="color:#8ad0ff;text-shadow:0 0 5px #8ad0ff;" title="Holo in stack">&#10070;</span>' : ''}
                         </span>
                         ${isSingle
                           ? `<span class="mono" style="font-size:10px;color:var(--foil1);border:1px solid var(--foil1);border-radius:4px;padding:1px 5px;" title="Your only copy - selling this drops it from your Dex">ONLY COPY</span>`
@@ -4680,7 +4760,7 @@ function renderMarket(){
                               <div class="packcard ${hitSet.has(inst.uid) ? 'search-hit' : ''}" style="padding:10px;border-color:${rc.color};display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--surface);cursor:pointer;" data-open-detail-modal="${inst.uid}" title="Inspect card &mdash; value breakdown and favorite">
                                 <div class="detail-card-display">${renderCardFace({
                                   id: p.id, name: p.name, rarity: inst.rarity, value: p.value,
-                                  shiny: inst.shiny, holo: inst.holo, type: p.type, sprite: p.sprite
+                                  shiny: inst.shiny, holo: inst.holo, shadow: inst.shadow, type: p.type, sprite: p.sprite
                                 }, true, usedUids.has(inst.uid))}</div>
                                 <div style="font-size:8.5px;color:var(--muted);text-align:center;">
                                   Acquired: ${dateStr}
@@ -4857,10 +4937,10 @@ function favSlotPicker(uid){
     // an occupied slot whose card was sold still occupies the slot - say so
     // rather than showing it as free, or the count won't add up for the player
     const art = p
-      ? `<img src="${p.sprite}" alt="" loading="lazy" style="width:52px;height:52px;image-rendering:pixelated;${inst.shiny ? `filter:hue-rotate(${shinyHue(p.id)}deg) saturate(1.4);` : ''}">`
+      ? `<img src="${p.sprite}" alt="" loading="lazy" ${inst.shadow ? 'class="shadow-sprite" ' : ''}style="width:52px;height:52px;image-rendering:pixelated;${inst.shiny ? `filter:hue-rotate(${shinyHue(p.id)}deg) saturate(1.4);` : ''}">`
       : `<div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:20px;color:rgba(255,255,255,0.45);">${held ? '?' : '+'}</div>`;
     const label = p
-      ? `#${String(p.id).padStart(3,'0')} ${esc(p.name)}${inst.shiny ? ' ★' : ''}${inst.holo ? ' ❖' : ''}`
+      ? `#${String(p.id).padStart(3,'0')} ${esc(p.name)}${inst.shiny ? ' ★' : ''}${inst.shadow ? ' ☾' : ''}${inst.holo ? ' ❖' : ''}`
       : (held ? 'Sold card' : 'Empty');
     cells.push(`
       <button class="buybtn" style="flex:1;min-width:0;padding:6px 4px;font-size:10px;line-height:1.3;display:flex;flex-direction:column;align-items:center;gap:2px;"
@@ -4984,7 +5064,7 @@ const SKILL_META = [
     note:'Earned when you <b>liquidate</b> cards, scaled by rarity. Bulk liquidation pays the full rate per card, so selling a hundred at once is worth exactly the same as selling them one by one.' },
   { key:'prayer',   label:'Prayer',
     icon:'<path d="M10 2.2c.6 3.9 1.9 5.2 5.8 5.8-3.9.6-5.2 1.9-5.8 5.8-.6-3.9-1.9-5.2-5.8-5.8 3.9-.6 5.2-1.9 5.8-5.8z"/><path d="M15.4 13.2c.3 1.9.9 2.5 2.8 2.8-1.9.3-2.5.9-2.8 2.8-.3-1.9-.9-2.5-2.8-2.8 1.9-.3 2.5-.9 2.8-2.8z"/>',
-    note:'The luck skill. Earned from <b>every wheel spin</b>, and a much larger amount for <b>every shiny you pull</b> - whether you keep it or sell it.' },
+    note:'The luck skill. Earned from <b>every wheel spin</b>, and a much larger amount for <b>every shiny or shadow you pull</b> - whether you keep it or sell it.' },
   { key:'agility',  label:'Agility',
     icon:'<path d="M3 14.5 7 10l3 2 7-7M13 5.5h4v4"/>',
     note:'Earned only when you sell <b>above the market average</b>, scaled by how far above. Selling into a dip earns nothing. This is the one skill you cannot grind - you can only time it.' }
@@ -5319,7 +5399,7 @@ async function claimGift(id){
     if(msg){ msg.claimed_at = new Date().toISOString(); msg.read_at = msg.read_at || msg.claimed_at; }
     if(fresh) toast(data.hex
       ? `Claimed <i class="hex-icon"></i>${fmtHex(data.hex)} HEX!`
-      : `Claimed ${esc(data.name)}${data.shiny ? ' ✨' : ''}${data.holo ? ' ❖' : ''}!`);
+      : `Claimed ${esc(data.name)}${data.shiny ? ' ✨' : ''}${data.shadow ? ' ☾' : ''}${data.holo ? ' ❖' : ''}!`);
   } finally {
     claimBusy = null;
     render();
@@ -5469,7 +5549,7 @@ function viewingInstanceCard(uid){
   if(!inst) return null;
   const p = POKEMON.find(x=>x.id===inst.id);
   if(!p) return null;
-  return { uid, id:p.id, name:p.name, type:p.type, sprite:p.sprite, value:p.value, shiny:!!inst.shiny, holo:!!inst.holo, rarity:inst.rarity||p.rarity };
+  return { uid, id:p.id, name:p.name, type:p.type, sprite:p.sprite, value:p.value, shiny:!!inst.shiny, holo:!!inst.holo, shadow:!!inst.shadow, rarity:inst.rarity||p.rarity };
 }
 function viewingCountFilled(binder){
   return (binder.pages||[]).reduce((n,p)=>n + p.filter(uid=>uid && viewingInstanceCard(uid)).length, 0);
@@ -5521,7 +5601,7 @@ function renderPublicBinderPage(){
       return `<div class="pocket">
         <div class="pocket-lip"></div>
         <div class="sleeve">
-          <div class="dexslot owned ${card.shiny?'shiny-card':''}" style="--slot-color:${rarityColor(card.rarity)};${card.shiny?`--shiny-hue:${shinyHue(card.id)}deg;`:''}">
+          <div class="dexslot owned ${card.shiny?'shiny-card':''} ${card.shadow?'shadow-card':''}" style="--slot-color:${rarityColor(card.rarity)};${card.shiny?`--shiny-hue:${shinyHue(card.id)}deg;`:''}">
             ${renderPocketCard(card)}
           </div>
         </div>
@@ -5564,7 +5644,7 @@ function renderPublicProfile(){
   const mvpPokemon = mvp ? POKEMON.find(p=>p.id===mvp.id) : null;
   const mvpCard = mvpPokemon ? {
     id: mvp.id, name: mvp.name, rarity: mvp.rarity, value: mvp.value,
-    shiny: mvp.shiny, holo: mvp.holo, type: mvpPokemon.type, sprite: mvpPokemon.sprite
+    shiny: mvp.shiny, holo: mvp.holo, shadow: mvp.shadow, type: mvpPokemon.type, sprite: mvpPokemon.sprite
   } : null;
 
   const favoriteUids = Array.isArray(d.favoriteUids) ? d.favoriteUids : [];
@@ -5575,7 +5655,7 @@ function renderPublicProfile(){
     const fp = inst ? POKEMON.find(x => x.id === inst.id) : null;
     return fp ? {
       id: fp.id, name: fp.name, rarity: inst.rarity,
-      value: fp.value, shiny: inst.shiny, holo: inst.holo, type: fp.type, sprite: fp.sprite
+      value: fp.value, shiny: inst.shiny, holo: inst.holo, shadow: inst.shadow, type: fp.type, sprite: fp.sprite
     } : null;
   });
 
@@ -5620,6 +5700,7 @@ function renderPublicProfile(){
   ${genRows}
   <div class="stat-row"><span># of Secret Rares Pulled</span><span class="mono">${d.secretPullsCount}</span></div>
   <div class="stat-row"><span># of Shinies Found</span><span class="mono">${d.shinyPullsCount}</span></div>
+  <div class="stat-row"><span># of Shadows Found</span><span class="mono">${d.shadowPullsCount ?? 0}</span></div>
 
   <div class="stats-card-display">
     <div class="stats-card-col">
@@ -5702,7 +5783,7 @@ function renderMailbox(){
     if(g.hex) return `<span><i class="hex-icon"></i>${fmtHex(g.hex)} HEX</span>`;
     const p = POKEMON.find(x=>x.id===g.card.id);
     const color = p && RARITY[p.rarity] ? RARITY[p.rarity].color : 'var(--text)';
-    return `<span style="color:${color};font-weight:700;">${esc(p ? p.name : 'Card #' + g.card.id)}${g.card.shiny ? ' ✨' : ''}${g.card.holo ? ' ❖' : ''}</span>`;
+    return `<span style="color:${color};font-weight:700;">${esc(p ? p.name : 'Card #' + g.card.id)}${g.card.shiny ? ' ✨' : ''}${g.card.shadow ? ' ☾' : ''}${g.card.holo ? ' ❖' : ''}</span>`;
   };
   const messagesHtml = messages.length
     ? `<div class="msg-list">${messages.map(m => `
@@ -5840,15 +5921,14 @@ function lbBack(id){
   return `<span class="lb-back card-face card-back ${known ? 'back-' + esc(id) : ''}" aria-hidden="true">${known ? '' : '<span class="back-hex"></span>'}</span>`;
 }
 
-// The card on the Most Valuable Pull board: sprite (tinted if shiny), name,
-// and the game's own inline shiny/holo marks. Sized to keep rows 36px.
+// The card on the Most Valuable Pull board: sprite (tinted if shiny or
+// shadow), name, and the game's own inline variant mark. Sized to keep rows 36px.
 function lbCard(d){
   if(!d || !d.id) return '';
   const p = POKEMON_BY_ID.get(Number(d.id));
-  const sprite = p ? `<img class="lb-card-sprite" src="${p.sprite}" alt="" loading="lazy" style="${d.shiny ? `filter:hue-rotate(${shinyHue(p.id)}deg) saturate(1.4);` : ''}">` : '';
-  const marks = (d.shiny ? `<span class="corner-badge shiny inline" title="Shiny">${SHINY_STAR_SVG}</span>` : '')
-              + (d.holo  ? `<span class="corner-badge holo inline" title="Holo">${HOLO_SVG}</span>` : '');
-  const label = (d.shiny ? 'Shiny ' : '') + (d.holo ? 'Holo ' : '') + (d.name || (p && p.name) || '');
+  const sprite = p ? `<img class="lb-card-sprite${d.shadow ? ' shadow-sprite' : ''}" src="${p.sprite}" alt="" loading="lazy" style="${d.shiny ? `filter:hue-rotate(${shinyHue(p.id)}deg) saturate(1.4);` : ''}">` : '';
+  const marks = cardBadge(d, '', true);
+  const label = (d.shiny ? 'Shiny ' : '') + (d.shadow ? 'Shadow ' : '') + (d.holo ? 'Holo ' : '') + (d.name || (p && p.name) || '');
   return `<span class="lb-card" title="${esc(label)}">${sprite}<span class="lb-card-name">${esc(d.name || (p && p.name) || '')}</span>${marks}</span>`;
 }
 
@@ -5914,7 +5994,7 @@ function renderProfile(){
   const mvpPokemon = mvp ? POKEMON.find(p=>p.id===mvp.id) : null;
   const mvpCard = mvpPokemon ? {
     id: mvp.id, name: mvp.name, rarity: mvp.rarity, value: mvp.value,
-    shiny: mvp.shiny, holo: mvp.holo, type: mvpPokemon.type, sprite: mvpPokemon.sprite
+    shiny: mvp.shiny, holo: mvp.holo, shadow: mvp.shadow, type: mvpPokemon.type, sprite: mvpPokemon.sprite
   } : null;
 
   // favorites are not protected from being sold, so a slot's uid may no longer
@@ -5926,7 +6006,7 @@ function renderProfile(){
     const fp = inst ? POKEMON.find(x => x.id === inst.id) : null;
     return fp ? {
       id: fp.id, name: fp.name, rarity: inst.rarity,
-      value: fp.value, shiny: inst.shiny, holo: inst.holo, type: fp.type, sprite: fp.sprite, uid
+      value: fp.value, shiny: inst.shiny, holo: inst.holo, shadow: inst.shadow, type: fp.type, sprite: fp.sprite, uid
     } : null;
   });
   const usedUids = usedBinderUids();
@@ -5982,6 +6062,7 @@ function renderProfile(){
   ${genRows}
   <div class="stat-row"><span># of Secret Rares Pulled</span><span class="mono">${s.secretPullsCount}</span></div>
   <div class="stat-row"><span># of Shinies Found</span><span class="mono">${s.shinyPullsCount}</span></div>
+  <div class="stat-row"><span># of Shadows Found</span><span class="mono">${s.shadowPullsCount ?? 0}</span></div>
 
   <div class="stats-card-display">
     <div class="stats-card-col">
@@ -6070,16 +6151,17 @@ function renderHowTo(){
         <div><span class="k">Vault (Market page)</span><span>Pays <strong>base price &times; the live market index</strong>, plus up to <strong>+30%</strong> for holding (+1% per hour held).</span></div>
       </div>
       <p>So when the market is <em>below</em> normal, selling off the reveal screen is the safer deal. When it's high, or when you've held a card for a day or more, the Vault pays better. The Attack and Defense skills reward each style, so you'll see the difference in your XP too.</p>
-      <p><strong>Bulk selling.</strong> The Vault has two shortcuts for each rarity tier. <strong>Liquidate Duplicates</strong> keeps one copy of every card and sells the extras. <strong>Liquidate Tier</strong> sells everything in that tier. Both always skip shinies and anything filed in a binder. Duplicates also prefers to keep a holo as your one copy, and Tier has a box to protect holos.</p>
+      <p><strong>Bulk selling.</strong> The Vault has two shortcuts for each rarity tier. <strong>Liquidate Duplicates</strong> keeps one copy of every card and sells the extras. <strong>Liquidate Tier</strong> sells everything in that tier. Both always skip shinies, shadows and anything filed in a binder. Duplicates also prefers to keep a holo as your one copy, and Tier has a box to protect holos.</p>
       <p><strong>The wheel is the economy.</strong> Packs lose money on average; the market just decides how much. Your steady income is the free wheel, once an hour. Its cooldown survives a game reset, so resetting won't get you an extra spin.</p>
     `)}
 
-    ${sec('rare', 'Shinies & holos', `
+    ${sec('rare', 'Shinies, shadows & holos', `
       <div class="howto-shiny">${(()=>{ const p = POKEMON.find(x => x.id === 6); return renderCardFace({ id:p.id, name:p.name, rarity:p.rarity, value:p.value, shiny:true, type:p.type, sprite:p.sprite }, true); })()}</div>
       <p><strong>Shinies</strong> come out oddly colored and sparkling, with a <strong>&#9733;</strong> mark. They're worth <strong>10&times;</strong> a normal copy, and they're pure luck: nothing makes one more likely, and there's no hidden counter building up.</p>
+      <p><strong>Shadows</strong> come out dark, glowing purple, with a <strong>&#9790;</strong> mark. They're just as rare as shinies and worth <strong>20&times;</strong>. A card is never both shiny and shadow.</p>
       <p><strong>Holos</strong> have a foil shimmer and a <strong>&#10070;</strong> mark. They're worth <strong>3&times;</strong>.</p>
-      <p>A card can be both. A shiny holo is worth <strong>30&times;</strong>, which is about as good as a pull gets.</p>
-      <p>Bulk selling never touches shinies. The only way one leaves your collection is if you sell it yourself.</p>
+      <p>A shiny or a shadow can also be holo. A shiny holo is worth <strong>30&times;</strong>, and a shadow holo <strong>60&times;</strong>, which is about as good as a pull gets.</p>
+      <p>Bulk selling never touches shinies or shadows. The only way one leaves your collection is if you sell it yourself.</p>
     `)}
 
     ${sec('binders', 'Binders & favorites', `
@@ -6105,7 +6187,7 @@ function renderHowTo(){
           <tr><td>${skIco('defense')}Defense</td><td>sell a card you've held, scaled by how long</td><td>The opposite of Attack. You can't max both quickly.</td></tr>
           <tr><td>${skIco('strength')}Strength</td><td>open a pack, scaled by how much of your balance it costs</td><td>A big pack on a thin balance counts most.</td></tr>
           <tr><td>${skIco('magic')}Magic</td><td>liquidate, scaled by rarity</td><td>Bulk selling pays the full rate per card.</td></tr>
-          <tr><td>${skIco('prayer')}Prayer</td><td>spin the wheel, or pull a shiny</td><td>Shinies count even if you sell them. The slowest 99.</td></tr>
+          <tr><td>${skIco('prayer')}Prayer</td><td>spin the wheel, or pull a shiny or shadow</td><td>They count even if you sell them. The slowest 99.</td></tr>
           <tr><td>${skIco('agility')}Agility</td><td>sell <em>above</em> the market average, scaled by how far</td><td>Selling into a dip earns nothing. You can't grind it, only time it.</td></tr>
         </tbody>
       </table></div>
@@ -6146,6 +6228,7 @@ function renderDex(){
   // dex entry. Liquidate the shiny and the dex forgets it. Lifetime credit for
   // having pulled it lives in player_stats.shiny_pulls_count instead.
   const shinyIds = new Set((state.instances || []).filter(i => i.shiny).map(i => i.id));
+  const shadowIds = new Set((state.instances || []).filter(i => i.shadow).map(i => i.id));
   const holoIds  = new Set((state.instances || []).filter(i => i.holo).map(i => i.id));
   // Fully-filed indicator: every copy you own of this species is placed in
   // a binder somewhere, not just one of several. A per-copy "filed" badge
@@ -6163,16 +6246,17 @@ function renderDex(){
   // a shiny somewhere AND a holo somewhere" - those can be two different
   // copies. Shiny (10x) always outvalues plain holo (3x), so a species with
   // a plain shiny and a separate plain holo shows only the shiny star; a
-  // single copy that's genuinely both still shows both.
+  // single copy that's genuinely both still shows both. Shadow (20x) beats
+  // shiny holo (30x) only when it's a shadow holo (60x).
   const bestFlagsById = {};
   Object.keys(instancesBySpecies).forEach(idStr => {
     const id = Number(idStr);
     const p = POKEMON.find(x => x.id === id);
     if(!p) return;
     const best = instancesBySpecies[id].reduce((a, b) =>
-      effectiveCardValue(p.value, b.shiny, b.holo) > effectiveCardValue(p.value, a.shiny, a.holo) ? b : a
+      effectiveCardValue(p.value, b.shiny, b.holo, b.shadow) > effectiveCardValue(p.value, a.shiny, a.holo, a.shadow) ? b : a
     );
-    bestFlagsById[id] = { shiny: !!best.shiny, holo: !!best.holo };
+    bestFlagsById[id] = { shiny: !!best.shiny, holo: !!best.holo, shadow: !!best.shadow };
   });
   const genDef = GENS.find(g => g.n === dexGen) || GENS[0];
   const genRange = [genDef.lo, genDef.hi];
@@ -6186,6 +6270,7 @@ function renderDex(){
   if(q) list = list.filter(p => p.name.toLowerCase().includes(q) || String(p.id) === q || String(p.id).padStart(3,'0') === q);
   if(dexTypeFilter) list = list.filter(p => p.type === dexTypeFilter);
   if(dexShinyOnly)  list = list.filter(p => shinyIds.has(p.id));
+  if(dexShadowOnly) list = list.filter(p => shadowIds.has(p.id));
   if(dexHoloOnly)   list = list.filter(p => holoIds.has(p.id));
   if(dexHideEmpty)  list = list.filter(p => owned[p.id]);
   const shownOwned = list.filter(p => owned[p.id]).length;
@@ -6228,6 +6313,7 @@ function renderDex(){
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
     <button data-dexfilter="empty" class="dexfbtn ${dexHideEmpty?'on':''}">${dexHideEmpty?'&#10003; ':''}Hide Empty</button>
     <button data-dexfilter="shiny" class="dexfbtn ${dexShinyOnly?'on':''}">${dexShinyOnly?'&#10003; ':''}Shiny Only</button>
+    <button data-dexfilter="shadow" class="dexfbtn ${dexShadowOnly?'on':''}">${dexShadowOnly?'&#10003; ':''}Shadow Only</button>
     <button data-dexfilter="holo" class="dexfbtn ${dexHoloOnly?'on':''}">${dexHoloOnly?'&#10003; ':''}Holo Only</button>
     <select id="dexTypeSelect" class="dexfsel">
       <option value="">All Types</option>
@@ -6237,7 +6323,7 @@ function renderDex(){
 
   ${dexFiltersActive() ? `<div class="dexfbar">
     <span class="mono" style="font-size:11px;">
-      Filtered${q?` &middot; "${esc(dexSearch)}" across all gens`:''}${dexTypeFilter?` &middot; ${titleType(dexTypeFilter)}`:''}${dexShinyOnly?' &middot; shiny only':''}${dexHoloOnly?' &middot; holo only':''}${dexHideEmpty?' &middot; owned only':''}
+      Filtered${q?` &middot; "${esc(dexSearch)}" across all gens`:''}${dexTypeFilter?` &middot; ${titleType(dexTypeFilter)}`:''}${dexShinyOnly?' &middot; shiny only':''}${dexShadowOnly?' &middot; shadow only':''}${dexHoloOnly?' &middot; holo only':''}${dexHideEmpty?' &middot; owned only':''}
       &mdash; showing ${list.length} slot${list.length===1?'':'s'} (${shownOwned} owned)
     </span>
     <button data-dexfilter="clear" class="sbtn sell" style="padding:5px 10px;font-size:11px;">Clear Filters</button>
@@ -6250,11 +6336,10 @@ function renderDex(){
       const o = owned[p.id];
       const color = TYPE_COLORS[p.type];
       const bf = bestFlagsById[p.id];
-      return `<div class="dexslot ${o?'owned':''} ${o && bf && bf.shiny ? 'shiny-card' : ''}" ${o?`data-species="${p.id}"`:''} style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};${o && bf && bf.shiny ? `--shiny-hue:${shinyHue(p.id)}deg;` : ''}">
+      return `<div class="dexslot ${o?'owned':''} ${o && bf && bf.shiny ? 'shiny-card' : ''} ${o && bf && bf.shadow ? 'shadow-card' : ''}" ${o?`data-species="${p.id}"`:''} style="--slot-color:${o?RARITY[o.rarity]?.color||color:''};${o && bf && bf.shiny ? `--shiny-hue:${shinyHue(p.id)}deg;` : ''}">
         <span class="num mono">#${String(p.id).padStart(3,'0')}</span>
-        ${o && bf && bf.shiny ? `<div class="shiny-sparkle-overlay"></div>` : ''}
-        ${o && bf && bf.holo ? `<div class="holo-hex-overlay"></div><div class="holo-gloss-overlay"></div><div class="holo-sparkle-overlay"></div>` : ''}
-        ${o && bf ? cardBadge(bf.shiny, bf.holo, 'owned') : ''}
+        ${o && bf ? variantOverlays(bf) : ''}
+        ${o && bf ? cardBadge(bf, 'owned') : ''}
         ${o && fullyFiledIds.has(p.id) ? `<img class="filed-badge dexslot-filed-badge" src="${FILED_BADGE_ICON}" alt="" title="${o.count > 1 ? 'All copies filed in a binder' : 'Filed in a binder'}">` : ''}
         <div class="glyph">
           ${o?`<img src="${p.sprite}" alt="${esc(p.name)}" loading="lazy">`:``}
@@ -6295,15 +6380,15 @@ function dexAddChoices(speciesId){
   const singles = [];
   for(const inst of instancesFor(speciesId)){
     if(used.has(inst.uid) || favs.has(inst.uid)){ singles.push(inst); continue; }
-    const key = `${inst.rarity}|${inst.holo?1:0}|${inst.shiny?1:0}`;
+    const key = `${inst.rarity}|${inst.holo?1:0}|${inst.shiny?1:0}|${inst.shadow?1:0}`;
     const g = groups.get(key);
     if(!g){ groups.set(key, { inst, count:1 }); continue; }
     g.count++;
     // no acquiredAt reads as "held 0 hours" in payouts, so treat it as newest here too
     if((inst.acquiredAt || Infinity) > (g.inst.acquiredAt || Infinity)) g.inst = inst;
   }
-  // plain first, then holo, shiny, shiny holo
-  const rank = inst => (inst.shiny ? 2 : 0) + (inst.holo ? 1 : 0);
+  // plain first, then holo, shiny, shiny holo, shadow, shadow holo
+  const rank = inst => (inst.shadow ? 4 : inst.shiny ? 2 : 0) + (inst.holo ? 1 : 0);
   return { groups: [...groups.values()].sort((a,b)=>rank(a.inst)-rank(b.inst)), singles, used };
 }
 // The uid to go straight to the binder list with, or null when the player
@@ -6314,7 +6399,7 @@ function dexAddSoleUid(speciesId){
   return groups.length ? groups[0].inst.uid : singles[0].uid;
 }
 function variantLabel(inst){
-  return `${inst.shiny?'&#9733; Shiny ':''}${inst.holo?'&#10070; Holo ':''}${(RARITY[inst.rarity]||RARITY.common).label}`;
+  return `${inst.shiny?'&#9733; Shiny ':''}${inst.shadow?'&#9790; Shadow ':''}${inst.holo?'&#10070; Holo ':''}${(RARITY[inst.rarity]||RARITY.common).label}`;
 }
 
 function renderDexAddSheet(){
@@ -6336,7 +6421,7 @@ function renderDexAddSheet(){
   if(!dexAddUid){
     const { groups, singles, used } = dexAddChoices(dexAddSpeciesId);
     const thumb = inst => `<span class="chooserow-thumb">
-                <img src="${p.sprite}" alt="" loading="lazy" style="width:32px;height:32px;image-rendering:pixelated;${inst.shiny ? `filter:hue-rotate(${shinyHue(p.id)}deg) saturate(1.4);` : ''}">
+                <img src="${p.sprite}" alt="" loading="lazy"${inst.shadow ? ' class="shadow-sprite"' : ''} style="width:32px;height:32px;image-rendering:pixelated;${inst.shiny ? `filter:hue-rotate(${shinyHue(p.id)}deg) saturate(1.4);` : ''}">
                 ${used.has(inst.uid) ? `<img class="filed-badge chooserow-filed-badge" src="${FILED_BADGE_ICON}" alt="" title="Already filed in a binder">` : ''}
               </span>`;
     return `<div class="overlay" data-dexaddclose-backdrop>
@@ -6557,7 +6642,7 @@ function instanceCard(uid){
   if(!inst) return null;
   const p = POKEMON.find(x=>x.id===inst.id);
   if(!p) return null;
-  return { uid, id:p.id, name:p.name, type:p.type, sprite:p.sprite, value:p.value, shiny:!!inst.shiny, holo:!!inst.holo, rarity:inst.rarity||p.rarity };
+  return { uid, id:p.id, name:p.name, type:p.type, sprite:p.sprite, value:p.value, shiny:!!inst.shiny, holo:!!inst.holo, shadow:!!inst.shadow, rarity:inst.rarity||p.rarity };
 }
 
 // A physical card only sits in one pocket at a time, but a filed copy is
@@ -6587,9 +6672,8 @@ function renderPocketCard(card){
   const rc = RARITY[card.rarity] || RARITY.common;
   return `
     <span class="num mono">#${String(card.id).padStart(3,'0')}</span>
-    ${card.shiny ? `<div class="shiny-sparkle-overlay"></div>` : ''}
-    ${card.holo ? `<div class="holo-hex-overlay"></div><div class="holo-gloss-overlay"></div><div class="holo-sparkle-overlay"></div>` : ''}
-    ${cardBadge(card.shiny, card.holo)}
+    ${variantOverlays(card)}
+    ${cardBadge(card)}
     <div class="glyph"><img src="${card.sprite}" alt="${esc(card.name)}" loading="lazy"></div>
     <div class="nm">${esc(card.name)}</div>
   `;
@@ -6623,7 +6707,7 @@ function renderBinderPage(){
       return `<div class="pocket ${blocked?'blocked':''}" data-pocket data-page="${pageIdx}" data-slot="${slotIdx}" data-uid="${card.uid}">
         <div class="pocket-lip"></div>
         <div class="sleeve">
-          <div class="dexslot owned ${card.shiny?'shiny-card':''}" style="--slot-color:${rarityColor(card.rarity)};${card.shiny?`--shiny-hue:${shinyHue(card.id)}deg;`:''}">
+          <div class="dexslot owned ${card.shiny?'shiny-card':''} ${card.shadow?'shadow-card':''}" style="--slot-color:${rarityColor(card.rarity)};${card.shiny?`--shiny-hue:${shinyHue(card.id)}deg;`:''}">
             ${renderPocketCard(card)}
           </div>
         </div>
@@ -6666,9 +6750,9 @@ function renderBinderPage(){
   ${carryCard ? `
   <div class="carrybar">
     <div class="carrybar-thumb" style="--slot-color:${rarityColor(carryCard.rarity)};">
-      <img src="${carryCard.sprite}" alt="" style="${carryCard.shiny?`filter:hue-rotate(${shinyHue(carryCard.id)}deg) saturate(1.4);`:''}">
+      <img src="${carryCard.sprite}" alt=""${carryCard.shadow ? ' class="shadow-sprite"' : ''} style="${carryCard.shiny?`filter:hue-rotate(${shinyHue(carryCard.id)}deg) saturate(1.4);`:''}">
     </div>
-    <div class="carrytext mono">${esc(carryCard.name)}${carryCard.holo ? ' ❖' : ''}</div>
+    <div class="carrytext mono">${esc(carryCard.name)}${carryCard.shadow ? ' ☾' : ''}${carryCard.holo ? ' ❖' : ''}</div>
     ${carrying.source==='reorder' ? `<button class="mono" style="background:none;border:none;color:#ff6b6b;font-size:11px;text-decoration:underline;cursor:pointer;padding:5px 6px;" data-remove-from-binder>Remove from Binder</button>` : ''}
     <button class="sbtn sell" data-cancel-carry style="padding:5px 10px;font-size:11px;">Cancel</button>
   </div>` : ''}
@@ -6685,7 +6769,7 @@ function renderInspect(){
   if(!card){ inspectUid = null; return ''; } // liquidated while inspecting - just close
   const binder = binderById(openBinderId);
   const glowColor = binder ? binder.color : '#ffffff';
-  const faceCard = { id:card.id, name:card.name, type:card.type, rarity:card.rarity, shiny:card.shiny, holo:card.holo, sprite:card.sprite, value:card.value };
+  const faceCard = { id:card.id, name:card.name, type:card.type, rarity:card.rarity, shiny:card.shiny, holo:card.holo, shadow:card.shadow, sprite:card.sprite, value:card.value };
   return `
   <div class="overlay inspect-overlay" data-closeinspect-backdrop>
     <button class="closex" data-closeinspect>&times;</button>
@@ -6708,10 +6792,9 @@ function renderCardFace(card, flipped, filed){
       <div class="card-slot ${flipped?'flipped':''}" data-flip>
         <div class="card-inner">
           <div class="card-face card-back ${cardBack.cls} ${shineTiers.includes(card.rarity)?'flame-aura':''}">${cardBack.wordmark ? `<span class="back-hex" aria-hidden="true"></span>` : ''}</div>
-          <div class="card-face card-front ${card.shiny?'shiny-card':''} ${shineTiers.includes(card.rarity)?'shine flame-aura':''}"
+          <div class="card-face card-front ${card.shiny?'shiny-card':''} ${card.shadow?'shadow-card':''} ${shineTiers.includes(card.rarity)?'shine flame-aura':''}"
                style="--card-color:${rc.color};--type-color:${TYPE_COLORS[card.type]};${card.shiny ? `--shiny-hue:${shinyHue(card.id)}deg;` : ''}">
-            ${card.shiny ? `<div class="shiny-sparkle-overlay"></div>` : ''}
-            ${card.holo ? `<div class="holo-hex-overlay"></div><div class="holo-gloss-overlay"></div><div class="holo-sparkle-overlay"></div>` : ''}
+            ${variantOverlays(card)}
             <div class="cf-top">
               ${flipped && filed
                 ? `<img class="filed-badge cardface-filed-badge" src="${FILED_BADGE_ICON}" alt="" title="Filed in a binder">`
@@ -6723,12 +6806,10 @@ function renderCardFace(card, flipped, filed){
             </div>
             <div class="cf-bottom">
               <div class="cf-name">${esc(card.name)}${
-                card.shiny && card.holo ? ' <span class="shinyholo-badge inline" title="Shiny holo"><i></i></span>'
-                : card.shiny ? ` <span class="corner-badge shiny inline" title="Shiny">${SHINY_STAR_SVG}</span>`
-                : card.holo ? ` <span class="corner-badge holo inline" title="Holo">${HOLO_SVG}</span>` : ''
+                (card.shiny || card.shadow || card.holo) ? ' ' + cardBadge(card, '', true) : ''
               }</div>
               <div class="cf-rarity">${rc.label} <span class="cf-num mono">#${String(card.id).padStart(3,'0')}</span></div>
-              <div class="cf-value"><i class="hex-icon"></i> ${effectiveCardValue(card.value, card.shiny, card.holo)} HEX</div>
+              <div class="cf-value"><i class="hex-icon"></i> ${effectiveCardValue(card.value, card.shiny, card.holo, card.shadow)} HEX</div>
             </div>
           </div>
         </div>
@@ -6787,7 +6868,7 @@ function renderOpening(){
 }
 
 function renderSummary(){
-  const effValue = c => effectiveCardValue(c.value, c.shiny, c.holo);
+  const effValue = c => effectiveCardValue(c.value, c.shiny, c.holo, c.shadow);
   const total = opening.cards.reduce((s,c,i)=>s+ (opening.keep[i]?0:effValue(c)),0);
   const sellAllTotal = opening.cards.reduce((s,c)=>s+effValue(c),0);
   const keepCount = opening.keep.filter(Boolean).length;
@@ -6796,7 +6877,7 @@ function renderSummary(){
     <div class="summary-total mono">Keeping <b>${keepCount}</b> for your dex &middot; selling the rest for <b><i class="hex-icon"></i> ${total}</b></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
       ${opening.cards.map((c,i)=>`<label style="font-size:11px;color:var(--muted);display:flex;gap:5px;align-items:center;">
-        <input type="checkbox" data-keep="${i}" ${opening.keep[i]?'checked':''}/> ${esc(c.name)}${c.shiny ? ' ✨' : ''}${c.holo ? ' ❖' : ''}
+        <input type="checkbox" data-keep="${i}" ${opening.keep[i]?'checked':''}/> ${esc(c.name)}${c.shiny ? ' ✨' : ''}${c.shadow ? ' ☾' : ''}${c.holo ? ' ❖' : ''}
       </label>`).join('')}
     </div>
     <div class="summary-actions">
@@ -7768,7 +7849,7 @@ function wire(){
       const card = opening.cards[i];
       flipSound();
       revealSound(card.rarity,0.05);
-      if(card.shiny) shinySound(0.16);
+      if(card.shiny || card.shadow) shinySound(0.16);
       if(card.rarity==='ultra'||card.rarity==='secret') burstConfetti();
       render();
     };
@@ -7783,7 +7864,7 @@ function wire(){
     opening.cards.forEach((card,i)=>{
       if(opening.flipped.includes(i)) return;
       flips.push(i);
-      if(card.shiny) shiny = true;
+      if(card.shiny || card.shadow) shiny = true;
       opening.flipped.push(i);
       const r = order.indexOf(card.rarity);
       if(r > best) best = r;
@@ -7906,6 +7987,7 @@ function wire(){
       const f = btn.dataset.dexfilter;
       if(f === 'empty') dexHideEmpty = !dexHideEmpty;
       else if(f === 'shiny') dexShinyOnly = !dexShinyOnly;
+      else if(f === 'shadow') dexShadowOnly = !dexShadowOnly;
       else if(f === 'holo') dexHoloOnly = !dexHoloOnly;
       else if(f === 'clear') resetDexFilters();
       render();
