@@ -6030,6 +6030,8 @@ function renderMailbox(){
 const LB_BOARDS = [
   { key:'net_worth',     label:'Net Worth',     group:'overall', head:['Net worth','Cash'],
     primary: v => `<i class="hex-icon"></i> ${fmtHex(v)}`, secondary: v => `${fmtHex(v)} HEX` },
+  { key:'trainer_level', label:'Trainer Level', group:'overall', head:['Trainer','Total XP'],
+    primary: v => `Lv ${v}`, secondary: v => `${fmtHex(v)} XP` },
   { key:'vault_value',   label:'Vault Value',   group:'overall', head:['Vault',''],
     primary: v => `<i class="hex-icon"></i> ${fmtHex(v)}`, secondary: () => '' },
   { key:'dex_percent',   label:'Dex',           group:'overall', head:['Dex','Cards'],
@@ -6038,8 +6040,6 @@ const LB_BOARDS = [
     primary: v => fmtHex(v), secondary: () => '' },
   { key:'shadow_pulls',  label:'Shadows',       group:'overall', head:['Shadows pulled',''],
     primary: v => fmtHex(v), secondary: () => '' },
-  { key:'trainer_level', label:'Trainer Level', group:'overall', head:['Trainer','Total XP'],
-    primary: v => `Lv ${v}`, secondary: v => `${fmtHex(v)} XP` },
   // each player's best pull ever; detail says which card it was
   { key:'best_pull', label:'Most Valuable Pull', group:'overall', head:['Value','Card'], keepSecondary:true,
     primary: v => `<i class="hex-icon"></i> ${fmtHex(v)}`, secondary: (v, r) => lbCard(r.detail) },
