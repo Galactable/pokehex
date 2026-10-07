@@ -3716,6 +3716,29 @@ function recordVaultValue(){
   }
 }
 
+// Apply a bulk sale's returned change - the uids sold, the dex entries it
+// touched (null = that species is gone) and the balance after - instead of
+// reloading everything. Returns false without touching state when the
+// response can't be applied cleanly: an older server that doesn't send the
+// change, a sold card without a uid, or a local card list that doesn't match
+// what the server sold (another device changed it). The caller then falls
+// back to loadState().
+function applySaleDelta(data){
+  if(!data || !Array.isArray(data.sold) || !data.dex || typeof data.hex !== 'number') return false;
+  if(data.sold.some(u => typeof u !== 'string')) return false;
+  const sold = new Set(data.sold);
+  const kept = (state.instances || []).filter(inst => !sold.has(inst.uid));
+  if((state.instances || []).length - kept.length !== data.count) return false;
+  state.instances = kept;
+  state.dex = state.dex || {};
+  for(const [pid, entry] of Object.entries(data.dex)){
+    if(entry === null) delete state.dex[pid];
+    else state.dex[pid] = entry;
+  }
+  state.hex = data.hex;
+  return true;
+}
+
 let packBusy = false;
 async function openPack(pack){
   if(!requireAuth()) return;
@@ -5472,26 +5495,42 @@ async function claimGift(id){
       await loadMessages(); // the server knows whether it's claimed or gone
       return;
     }
-    // the server has credited it - read the changed rows back rather than
-    // mirroring the gift locally, same reasoning as finalizeOpening()
-    const { data: fresh, error: readErr } = await sb
-      .from('game_states_v2')
-      .select('hex, dex, instances')
-      .eq('user_id', authUser.id)
-      .maybeSingle();
-    if(readErr || !fresh){
-      console.error('post-claim re-read failed', readErr);
-      toast('Gift claimed - reload the page to see it.');
-    } else {
-      state.hex = fresh.hex;
-      state.dex = fresh.dex || {};
-      state.instances = fresh.instances || [];
+    let applied = false;
+    if(data && Array.isArray(data.added) && data.dex_changed && typeof data.balance === 'number'){
+      // the server returns what it changed - the card it added exactly as
+      // stored (none for a HEX gift), the dex entry it touched and the balance
+      // after - so apply that instead of re-reading the whole card list, as
+      // finalizeOpening() does. data.hex is the gifted amount, not the balance.
+      state.hex = data.balance;
+      state.instances = state.instances || [];
+      state.instances.push(...data.added);
+      state.dex = Object.assign(state.dex || {}, data.dex_changed);
       recordVaultValue();
       saveState();
+      applied = true;
+    } else {
+      // a server that doesn't send the change: read the changed rows back
+      // rather than mirroring the gift locally, same reasoning as finalizeOpening()
+      const { data: fresh, error: readErr } = await sb
+        .from('game_states_v2')
+        .select('hex, dex, instances')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+      if(readErr || !fresh){
+        console.error('post-claim re-read failed', readErr);
+        toast('Gift claimed - reload the page to see it.');
+      } else {
+        state.hex = fresh.hex;
+        state.dex = fresh.dex || {};
+        state.instances = fresh.instances || [];
+        recordVaultValue();
+        saveState();
+        applied = true;
+      }
     }
     const msg = (state.messages||[]).find(x=>x.id===id);
     if(msg){ msg.claimed_at = new Date().toISOString(); msg.read_at = msg.read_at || msg.claimed_at; }
-    if(fresh) toast(data.hex
+    if(applied) toast(data.hex
       ? `Claimed <i class="hex-icon"></i>${fmtHex(data.hex)} HEX!`
       : `Claimed ${esc(data.name)}${data.shiny ? ' ✨' : ''}${data.shadow ? ' ☾' : ''}${data.holo ? ' ❖' : ''}!`);
   } finally {
@@ -7882,10 +7921,11 @@ function wire(){
           return;
         }
         if (data.count > 0) {
-          // the server decides which copy survives, so refetch rather than
-          // reproduce the keeper logic client-side and risk drift
+          // the server decides which copy survives, so apply the uids it
+          // reports sold rather than reproduce the keeper logic client-side;
+          // reload everything only if that change can't be applied cleanly
           activeModal = null;
-          await loadState();
+          if(!applySaleDelta(data)) await loadState();
           recordVaultValue();
           saveState();
           toast(`Liquidated ${data.count} duplicate ${data.count === 1 ? 'card' : 'cards'} for <i class="hex-icon"></i>${fmtHex(data.payout)} HEX!`);
@@ -7915,11 +7955,11 @@ function wire(){
         }
         if (data.count > 0) {
           // the server now decides what survives - shiny, filed, and
-          // optionally holo protection all interact - so refetch rather than
-          // reproduce the keeper logic client-side and risk drift, same
-          // reasoning as Liquidate Duplicates above
+          // optionally holo protection all interact - so apply what it reports
+          // sold rather than reproduce the keeper logic client-side, with the
+          // same reload fallback as Liquidate Duplicates above
           activeModal = null;
-          await loadState();
+          if(!applySaleDelta(data)) await loadState();
           recordVaultValue();
           saveState();
           toast(`Liquidated ${data.count} ${targetTier} cards for <i class="hex-icon"></i>${fmtHex(data.payout)} HEX!`);
