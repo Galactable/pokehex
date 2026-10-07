@@ -3312,11 +3312,17 @@ const MARKET_HELD_BONUS_RATE = 0.01;     // per hour held
 const FAVORITE_SLOTS = 3;
 const MARKET_MULT_FLOOR = 0.15;          // guard against near-zero/negative payouts
 
+// a pass over the vault values every card at the same instant, so the last
+// result is kept: cardMultiplier() runs once per card and would otherwise
+// redo the same three sine waves thousands of times per render
+let lastIndexT = null, lastIndex = 0;
 function marketIndexAt(t){
+  if(t === lastIndexT) return lastIndex;
   let idx = 1;
   MARKET_WAVES.forEach(w=>{
     idx += w.amp * Math.sin((2*Math.PI*(t-MARKET_EPOCH))/w.periodMs + w.phase);
   });
+  lastIndexT = t; lastIndex = idx;
   return idx;
 }
 function marketPhaseFor(idx){
@@ -3848,7 +3854,10 @@ function spinStatusText(){
   if(canSpin()) return 'Ready';
   return fmtCountdown(WHEEL_COOLDOWN - (Date.now()-state.lastSpinAt));
 }
-function fmtHex(n){ return n.toLocaleString('en-US'); }
+// one formatter, reused: toLocaleString builds a new one on every call, and
+// the Market formats thousands of prices per render and per live tick
+const HEX_FORMAT = new Intl.NumberFormat('en-US');
+function fmtHex(n){ return HEX_FORMAT.format(n); }
 
 // Sound on/off. Persisted so the choice survives a reload, and read once at
 // start-up rather than on every note.
@@ -4645,10 +4654,10 @@ function dupePreview(tier, now){
 
     // candidates: anything that could actually be sold - not shiny, not shadow, not filed
     const candidates = g.filter(x => !x.shiny && !x.shadow && !usedUids.has(x.uid) && POKEMON_BY_ID.has(x.id)).map(inst => {
-      const p = POKEMON.find(x => x.id === inst.id);
+      const p = POKEMON_BY_ID.get(inst.id);
       const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
       return { inst, hoursHeld,
-        // effValue is local to renderMarket(), so the same rule is inlined here
+        // same rule as marketItem(), inlined here
         payout: Math.max(1, Math.round((effectiveCardValue(p.value, inst.shiny, inst.holo, inst.shadow)) * cardMultiplier(hoursHeld, now))) };
     });
     // same tiebreak chain as the RPC: payout asc, hours asc, uid asc
@@ -4691,7 +4700,7 @@ function tierPreview(tier, now, protectHolo){
     if (inst.shadow) { shadowKept++; return; }
     if (usedUids.has(inst.uid)) { filedKept++; return; }
     if (protectHolo && inst.holo) { holoKept++; return; }
-    const p = POKEMON.find(x => x.id === inst.id);
+    const p = POKEMON_BY_ID.get(inst.id);
     if (!p) return;
     const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
     // was p.value alone here, silently dropping the holo 3x multiplier from
@@ -4703,114 +4712,42 @@ function tierPreview(tier, now, protectHolo){
   return { count, est, shinyKept, shadowKept, holoKept, filedKept };
 }
 
-function renderMarket(){
-  const instances = state.instances || [];
-  const now = Date.now();
-  const usedUids = usedBinderUids();
+const MARKET_TIER_LABELS = {
+  secret: 'Secret Rare',
+  ultra: 'Ultra Rare',
+  rare: 'Rare',
+  uncommon: 'Uncommon',
+  common: 'Common'
+};
 
-  const tierOrder = ['secret', 'ultra', 'rare', 'uncommon', 'common'];
-  const tierLabels = {
-    secret: 'Secret Rare',
-    ultra: 'Ultra Rare',
-    rare: 'Rare',
-    uncommon: 'Uncommon',
-    common: 'Common'
-  };
-
-  const groupedByTier = {};
-  tierOrder.forEach(t => groupedByTier[t] = []);
-
-  const effValue = (p, inst) => effectiveCardValue(p.value, inst.shiny, inst.holo, inst.shadow);
-
-  // Resolve the submitted query to a set of instance uids. Matches on dex
-  // number (exact) or name (substring, case-insensitive). A player can hold
-  // several copies of the same species, so this is a set, not one card.
-  const q = marketSearch.trim().toLowerCase();
-  marketHits = [];
-  if(q){
-    instances.forEach(inst => {
-      const p = POKEMON_BY_ID.get(inst.id);
-      if(!p) return;
-      const byNum = /^\d+$/.test(q) && p.id === parseInt(q, 10);
-      const byName = p.name.toLowerCase().includes(q);
-      if(byNum || byName) marketHits.push(inst.uid);
-    });
-  }
-  const hitSet = new Set(marketHits);
-  const tiersWithHits = new Set(
-    instances.filter(i => hitSet.has(i.uid)).map(i => i.rarity)
-  );
-
-  // payout worked out once per card here and reused below - the sort used
-  // to recompute it inside its comparator, O(n log n) times
-  instances.forEach((inst) => {
-    const p = POKEMON_BY_ID.get(inst.id);
-    if(!p) return;
-    if(groupedByTier[inst.rarity]) {
-      const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
-      const multiplier = cardMultiplier(hoursHeld, now);
-      const payout = Math.max(1, Math.round(effValue(p, inst) * multiplier));
-      groupedByTier[inst.rarity].push({ p, inst, hoursHeld, multiplier, payout });
-    }
+// One Market row per card: its catalog entry, hours held, multiplier and
+// payout at `now`. Shared by renderMarket and the lazy tier/stack fill below,
+// so both build the same rows in the same order.
+function marketItem(inst, now){
+  const p = POKEMON_BY_ID.get(inst.id);
+  if(!p) return null;
+  const hoursHeld = Math.max(0, (now - (inst.acquiredAt || now)) / (1000 * 60 * 60));
+  const multiplier = cardMultiplier(hoursHeld, now);
+  const payout = Math.max(1, Math.round(effectiveCardValue(p.value, inst.shiny, inst.holo, inst.shadow) * multiplier));
+  return { p, inst, hoursHeld, multiplier, payout };
+}
+function marketTierItems(tier, now){
+  const items = [];
+  (state.instances || []).forEach(inst => {
+    if(inst.rarity !== tier) return;
+    const item = marketItem(inst, now);
+    if(item) items.push(item);
   });
+  return items.sort((a, b) => b.payout - a.payout);
+}
 
-  tierOrder.forEach(t => {
-    groupedByTier[t].sort((a, b) => b.payout - a.payout);
-  });
-
-  return `
-    <div class="dexhead">
-      <div class="dexhead-left">
-        <h2 class="disp">Liquid Market</h2>
-        <div class="dexcount mono">Individual card management &middot; Prices track the live market cycle</div>
-        <div class="dexcount mono" style="margin-top:2px;">Tap any card to inspect it &mdash; full value breakdown, and set it as a favorite</div>
-      </div>
-    </div>
-
-    ${instances.length === 0 ? '' : `
-      <form id="marketSearchForm" style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
-        <input type="text" id="marketSearchInput" value="${esc(marketSearch)}" placeholder="Search vault: name or #" autocomplete="off"
-          style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;" />
-        <button type="submit" class="sbtn keep" style="padding:7px 12px;font-size:11px;">Find</button>
-        ${marketSearch ? `<button type="button" class="sbtn sell" data-searchclear style="padding:7px 12px;font-size:11px;">Clear</button>` : ''}
-      </form>
-      ${marketSearch ? `<div class="mono" style="font-size:11px;color:${marketHits.length ? 'var(--foil1)' : '#ff4444'};margin:-6px 0 12px 2px;">
-        ${marketHits.length ? `${marketHits.length} match${marketHits.length===1?'':'es'} for "${esc(marketSearch)}"` : `Nothing in your vault matches "${esc(marketSearch)}"`}
-      </div>` : ''}
-    `}
-
-    ${instances.length === 0 ? `
-      <div style="text-align:center;color:var(--muted);padding:40px;font-size:13px;">Your vault is empty. Break open some packs to acquire tradeable assets.</div>
-    ` : `
-      ${tierOrder.map(tier => {
-        const items = groupedByTier[tier];
-        if(!items || items.length === 0) return '';
-        const rc = RARITY[tier];
-
-        const tierTotalPayout = items.reduce((s, it) => s + it.payout, 0);
-        const tierOpen = tiersWithHits.has(tier) || expandedTiers.has(tier);
-
-        // A collapsed tier renders its summary line only. Its buttons, species
-        // rows and card tiles are built when it's opened (the toggle handler in
-        // wire() re-renders) - with thousands of cards, building them all up
-        // front was ~20MB of HTML and 200k DOM nodes on every render().
-        const summary = `
-            <summary style="font-family:var(--font-display);font-weight:800; font-size:15px; color:${rc.color}; cursor:pointer; text-transform:uppercase; letter-spacing:0.04em; outline:none; display:flex; justify-content:space-between; align-items:center;">
-              <span>${tierLabels[tier]} (${items.length})</span>
-              <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--gold);">
-                Tier Est: <span id="price-tier-${tier}"><i class="hex-icon"></i>~${fmtHex(tierTotalPayout)}</span>
-              </span>
-            </summary>`;
-        const detailsOpen = `<details data-tier="${tier}" ${tierOpen ? 'open' : ''} style="margin-bottom:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px;">`;
-        if(!tierOpen) return `${detailsOpen}${summary}<div data-lazy></div></details>`;
-
-        const dupePrev = dupePreview(tier, now);
-
-        return `
-          ${detailsOpen}
-            ${summary}
-            
-            <div style="padding-top:12px;">
+// An open tier's contents: the sell buttons and one row per species.
+function marketTierBody(tier, items, now, usedUids, hitSet){
+  const rc = RARITY[tier];
+  const tierLabels = MARKET_TIER_LABELS;
+  const tierTotalPayout = items.reduce((s, it) => s + it.payout, 0);
+  const dupePrev = dupePreview(tier, now);
+  return `<div style="padding-top:12px;">
               <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:10px; color:#ffaa00;">⚠️ Real-Time Liquidation Subject to Market Dynamics</span>
                 <div style="display:flex; gap:8px; align-items:center;">
@@ -4867,9 +4804,19 @@ function renderMarket(){
                         </span>
                       </summary>
 
-                      ${!open ? '<div data-lazy></div>' : `<div style="padding:4px 12px 12px;">
+                      ${!open ? '<div data-lazy></div>' : marketStackBody(cards, rc, usedUids, hitSet, now)}
+                    </details>
+                  `;
+                }).join('');
+              })()}
+            </div>`;
+}
+
+// An open species stack's contents: one tile per copy held.
+function marketStackBody(cards, rc, usedUids, hitSet, now){
+  return `<div style="padding:4px 12px 12px;">
                         <div class="dexgrid" style="grid-template-columns:repeat(auto-fill,minmax(154px,1fr));">
-                          ${cards.map(({ inst, hoursHeld, multiplier, payout }) => {
+                          ${cards.map(({ p, inst, hoursHeld, multiplier, payout }) => {
                             const acquired = inst.acquiredAt || now;
                             const dateStr = new Date(acquired).toLocaleDateString(undefined, {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
 
@@ -4897,14 +4844,117 @@ function renderMarket(){
                             `;
                           }).join('')}
                         </div>
-                      </div>`}
-                    </details>
-                  `;
-                }).join('');
-              })()}
-            </div>
-          </details>
-        `;
+                      </div>`;
+}
+
+// Opening a collapsed tier or stack fills in just that section rather than
+// re-rendering the whole page, which takes ~0.5-1 s on a 15k-card vault. The
+// markup comes from the same functions renderMarket uses, so it is what a
+// full render would have drawn; wire() then binds the new buttons and stacks.
+function fillMarketTier(d, lazy){
+  const tier = d.dataset.tier, now = Date.now();
+  lazy.outerHTML = marketTierBody(tier, marketTierItems(tier, now), now, usedBinderUids(), new Set(marketHits));
+  wire();
+}
+function fillMarketStack(d, lazy){
+  const [tier, pid] = d.dataset.species.split(':');
+  const now = Date.now();
+  const cards = marketTierItems(tier, now).filter(it => String(it.inst.id) === pid);
+  lazy.outerHTML = marketStackBody(cards, RARITY[tier], usedBinderUids(), new Set(marketHits), now);
+  wire();
+}
+
+function renderMarket(){
+  const instances = state.instances || [];
+  const now = Date.now();
+  const usedUids = usedBinderUids();
+
+  const tierOrder = ['secret', 'ultra', 'rare', 'uncommon', 'common'];
+  const tierLabels = MARKET_TIER_LABELS;
+
+  const groupedByTier = {};
+  tierOrder.forEach(t => groupedByTier[t] = []);
+
+  // Resolve the submitted query to a set of instance uids. Matches on dex
+  // number (exact) or name (substring, case-insensitive). A player can hold
+  // several copies of the same species, so this is a set, not one card.
+  const q = marketSearch.trim().toLowerCase();
+  marketHits = [];
+  if(q){
+    instances.forEach(inst => {
+      const p = POKEMON_BY_ID.get(inst.id);
+      if(!p) return;
+      const byNum = /^\d+$/.test(q) && p.id === parseInt(q, 10);
+      const byName = p.name.toLowerCase().includes(q);
+      if(byNum || byName) marketHits.push(inst.uid);
+    });
+  }
+  const hitSet = new Set(marketHits);
+  const tiersWithHits = new Set(
+    instances.filter(i => hitSet.has(i.uid)).map(i => i.rarity)
+  );
+
+  // payout worked out once per card here and reused below - the sort used
+  // to recompute it inside its comparator, O(n log n) times
+  instances.forEach((inst) => {
+    if(!groupedByTier[inst.rarity]) return;
+    const item = marketItem(inst, now);
+    if(item) groupedByTier[inst.rarity].push(item);
+  });
+
+  tierOrder.forEach(t => {
+    groupedByTier[t].sort((a, b) => b.payout - a.payout);
+  });
+
+  return `
+    <div class="dexhead">
+      <div class="dexhead-left">
+        <h2 class="disp">Liquid Market</h2>
+        <div class="dexcount mono">Individual card management &middot; Prices track the live market cycle</div>
+        <div class="dexcount mono" style="margin-top:2px;">Tap any card to inspect it &mdash; full value breakdown, and set it as a favorite</div>
+      </div>
+    </div>
+
+    ${instances.length === 0 ? '' : `
+      <form id="marketSearchForm" style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
+        <input type="text" id="marketSearchInput" value="${esc(marketSearch)}" placeholder="Search vault: name or #" autocomplete="off"
+          style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;" />
+        <button type="submit" class="sbtn keep" style="padding:7px 12px;font-size:11px;">Find</button>
+        ${marketSearch ? `<button type="button" class="sbtn sell" data-searchclear style="padding:7px 12px;font-size:11px;">Clear</button>` : ''}
+      </form>
+      ${marketSearch ? `<div class="mono" style="font-size:11px;color:${marketHits.length ? 'var(--foil1)' : '#ff4444'};margin:-6px 0 12px 2px;">
+        ${marketHits.length ? `${marketHits.length} match${marketHits.length===1?'':'es'} for "${esc(marketSearch)}"` : `Nothing in your vault matches "${esc(marketSearch)}"`}
+      </div>` : ''}
+    `}
+
+    ${instances.length === 0 ? `
+      <div style="text-align:center;color:var(--muted);padding:40px;font-size:13px;">Your vault is empty. Break open some packs to acquire tradeable assets.</div>
+    ` : `
+      ${tierOrder.map(tier => {
+        const items = groupedByTier[tier];
+        if(!items || items.length === 0) return '';
+        const rc = RARITY[tier];
+
+        const tierTotalPayout = items.reduce((s, it) => s + it.payout, 0);
+        const tierOpen = tiersWithHits.has(tier) || expandedTiers.has(tier);
+
+        // A collapsed tier renders its summary line only. Its buttons, species
+        // rows and card tiles are built when it's opened (the toggle handler in
+        // wire() re-renders) - with thousands of cards, building them all up
+        // front was ~20MB of HTML and 200k DOM nodes on every render().
+        const summary = `
+            <summary style="font-family:var(--font-display);font-weight:800; font-size:15px; color:${rc.color}; cursor:pointer; text-transform:uppercase; letter-spacing:0.04em; outline:none; display:flex; justify-content:space-between; align-items:center;">
+              <span>${tierLabels[tier]} (${items.length})</span>
+              <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--gold);">
+                Tier Est: <span id="price-tier-${tier}"><i class="hex-icon"></i>~${fmtHex(tierTotalPayout)}</span>
+              </span>
+            </summary>`;
+        const detailsOpen = `<details data-tier="${tier}" ${tierOpen ? 'open' : ''} style="margin-bottom:16px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 16px;">`;
+        if(!tierOpen) return `${detailsOpen}${summary}<div data-lazy></div></details>`;
+
+        // no whitespace around the body, so filling a collapsed tier's
+        // placeholder in place produces exactly this markup
+        return `${detailsOpen}${summary}${marketTierBody(tier, items, now, usedUids, hitSet)}</details>`;
       }).join('')}
     `}
 
@@ -8138,14 +8188,15 @@ function wire(){
 
   // Collapsed tiers and species stacks render a [data-lazy] placeholder
   // instead of their contents (see renderMarket). Opening one records it and
-  // re-renders, which builds it. Only a placeholder triggers that, so a
+  // fills in just that section (fillMarketTier / fillMarketStack). Only a placeholder triggers that, so a
   // details that is already built - or one the render itself created open -
   // never re-renders on toggle.
   document.querySelectorAll('details[data-tier]').forEach(d => {
     d.ontoggle = () => {
       if(d.open) expandedTiers.add(d.dataset.tier);
       else expandedTiers.delete(d.dataset.tier);
-      if(d.open && d.querySelector(':scope > [data-lazy]')) render();
+      const lazy = d.open && d.querySelector(':scope > [data-lazy]');
+      if(lazy) fillMarketTier(d, lazy);
     };
   });
 
@@ -8153,7 +8204,8 @@ function wire(){
     d.ontoggle = () => {
       if(d.open) expandedSpecies.add(d.dataset.species);
       else expandedSpecies.delete(d.dataset.species);
-      if(d.open && d.querySelector(':scope > [data-lazy]')) render();
+      const lazy = d.open && d.querySelector(':scope > [data-lazy]');
+      if(lazy) fillMarketStack(d, lazy);
     };
   });
 
