@@ -6036,6 +6036,8 @@ const LB_BOARDS = [
     primary: v => `${Number(v).toFixed(1)}%`, secondary: v => `${fmtHex(v)} / ${DEX_TOTAL}` },
   { key:'shiny_pulls',   label:'Shinies',       group:'overall', head:['Shinies pulled',''],
     primary: v => fmtHex(v), secondary: () => '' },
+  { key:'shadow_pulls',  label:'Shadows',       group:'overall', head:['Shadows pulled',''],
+    primary: v => fmtHex(v), secondary: () => '' },
   { key:'trainer_level', label:'Trainer Level', group:'overall', head:['Trainer','Total XP'],
     primary: v => `Lv ${v}`, secondary: v => `${fmtHex(v)} XP` },
   // each player's best pull ever; detail says which card it was
