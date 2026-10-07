@@ -3761,7 +3761,7 @@ async function finalizeOpening(){
   const keepSnapshot = opening.keep;
   const openingId = opening.openingId;
   try{
-    const { error } = await sb.rpc('finalize_pack_opening', {
+    const { data, error } = await sb.rpc('finalize_pack_opening', {
       p_opening_id: openingId,
       p_keep: keepSnapshot
     });
@@ -3769,33 +3769,42 @@ async function finalizeOpening(){
       toast("Couldn't finalize that opening - try again.");
       return;
     }
-    // the server has already committed dex/instances/hex, so read those rows
-    // back instead of rebuilding them locally. a hand-maintained object literal
-    // silently drops every server-generated field it doesn't happen to list -
-    // that's how uid, shiny and hasShiny all went missing - whereas a re-read
-    // picks up anything the server writes, including fields added later.
-    const { data: fresh, error: readErr } = await sb
-      .from('game_states_v2')
-      .select('hex, dex, instances')
-      .eq('user_id', authUser.id)
-      .maybeSingle();
+    if(data && Array.isArray(data.kept) && data.dex && typeof data.hex === 'number'){
+      // the server returns exactly what it committed - the cards it added, the
+      // dex entries they touched and the balance after - so apply that instead
+      // of re-reading the whole card list (2 MB+ on a big vault). these are the
+      // server's own objects copied as-is, not a hand-maintained literal, so no
+      // field can go missing the way uid, shiny and hasShiny once did.
+      state.hex = data.hex;
+      state.instances = state.instances || [];
+      state.instances.push(...data.kept);
+      state.dex = Object.assign(state.dex || {}, data.dex);
+    } else {
+      // a server that only returns {earned}: read the committed rows back
+      // rather than rebuilding them locally, for the same reason as above
+      const { data: fresh, error: readErr } = await sb
+        .from('game_states_v2')
+        .select('hex, dex, instances')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
 
-    if(readErr || !fresh){
-      // finalize already succeeded, so the pending row is gone and this opening
-      // must not be retried. close it out, but leave local state untouched
-      // rather than writing values we already know are stale - in particular
-      // skip recordVaultValue(), which would persist a wrong point to the chart.
-      console.error('post-finalize re-read failed', readErr);
-      opening = null;
-      view='open';
-      render();
-      toast('Your cards are saved - reload the page to see them.');
-      return;
+      if(readErr || !fresh){
+        // finalize already succeeded, so the pending row is gone and this opening
+        // must not be retried. close it out, but leave local state untouched
+        // rather than writing values we already know are stale - in particular
+        // skip recordVaultValue(), which would persist a wrong point to the chart.
+        console.error('post-finalize re-read failed', readErr);
+        opening = null;
+        view='open';
+        render();
+        toast('Your cards are saved - reload the page to see them.');
+        return;
+      }
+
+      state.hex = fresh.hex;
+      state.dex = fresh.dex || {};
+      state.instances = fresh.instances || [];
     }
-
-    state.hex = fresh.hex;
-    state.dex = fresh.dex || {};
-    state.instances = fresh.instances || [];
     opening = null;
     recordVaultValue();
     saveState();
