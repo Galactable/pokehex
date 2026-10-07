@@ -5400,6 +5400,38 @@ async function loadMessages(){
   }
 }
 
+// Only messages created since the newest one already held, merged in by id.
+// Polls use this: nearly every poll then returns an empty list instead of the
+// whole mailbox (egress). gte, not gt, so two messages sharing a timestamp
+// can't be skipped - the overlap is merged away by id. Not caught here:
+// changes to existing rows made on another device, and a row committed out
+// of order - the periodic full reload (MAIL_FULL_EVERY) picks those up.
+async function loadNewMessages(){
+  const held = state.messages || [];
+  if(!held.length){ await loadMessages(); return; }
+  // PostgREST timestamps share one format and offset, so string order is time order
+  const since = held.reduce((m, x) => x.created_at > m ? x.created_at : m, held[0].created_at);
+  try{
+    const { data, error } = await sb
+      .from('player_messages')
+      .select('id, kind, title, body, gift, read_at, claimed_at, expires_at, created_at')
+      .eq('user_id', authUser.id)
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if(error) throw error;
+    if(!data || !data.length) return;
+    const byId = new Map(held.map(m => [m.id, m]));
+    data.forEach(m => byId.set(m.id, m));
+    // same order and cap as a full load: newest first, at most 100
+    state.messages = [...byId.values()]
+      .sort((a, b) => a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0)
+      .slice(0, 100);
+  }catch(e){
+    console.error('message poll failed', e);
+  }
+}
+
 // a message needs attention while unread, and a gift stays that way until claimed
 function messageNeedsAttention(m){ return !m.read_at || (m.kind==='gift' && !m.claimed_at); }
 function mailBadgeCount(){
@@ -5428,6 +5460,10 @@ function markMessagesRead(){
 // refunds and cards their notices announce - are pulled: every 45s while the
 // tab is visible, and straight away when the player comes back to it.
 const MAIL_POLL_MS = 45000;
+// every Nth poll is a full reload (~7.5 min at 45 s): picks up reads, claims
+// and dismissals made on another device, which the incremental poll can't see
+const MAIL_FULL_EVERY = 10;
+let mailPollCount = 0;
 const IDLE_BEFORE_SYNC_MS = 10000;
 let lastInteractionAt = Date.now();
 let stateRefreshPending = false;
@@ -5436,11 +5472,12 @@ let mailPollBusy = false;
 // capture phase, so a handler that stops propagation still counts as input
 ['pointerdown','keydown'].forEach(t => document.addEventListener(t, ()=>{ lastInteractionAt = Date.now(); }, true));
 
-// Reload messages; if a new system notice arrived, queue a re-read of the
-// balance and collection it refers to (the credit is already server-side).
-async function syncMessages(){
+// Reload messages (full, or only new ones); if a new system notice arrived,
+// queue a re-read of the balance and collection it refers to (the credit is
+// already server-side).
+async function syncMessages(full){
   const known = new Set((state.messages||[]).map(m=>m.id));
-  await loadMessages();
+  if(full) await loadMessages(); else await loadNewMessages();
   const arrived = (state.messages||[]).filter(m=>!known.has(m.id));
   if(arrived.some(m=>m.kind==='system')){ stateRefreshPending = true; tryStateRefresh(); }
   return arrived;
@@ -5497,11 +5534,12 @@ function updateMailBadge(){
   badge.textContent = n;
 }
 
-async function pollMailbox(){
+async function pollMailbox(full){
   if(!authUser || !state.messages || document.hidden || mailPollBusy) return; // state.messages unset = login still loading
   mailPollBusy = true;
   try{
-    const arrived = await syncMessages();
+    mailPollCount++;
+    const arrived = await syncMessages(full === true || mailPollCount % MAIL_FULL_EVERY === 0);
     if(!arrived.length || !authUser) return;
     // the Messages tab has no inputs or gestures to break, so a full render is
     // safe there; anywhere else only the badge changes
@@ -7419,8 +7457,9 @@ function wire(){
     freshMessageIds = new Set();
     if(mailboxTab==='messages') markMessagesRead();
     render();
-    // pick up anything sent since the last load or poll
-    await syncMessages();
+    // pick up anything sent since the last load or poll, and any change made
+    // on another device
+    await syncMessages(true);
     if(!mailboxOpen || mailboxTab!=='messages') return; // don't re-render under someone typing a friend's name
     markMessagesRead();
     render();
@@ -8321,7 +8360,7 @@ setInterval(()=>{
 }, 1000);
 
 setInterval(pollMailbox, MAIL_POLL_MS);
-document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) pollMailbox(); });
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) pollMailbox(true); });
 
 // guest view of the Packs page shown immediately; onAuthStateChange loads the
 // real saved state if a session is restored. A dead email link opens the
