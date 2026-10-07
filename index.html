@@ -3726,9 +3726,11 @@ function recordVaultValue(){
 // touched (null = that species is gone) and the balance after - instead of
 // reloading everything. Returns false without touching state when the
 // response can't be applied cleanly: an older server that doesn't send the
-// change, a sold card without a uid, or a local card list that doesn't match
-// what the server sold (another device changed it). The caller then falls
-// back to loadState().
+// change, a sold card without a uid, or a sold uid this page doesn't have
+// (the count check). The caller then falls back to loadState().
+// One direction only: a card another device already sold stays on this page
+// until the next full load, since this sale never mentions it. Accepted -
+// the server is unaffected, and it needs one account on two devices at once.
 function applySaleDelta(data){
   if(!data || !Array.isArray(data.sold) || !data.dex || typeof data.hex !== 'number') return false;
   if(data.sold.some(u => typeof u !== 'string')) return false;
