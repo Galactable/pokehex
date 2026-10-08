@@ -2638,6 +2638,7 @@ function renderAuth(){
 }
 
 async function signOut(){
+  if(saveTimer) await doSave(); // chart points still waiting for the save timer
   await sb.auth.signOut();
   // onAuthStateChange handles returning to the guest browsing view
 }
@@ -3570,6 +3571,9 @@ function renderResetConfirmModal(){
 }
 
 async function loadState(){
+  // the re-read below replaces the chart history, so send any points
+  // still waiting for the save timer first
+  if(saveTimer) await doSave();
   try{
     // ensure a row exists for brand-new accounts (idempotent - safe to call every load)
     await sb.rpc('ensure_game_state');
@@ -3612,6 +3616,7 @@ async function loadState(){
   if(state.instances===undefined) state.instances = [];
   if(state.valueHistory===undefined) state.valueHistory = [];
   if(state.longHistory===undefined) state.longHistory = [];
+  markVaultHistorySynced();
 
   // Binders live in their own table, not game_states_v2 - they're not
   // economy state (nothing reads them back to compute HEX or ownership),
@@ -3640,21 +3645,46 @@ async function loadState(){
   render();
 }
 let saveTimer = null;
+const VAULT_SAVE_MS = 30000;
+// Time of the newest chart point the server is known to hold, per history.
+// Only points after these are sent. Set from the loaded state, advanced by
+// each successful save.
+let vhSyncedValueT = 0, vhSyncedLongT = 0;
+function markVaultHistorySynced(){
+  const newest = arr => (arr || []).reduce((t, p) => Math.max(t, p.time || 0), 0);
+  vhSyncedValueT = newest(state.valueHistory);
+  vhSyncedLongT = newest(state.longHistory);
+}
 async function saveState(){
   // hex/dex/instances/collectibles are already persisted server-side by
-  // whichever RPC just ran - this only needs to persist the chart history,
-  // debounced so rapid-fire actions collapse into one write
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(doSave, 250);
+  // whichever RPC just ran - this only needs to persist the chart history.
+  // At most one save per VAULT_SAVE_MS, and an action doesn't restart the
+  // wait, so steady play still saves on schedule. Hiding the tab, signing
+  // out and loadState() send it early.
+  if(saveTimer) return;
+  saveTimer = setTimeout(doSave, VAULT_SAVE_MS);
 }
 async function doSave(){
+  clearTimeout(saveTimer);
+  saveTimer = null;
   if(!authUser) return;
+  // the server ignores points no newer than what it holds, so two saves
+  // overlapping (timer + tab hidden) can't duplicate anything
+  const newValue = (state.valueHistory || []).filter(p => p.time > vhSyncedValueT).slice(-60);
+  const newLong = (state.longHistory || []).filter(p => p.time > vhSyncedLongT).slice(-500);
+  if(!newValue.length && !newLong.length) return;
   try{
-    const { error } = await sb.rpc('save_vault_history', {
-      p_value_history: state.valueHistory,
-      p_long_history: state.longHistory
-    });
+    let { error } = await sb.rpc('append_vault_history', { p_value: newValue, p_long: newLong });
+    if(error && (error.code === 'PGRST202' || error.code === '42883')){
+      // append_vault_history isn't on the server (rolled back): full save instead
+      ({ error } = await sb.rpc('save_vault_history', {
+        p_value_history: state.valueHistory,
+        p_long_history: state.longHistory
+      }));
+    }
     if(error) throw error;
+    if(newValue.length) vhSyncedValueT = Math.max(vhSyncedValueT, newValue[newValue.length - 1].time);
+    if(newLong.length) vhSyncedLongT = Math.max(vhSyncedLongT, newLong[newLong.length - 1].time);
   }catch(e){
     console.error('save failed', e);
     toast('Save failed - check your connection.');
@@ -5382,9 +5412,14 @@ function outgoingRequests(){ return (state.friendRequests||[]).filter(r=>r.statu
 function acceptedFriends(){ return (state.friendRequests||[]).filter(r=>r.status==='accepted'); }
 function friendUserId(row){ return row.requester_id===authUser.id ? row.recipient_id : row.requester_id; }
 
+// When the mailbox was last fetched by any path (sign-in, poll, opening the
+// mailbox, a claim's reload). The background poll spaces itself from this.
+let lastMailFetchAt = 0;
+
 // RLS already limits this to the caller's own unexpired rows; the user_id
 // filter is there so the (user_id, created_at) index serves the query.
 async function loadMessages(){
+  lastMailFetchAt = Date.now();
   try{
     const { data, error } = await sb
       .from('player_messages')
@@ -5409,6 +5444,7 @@ async function loadMessages(){
 async function loadNewMessages(){
   const held = state.messages || [];
   if(!held.length){ await loadMessages(); return; }
+  lastMailFetchAt = Date.now();
   // PostgREST timestamps share one format and offset, so string order is time order
   const since = held.reduce((m, x) => x.created_at > m ? x.created_at : m, held[0].created_at);
   try{
@@ -5457,12 +5493,16 @@ function markMessagesRead(){
 
 // ---------- background mailbox sync ----------
 // Nothing pushes to the client, so new messages - and the admin credits,
-// refunds and cards their notices announce - are pulled: every 45s while the
-// tab is visible, and straight away when the player comes back to it.
-const MAIL_POLL_MS = 45000;
-// every Nth poll is a full reload (~7.5 min at 45 s): picks up reads, claims
+// refunds and cards their notices announce - are pulled: every 3 min while the
+// tab is visible, and when the player comes back to it after a minute or more.
+// Each poll is a request whatever it returns, so the interval is the egress knob.
+const MAIL_POLL_MS = 180000;
+// every Nth poll is a full reload (~9 min at 3 min): picks up reads, claims
 // and dismissals made on another device, which the incremental poll can't see
-const MAIL_FULL_EVERY = 10;
+const MAIL_FULL_EVERY = 3;
+// coming back to the tab polls only if the last fetch is at least this old,
+// so flicking between tabs costs nothing
+const MAIL_RETURN_MIN_MS = 60000;
 let mailPollCount = 0;
 const IDLE_BEFORE_SYNC_MS = 10000;
 let lastInteractionAt = Date.now();
@@ -5534,12 +5574,12 @@ function updateMailBadge(){
   badge.textContent = n;
 }
 
-async function pollMailbox(full){
+async function pollMailbox(){
   if(!authUser || !state.messages || document.hidden || mailPollBusy) return; // state.messages unset = login still loading
   mailPollBusy = true;
   try{
     mailPollCount++;
-    const arrived = await syncMessages(full === true || mailPollCount % MAIL_FULL_EVERY === 0);
+    const arrived = await syncMessages(mailPollCount % MAIL_FULL_EVERY === 0);
     if(!arrived.length || !authUser) return;
     // the Messages tab has no inputs or gestures to break, so a full render is
     // safe there; anywhere else only the badge changes
@@ -8190,7 +8230,11 @@ function wire(){
         ? Object.assign({}, b, { pages: b.pages.map(pg => pg.map(() => null)) })
         : b);
       state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[], favoriteUids:[], equippedBack: state.equippedBack || null, binders: emptiedBinders };
-      saveState();
+      // reset_game_state already emptied both chart histories server-side;
+      // drop any pre-reset points still waiting for the save timer
+      clearTimeout(saveTimer);
+      saveTimer = null;
+      markVaultHistorySynced();
       resetConfirmOpen = false;
     } finally {
       resetBusy = false;
@@ -8359,8 +8403,15 @@ setInterval(()=>{
   }
 }, 1000);
 
-setInterval(pollMailbox, MAIL_POLL_MS);
-document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) pollMailbox(true); });
+// a local check every 15 s; a poll goes out only once MAIL_POLL_MS has passed
+// since the last fetch of any kind, so a tab-return poll or opening the
+// mailbox pushes the next timed poll back instead of doubling up
+setInterval(()=>{ if(Date.now() - lastMailFetchAt >= MAIL_POLL_MS) pollMailbox(); }, 15000);
+document.addEventListener('visibilitychange', ()=>{
+  if(!document.hidden && Date.now() - lastMailFetchAt >= MAIL_RETURN_MIN_MS) pollMailbox();
+});
+// the chart history waits up to VAULT_SAVE_MS between saves; send it before the tab can be closed
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden && saveTimer) doSave(); });
 
 // guest view of the Packs page shown immediately; onAuthStateChange loads the
 // real saved state if a session is restored. A dead email link opens the
