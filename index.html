@@ -1097,6 +1097,40 @@ body {
    absence of the equipped outline already carry the state, and dimming the
    expensive art defeats the point of a full-size preview. */
 .cbtile.equipped .cb-swatch{outline:2px solid var(--foil1);outline-offset:2px;}
+/* Avatar with cosmetics: the Cosmetic Forge's 39x48-cell stage. avatarStage()
+   sets the pixel sizes (2px per cell on profiles, 3 on shop tiles); the card
+   sits at cell (8,8) and the 8-cell margin is room for a hat's overhang,
+   arms, shoes. */
+.avatar-stage{position:relative;flex:0 0 auto;}
+.avatar-stage > .cb-swatch{position:absolute;}
+.avatar-layers{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
+/* Collectibles shop: tabs (card backs, cosmetics, unlockables) on the left,
+   your avatar as it looks right now in a panel on the right. Under 720px the
+   panel moves above the tabs. */
+.coll-shop{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:20px;align-items:start;margin-bottom:26px;}
+.coll-panel{position:sticky;top:16px;background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  padding:16px 14px;display:flex;flex-direction:column;align-items:center;gap:12px;}
+.coll-panel-title{font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);}
+.coll-outfit{width:100%;display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;font-size:11.5px;margin:0;}
+.coll-outfit dt{color:var(--muted);}
+.coll-outfit dd{margin:0;color:var(--text);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.coll-outfit dd.none{color:var(--muted);}
+.coll-tabs{margin-bottom:14px;}
+.coll-shop .cbshelf{justify-content:start;}
+@media (max-width:720px){
+  .coll-shop{grid-template-columns:minmax(0,1fr);}
+  .coll-panel{position:static;order:-1;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:14px;}
+  .coll-panel-title{grid-column:1 / -1;justify-self:center;}
+  .coll-shop .cbshelf{justify-content:center;}
+}
+.shop-note{color:var(--muted);font-size:11.5px;margin:6px 0 12px;font-style:italic;}
+.cos-preview{width:130px;height:180px;display:flex;align-items:center;justify-content:center;}
+.cos-name{font-size:12px;color:var(--text);text-align:center;}
+/* Shop tiles draw each cosmetic on a plain neutral card so its colors read
+   clearly, and skip the equipped outline (it ran into the art); the
+   Equipped button carries that state. */
+.cb-swatch.cos-blank{background:#1b1b1e;border-color:#2e2e33;}
+.cbtile.equipped .cos-preview .cb-swatch{outline:none;}
 .cb-price{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
 .cb-btn{
   font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:5px 10px;border-radius:6px;
@@ -2148,20 +2182,25 @@ html,body{ max-width:100%; overflow-x:hidden; }
 .lb-table .lb-num{text-align:right;font-family:'JetBrains Mono',monospace;}
 .lb-table .lb-sec{color:var(--muted);font-size:12px;}
 .lb-table .lb-rank{width:36px;font-family:'JetBrains Mono',monospace;color:var(--muted);}
-.lb-table .lb-name{font-weight:700;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+.lb-table .lb-name{font-weight:700;overflow:hidden;text-overflow:ellipsis;max-width:230px;}
 .lb-top1 .lb-rank{color:#f3d98a;} .lb-top2 .lb-rank{color:#c9d3dc;} .lb-top3 .lb-rank{color:#d08a55;}
 .lb-top .lb-rank{font-weight:700;}
 .lb-me td{background:rgba(57,255,20,0.07);}
 .lb-player{font:inherit;font-weight:700;color:var(--text);background:none;border:none;padding:0;cursor:pointer;
   text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
 .lb-player:hover{color:var(--foil1);text-decoration-color:var(--foil1);}
-.lb-back{position:relative;inset:auto;display:inline-flex;vertical-align:middle;width:13px;height:18px;
-  border-radius:3px;margin:-3px 8px -3px 0;box-shadow:0 1px 3px rgba(0,0,0,.6);}  /* negative block margins: it never adds row height */
+/* Each player as on their profile: card back + cosmetics on the Forge's stage
+   at 1px per cell (39x48). Every row gets one, so names line up; the name
+   cell's tighter padding keeps rows at 57px (38 before). */
+.lb-table td.lb-name{padding-top:4px;padding-bottom:4px;}
+.lb-who{display:flex;align-items:center;gap:8px;min-width:0;max-width:230px;}
+.lb-who .lb-player{min-width:0;}
+.lb-who .avatar-stage > .cb-swatch{box-shadow:0 1px 3px rgba(0,0,0,.6);}
 .lb-you{font-size:10px;font-weight:700;color:#05100a;background:var(--foil1);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:1px;}
 .lb-empty{color:var(--muted);padding:22px 4px;font-size:13px;}
 .lb-retry{font:inherit;color:var(--foil1);background:none;border:none;text-decoration:underline;cursor:pointer;}
 .lb-foot{color:var(--muted);font-size:11.5px;margin-top:14px;}
-@media (max-width:480px){ .lb-table .lb-sec:not(.lb-keep){display:none;} .lb-table .lb-name{max-width:120px;} }
+@media (max-width:480px){ .lb-table .lb-sec:not(.lb-keep){display:none;} .lb-table .lb-name{max-width:170px;} .lb-who{max-width:170px;} }
 .lb-card{display:inline-flex;align-items:center;gap:5px;vertical-align:middle;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;}
 .lb-card-sprite{margin:-5px 0;}  /* negative margins: rows stay 36px */
 .lb-card-name{max-width:110px;overflow:hidden;text-overflow:ellipsis;}
@@ -2711,6 +2750,8 @@ sb.auth.onAuthStateChange(async (event, session)=>{
     authBusy = false;
     state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
     profileStats = null; profileUsername = null; profileSkills = null; profileLoading = false;
+    // shelves carry the old account's ownership; reload them for the next one
+    cardBackShelf = null; cosmeticShelf = null;
     view = 'open';
     render();
   }
@@ -3291,6 +3332,79 @@ const CARD_BACKS = [
 ];
 function cardBackById(id){ return CARD_BACKS.find(b => b.id === id) || null; }
 
+// ---------- cosmetics (trainer avatar) ----------
+// Hat, body and legs items drawn over the profile card. Art ONLY, pasted from
+// the Cosmetic Forge's "Catalog entry" export: name, price, active and any
+// trainer-level unlock live in the collectibles table (kind hat/body/legs),
+// and the id here must equal that row's id (<slot>_<name>, the Forge's
+// naming). svg is inner SVG in cell units for a 39x48 stage (viewBox
+// 0 0 39 48, 2px per cell); the card sits at cell (8,8), 23x32 cells = the
+// 46x64 profile swatch. An equipped id missing here is skipped, not an error.
+const COSMETICS = [
+  {
+    id: 'hat_yellow_party_hat',
+    name: 'Yellow Party Hat',
+    slot: 'hat',
+    svg: '<rect x="20" y="1" width="1" height="1" fill="#d7d742"/><rect x="7" y="2" width="1" height="1" fill="#d7d742"/><rect x="13" y="2" width="1" height="1" fill="#d7d742"/><rect x="19" y="2" width="3" height="1" fill="#d7d742"/><rect x="26" y="2" width="1" height="1" fill="#d7d742"/><rect x="7" y="3" width="3" height="1" fill="#d7d742"/><rect x="12" y="3" width="4" height="1" fill="#d7d742"/><rect x="18" y="3" width="4" height="1" fill="#d7d742"/><rect x="25" y="3" width="2" height="1" fill="#d7d742"/><rect x="32" y="3" width="1" height="1" fill="#d7d742"/><rect x="7" y="4" width="4" height="1" fill="#d7d742"/><rect x="12" y="4" width="5" height="1" fill="#d7d742"/><rect x="18" y="4" width="5" height="1" fill="#d7d742"/><rect x="24" y="4" width="4" height="1" fill="#d7d742"/><rect x="31" y="4" width="2" height="1" fill="#d7d742"/><rect x="7" y="5" width="21" height="1" fill="#d7d742"/><rect x="29" y="5" width="4" height="1" fill="#d7d742"/><rect x="7" y="6" width="2" height="1" fill="#d7d742"/><rect x="9" y="6" width="1" height="1" fill="#f9f06b"/><rect x="10" y="6" width="2" height="1" fill="#d7d742"/><rect x="12" y="6" width="2" height="1" fill="#f9f06b"/><rect x="14" y="6" width="19" height="1" fill="#d7d742"/><rect x="7" y="7" width="2" height="1" fill="#d7d742"/><rect x="9" y="7" width="1" height="1" fill="#f9f06b"/><rect x="10" y="7" width="2" height="1" fill="#d7d742"/><rect x="12" y="7" width="4" height="1" fill="#f9f06b"/><rect x="16" y="7" width="17" height="1" fill="#d7d742"/><rect x="7" y="8" width="2" height="1" fill="#d7d742"/><rect x="9" y="8" width="1" height="1" fill="#f9f06b"/><rect x="10" y="8" width="1" height="1" fill="#d7d742"/><rect x="11" y="8" width="2" height="1" fill="#f9f06b"/><rect x="13" y="8" width="1" height="1" fill="#d7d742"/><rect x="14" y="8" width="1" height="1" fill="#f9f06b"/><rect x="15" y="8" width="17" height="1" fill="#d7d742"/><rect x="7" y="9" width="2" height="1" fill="#d7d742"/><rect x="9" y="9" width="1" height="1" fill="#f9f06b"/><rect x="10" y="9" width="4" height="1" fill="#d7d742"/><rect x="14" y="9" width="1" height="1" fill="#e4e481"/><rect x="15" y="9" width="17" height="1" fill="#d7d742"/><rect x="7" y="10" width="7" height="1" fill="#d7d742"/><rect x="14" y="10" width="9" height="1" fill="#e4e481"/><rect x="23" y="10" width="1" height="1" fill="#d7d742"/><rect x="24" y="10" width="4" height="1" fill="#e4e481"/><rect x="28" y="10" width="4" height="1" fill="#d7d742"/><rect x="7" y="11" width="25" height="1" fill="#d7d742"/><rect x="13" y="12" width="19" height="1" fill="#d7d742"/><rect x="25" y="13" width="7" height="1" fill="#d7d742"/>'
+  },
+];
+const COSMETICS_BY_ID = new Map(COSMETICS.map(c => [c.id, c]));
+
+// The art for each slot of an outfit ({hat, body, legs} of ids), z-order legs,
+// body, hat. Ids without art are skipped.
+function cosmeticLayers(equipped){
+  return ['legs', 'body', 'hat'].map(slot => {
+    const item = equipped && equipped[slot] && COSMETICS_BY_ID.get(equipped[slot]);
+    return item && item.slot === slot ? item.svg : '';
+  }).join('');
+}
+
+// The Forge's stage at `scale` px per cell: the card back (or the plain
+// striped back if none), 23x32 cells at cell (8,8), with the layers over it.
+// backId 'blank' draws a plain dark card instead (the shop's item previews).
+function avatarStage(backId, layers, scale){
+  const s = scale;
+  if(backId === 'blank'){
+    return `<div class="avatar-stage" style="width:${39*s}px;height:${48*s}px;"><div class="cb-swatch cos-blank" style="left:${8*s}px;top:${8*s}px;width:${23*s}px;height:${32*s}px;border-radius:${4*s}px;"></div><svg class="avatar-layers" viewBox="0 0 39 48" shape-rendering="crispEdges" aria-hidden="true">${layers}</svg></div>`;
+  }
+  const eqBack = backId && cardBackById(backId);
+  return `<div class="avatar-stage" style="width:${39*s}px;height:${48*s}px;"><div class="cb-swatch card-face card-back ${eqBack ? 'back-' + esc(backId) : ''}" style="left:${8*s}px;top:${8*s}px;width:${23*s}px;height:${32*s}px;border-radius:${4*s}px;">${eqBack ? '' : '<span class="back-hex" aria-hidden="true"></span>'}</div><svg class="avatar-layers" viewBox="0 0 39 48" shape-rendering="crispEdges" aria-hidden="true">${layers}</svg></div>`;
+}
+
+// The profile avatar: the equipped card back (or the plain striped back if
+// none - the nudge to buy one) with equipped cosmetics on it. With nothing
+// equipped it is the plain 46x64 swatch, exactly as before cosmetics existed.
+function profileAvatar(backId, equipped){
+  const layers = cosmeticLayers(equipped);
+  if(layers) return avatarStage(backId, layers, 2);
+  const eqBack = backId && cardBackById(backId);
+  return `<div class="cb-swatch card-face card-back ${eqBack ? 'back-' + esc(backId) : ''}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;">${eqBack ? '' : '<span class="back-hex" aria-hidden="true"></span>'}</div>`;
+}
+
+// Shop payload from get_cosmetics: items [{id,name,kind,price,criteria,active,
+// owned}], active items plus retired ones the player owns. Null until loaded.
+// owned is already true for a level item the player qualifies for; equipping
+// it records the unlock server-side.
+let cosmeticShelf = null;
+let cosmeticBusy  = null;   // id mid-request
+// Collectibles shop tab: 'backs' | 'cosmetics' | 'unlockables'
+let collTab = 'backs';
+
+async function loadCosmetics(){
+  if(!authUser) return;
+  try{
+    const { data, error } = await sb.rpc('get_cosmetics', { p_user_id: authUser.id });
+    if(error) throw error;
+    cosmeticShelf = (data && data.items) || [];
+    // server is authoritative for what's worn
+    if(data && data.equipped) state.equipped = { hat: data.equipped.hat || null, body: data.equipped.body || null, legs: data.equipped.legs || null };
+  }catch(e){
+    console.error('get_cosmetics failed:', e && e.message, e);
+    cosmeticShelf = [];
+    toast('Could not load cosmetics.');
+  }
+}
+
 // Shop shelf payload from get_card_backs: [{id,name,price,owned}]. Null until
 // loaded; the shelf renders a loading line rather than an empty shop.
 let cardBackShelf = null;
@@ -3602,7 +3716,7 @@ async function loadState(){
 
     const { data, error } = await sb
       .from('game_states_v2')
-      .select('hex, dex, instances, collectibles, last_spin_at, value_history, long_history, favorite_uids, equipped_back, status')
+      .select('hex, dex, instances, collectibles, last_spin_at, value_history, long_history, favorite_uids, equipped_back, equipped_hat, equipped_body, equipped_legs, status')
       .eq('user_id', authUser.id)
       .maybeSingle();
     if(error) throw error;
@@ -3622,6 +3736,8 @@ async function loadState(){
         // meaningful: index 0 is slot 1.
         favoriteUids: Array.isArray(data.favorite_uids) ? data.favorite_uids : [],
         equippedBack: data.equipped_back || null,
+        // cosmetics worn on the profile avatar (ids from collectibles; art in COSMETICS)
+        equipped: { hat: data.equipped_hat || null, body: data.equipped_body || null, legs: data.equipped_legs || null },
         // active, frozen or banned (set from pokegod); not active = can't play
         status: data.status || 'active'
       };
@@ -5063,20 +5179,19 @@ function renderMarket(){
 // from what the reveal actually renders.
 function renderCardBackShelf(){
   if(!authUser){
-    return `<div style="color:var(--muted);font-size:12px;padding:10px 2px 18px;">Sign in to browse card backs.</div>`;
+    return `<div class="shop-note">Sign in to browse card backs.</div>`;
   }
   if(cardBackShelf === null){
-    return `<div style="color:var(--muted);font-size:12px;padding:10px 2px 18px;">Loading card backs…</div>`;
+    return `<div class="shop-note">Loading card backs…</div>`;
   }
   // server rows the client has no art for are skipped, so a DB seed can land
   // before the CSS ships without rendering a blank tile.
   const rows = cardBackShelf.filter(r => cardBackById(r.id));
   if(rows.length === 0){
-    return `<div style="color:var(--muted);font-size:12px;padding:10px 2px 18px;">No card backs available yet.</div>`;
+    return `<div class="shop-note">No card backs available yet.</div>`;
   }
 
   return `
-  <div style="color:var(--muted);font-size:11.5px;margin:10px 0 12px;font-style:italic;">Card backs survive resets. They replace the pack's back on every card you flip, and sit beside your name on your profile.</div>
   <div class="cbshelf">
     ${rows.map(r=>{
       const meta      = cardBackById(r.id);
@@ -5102,8 +5217,101 @@ function renderCardBackShelf(){
   </div>`;
 }
 
+// One tile per cosmetic: the item alone on a plain dark card. Your Avacard
+// panel beside the tabs shows how your whole outfit looks.
+function cosmeticTile(r){
+  const art     = COSMETICS_BY_ID.get(r.id);
+  const slot    = art.slot;
+  const isEquip = !!(state.equipped && state.equipped[slot] === r.id);
+  const busy    = cosmeticBusy === r.id;
+  const level   = r.criteria && r.criteria.trainer_level;
+  let label, btn;
+  if(r.owned){
+    label = r.active === false ? 'Owned - retired' : 'Owned';
+    btn = isEquip
+      ? `<button class="cb-btn equip on" data-equipcos="" data-slot="${slot}" ${busy?'disabled':''}>${busy?'…':'Equipped'}</button>`
+      : `<button class="cb-btn equip" data-equipcos="${esc(r.id)}" data-slot="${slot}" ${busy?'disabled':''}>${busy?'…':'Equip'}</button>`;
+  } else if(r.price != null){
+    const tooPoor = state.hex < r.price;
+    label = `<i class="hex-icon" style="width:10px;height:12px;"></i>${fmtHex(r.price)}`;
+    btn = `<button class="cb-btn buy" data-buycos="${esc(r.id)}" ${(busy||tooPoor)?'disabled':''}>${busy?'…':(tooPoor?'Locked':'Purchase')}</button>`;
+  } else {
+    label = level ? `Trainer level ${fmtHex(level)}` : 'Locked';
+    btn = `<button class="cb-btn" disabled>Locked</button>`;
+  }
+  return `
+      <div class="cbtile ${r.owned?'owned':'locked'} ${isEquip?'equipped':''}">
+        <div class="cos-preview">${avatarStage('blank', art.svg, 3)}</div>
+        <div class="cos-name">${esc(r.name)}</div>
+        <div class="cb-price">${label}</div>
+        ${btn}
+      </div>`;
+}
+
+// Cosmetics bought with HEX, or (unlockables) earned at a milestone - price
+// null. Server rows the client has no art for are skipped, as with backs.
+function renderCosmeticShelf(unlockables){
+  if(!authUser) return `<div class="shop-note">Sign in to browse ${unlockables ? 'unlockables' : 'cosmetics'}.</div>`;
+  if(cosmeticShelf === null) return `<div class="shop-note">Loading…</div>`;
+  const order = { hat: 0, body: 1, legs: 2 };
+  const rows = cosmeticShelf
+    .filter(r => COSMETICS_BY_ID.has(r.id) && (r.price == null) === unlockables)
+    .sort((a, b) => order[COSMETICS_BY_ID.get(a.id).slot] - order[COSMETICS_BY_ID.get(b.id).slot]);
+  if(rows.length === 0){
+    return `<div class="shop-note">${unlockables ? 'Nothing to unlock yet. Milestone rewards are on the way.' : 'No cosmetics in the shop yet.'}</div>`;
+  }
+  return `<div class="cbshelf">${rows.map(cosmeticTile).join('')}</div>`;
+}
+
+// The right-hand panel: your Avacard as it looks right now - the equipped back
+// and outfit, redrawn on every render, so a purchase or equip shows at once.
+// Only cosmetics are listed by name; card back names show nowhere else.
+function renderCollectiblesPanel(){
+  const itemName = id => {
+    if(!id) return null;
+    const row = (cosmeticShelf || []).find(r => r.id === id);
+    const art = COSMETICS_BY_ID.get(id);
+    return (row && row.name) || (art && art.name) || null;
+  };
+  const line = (label, name) => `<dt>${label}</dt><dd class="${name ? '' : 'none'}">${name ? esc(name) : 'none'}</dd>`;
+  const eq = state.equipped || {};
+  return `
+  <aside class="coll-panel" aria-label="Your Avacard">
+    <div class="coll-panel-title">Your Avacard</div>
+    ${avatarStage(state.equippedBack, cosmeticLayers(eq), 4)}
+    <dl class="coll-outfit">
+      ${line('Hat', itemName(eq.hat))}
+      ${line('Body', itemName(eq.body))}
+      ${line('Legs', itemName(eq.legs))}
+    </dl>
+  </aside>`;
+}
+
+function renderCollectiblesShop(){
+  const tabs = [['backs', 'Card Backs'], ['cosmetics', 'Cosmetics'], ['unlockables', 'Unlockables']];
+  const tab = tabs.some(t => t[0] === collTab) ? collTab : 'backs';
+  let body;
+  if(tab === 'backs'){
+    body = renderCardBackShelf();
+  } else if(tab === 'cosmetics'){
+    body = renderCosmeticShelf(false);
+  } else {
+    body = renderCosmeticShelf(true);
+  }
+  return `
+  <div class="coll-shop">
+    <div>
+      <div class="lb-chips coll-tabs" role="tablist">${tabs.map(([k, label]) =>
+        `<button class="lb-chip ${k === tab ? 'on' : ''}" role="tab" aria-selected="${k === tab}" data-colltab="${k}">${label}</button>`).join('')}</div>
+      ${body}
+    </div>
+    ${authUser ? renderCollectiblesPanel() : ''}
+  </div>`;
+}
+
 function renderShopBonus(){
   if(authUser && cardBackShelf === null) loadCardBacks().then(()=>{ if(view==='shop') render(); });
+  if(authUser && cosmeticShelf === null) loadCosmetics().then(()=>{ if(view==='shop') render(); });
   const stripItems = [];
   for(let rep=0; rep<12; rep++){
     WHEEL_REWARDS.forEach(r=>{
@@ -5137,8 +5345,8 @@ function renderShopBonus(){
     `}
   </div>
 
-  <div class="section-label">Collectibles</div>
-  ${renderCardBackShelf()}
+  <div class="section-label">Collectibles Shop</div>
+  ${renderCollectiblesShop()}
   ${backToTopBtn()}
   `;
 }
@@ -5803,17 +6011,20 @@ async function openPublicProfile(userId){
   viewingBinderPageIdx = 0;
   render();
   try{
-    const [{ data: profileData, error: profileErr }, { data: skillsData, error: skillsErr }, { data: bindersData, error: bindersErr }] = await Promise.all([
+    const [{ data: profileData, error: profileErr }, { data: skillsData, error: skillsErr }, { data: bindersData, error: bindersErr }, { data: cosData, error: cosErr }] = await Promise.all([
       sb.rpc('get_public_profile', { target_user_id: userId }),
       // same "degrade, don't fail the page" treatment as loadProfileStats -
       // a skills or binders hiccup shouldn't blank out the rest of the visit
       sb.rpc('get_player_skills', { p_user_id: userId }).then(r => r, e => ({ data: null, error: e })),
-      sb.rpc('get_public_binders', { target_user_id: userId }).then(r => r, e => ({ data: null, error: e }))
+      sb.rpc('get_public_binders', { target_user_id: userId }).then(r => r, e => ({ data: null, error: e })),
+      sb.rpc('get_public_cosmetics', { target_user_id: userId }).then(r => r, e => ({ data: null, error: e }))
     ]);
     if(profileErr) throw profileErr;
     viewingProfileData = {
       ...profileData,
-      skills: skillsErr ? null : (Array.isArray(skillsData) ? skillsData[0] : skillsData) || null
+      skills: skillsErr ? null : (Array.isArray(skillsData) ? skillsData[0] : skillsData) || null,
+      // what they wear; a failure here just shows the plain card
+      cosmetics: cosErr ? null : cosData
     };
     if(bindersErr){
       console.error('failed to load public binders', bindersErr && bindersErr.message, bindersErr);
@@ -5979,12 +6190,7 @@ function renderPublicProfile(){
   return `
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
     <button class="iconbtn" data-viewprofile-close title="Back">&lsaquo;</button>
-    ${(() => {
-      const eq = d.equippedBack && cardBackById(d.equippedBack);
-      // no purchase yet -> plain striped back, same fallback pack-opening
-      // uses. Rendering it (instead of nothing) is the nudge to buy one.
-      return `<div class="cb-swatch card-face card-back ${eq ? 'back-' + esc(d.equippedBack) : ''}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;">${eq ? '' : '<span class="back-hex" aria-hidden="true"></span>'}</div>`;
-    })()}
+    ${profileAvatar(d.equippedBack, d.cosmetics)}
     <h2 class="disp" style="margin:0;">${esc(d.username || 'Player')}</h2>
   </div>
 
@@ -6216,12 +6422,11 @@ async function loadLeaderboard(cat, force){
   if(leaderboardOpen) render();
 }
 
-// A player's equipped card back, card-shaped and small enough to sit in the
-// name cell without making the row taller. Only ids the game knows become a
-// class; anything else (or none) shows the plain back, same as the profile swatch.
-function lbBack(id){
-  const known = id && cardBackById(id);
-  return `<span class="lb-back card-face card-back ${known ? 'back-' + esc(id) : ''}" aria-hidden="true">${known ? '' : '<span class="back-hex"></span>'}</span>`;
+// A player as their profile shows them: equipped card back with their
+// cosmetics on it, at 1px per cell. Only ids the game knows become a class or
+// art; anything else (or none) shows the plain back, same as the profile.
+function lbBack(id, equipped){
+  return avatarStage(id, cosmeticLayers(equipped), 1);
 }
 
 // The card on the Most Valuable Pull board: sprite (tinted if shiny or
@@ -6261,7 +6466,7 @@ function renderLeaderboards(){
         <tbody>${rows.map(r => `
           <tr class="${r.username === me ? 'lb-me' : ''} ${r.rank <= 3 ? 'lb-top lb-top' + r.rank : ''}">
             <td class="lb-rank">${r.rank}</td>
-            <td class="lb-name">${lbBack(r.equipped_back)}<button class="lb-player" data-lb-player="${esc(r.username)}" title="${r.username === me ? 'Back to your Stats' : 'View ' + esc(r.username) + '\u2019s profile'}">${esc(r.username)}</button>${r.username === me ? ' <span class="lb-you">you</span>' : ''}</td>
+            <td class="lb-name"><div class="lb-who">${lbBack(r.equipped_back, r.equipped)}<button class="lb-player" data-lb-player="${esc(r.username)}" title="${r.username === me ? 'Back to your Stats' : 'View ' + esc(r.username) + '\u2019s profile'}">${esc(r.username)}</button>${r.username === me ? '<span class="lb-you">you</span>' : ''}</div></td>
             <td class="lb-num">${board.primary(r.primary_value)}</td>
             ${hasSecondary ? `<td class="lb-num lb-sec ${board.keepSecondary ? 'lb-keep' : ''}">${r.secondary_value == null ? '' : board.secondary(r.secondary_value, r)}</td>` : ''}
           </tr>`).join('')}
@@ -6338,12 +6543,7 @@ function renderProfile(){
 
   return `
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-    ${(() => {
-      const eq = state.equippedBack && cardBackById(state.equippedBack);
-      // no purchase yet -> plain striped back, same fallback pack-opening
-      // uses. Rendering it (instead of nothing) is the nudge to buy one.
-      return `<div class="cb-swatch card-face card-back ${eq ? 'back-' + esc(state.equippedBack) : ''}" style="width:46px;height:64px;border-radius:8px;flex:0 0 auto;">${eq ? '' : '<span class="back-hex" aria-hidden="true"></span>'}</div>`;
-    })()}
+    ${profileAvatar(state.equippedBack, state.equipped)}
     <h2 class="disp" style="margin:0;">${esc(profileUsername || 'Profile')}</h2>
     <button class="visibility-pill ${profileIsPublic?'is-public':'is-private'}" style="margin-left:auto;margin-right:var(--vislb-gutter);" data-profile-visibility
       title="${profileIsPublic ? 'Anyone can view your profile and stats. Click to make it visible to friends only.' : 'Only friends can view your profile and stats. Click to make it public.'}">
@@ -7920,6 +8120,57 @@ function wire(){
     }
   });
 
+  document.querySelectorAll('[data-colltab]').forEach(b=>b.onclick=()=>{
+    collTab = b.dataset.colltab; render();
+  });
+
+  document.querySelectorAll('[data-buycos]').forEach(b=>b.onclick=async ()=>{
+    const id = b.dataset.buycos;
+    if(cosmeticBusy) return;
+    cosmeticBusy = id; render();
+    try{
+      const { data, error } = await sb.rpc('buy_cosmetic', { p_id: id });
+      if(error) throw error;
+      const row = (cosmeticShelf||[]).find(r=>r.id===id);
+      if(data.status === 'bought'){
+        state.hex = data.hex;
+        if(row) row.owned = true;
+        toast('Cosmetic unlocked.');
+      } else if(data.status === 'insufficient'){
+        toast('Not enough HEX for that.');
+      } else if(data.status === 'already_owned'){
+        if(row) row.owned = true;
+      }
+    }catch(e){
+      console.error('buy_cosmetic failed:', e && e.message, e);
+      toast('Purchase failed - nothing was charged.');
+    }finally{
+      cosmeticBusy = null; render();
+    }
+  });
+
+  // equip_hat / equip_body / equip_legs by the tile's slot; empty id = take it off
+  document.querySelectorAll('[data-equipcos]').forEach(b=>b.onclick=async ()=>{
+    const slot = b.dataset.slot;
+    if(!['hat', 'body', 'legs'].includes(slot)) return;
+    const id = b.dataset.equipcos || null;
+    if(cosmeticBusy) return;
+    cosmeticBusy = id || (state.equipped && state.equipped[slot]); render();
+    try{
+      const { data, error } = await sb.rpc('equip_' + slot, { p_id: id });
+      if(error) throw error;
+      state.equipped = state.equipped || {};
+      if(data.status === 'equipped')        state.equipped[slot] = data.id;
+      else if(data.status === 'unequipped') state.equipped[slot] = null;
+      else if(data.status === 'not_owned')  toast('You do not own that yet.');
+    }catch(e){
+      console.error('equip_' + slot + ' failed:', e && e.message, e);
+      toast('Could not change your outfit.');
+    }finally{
+      cosmeticBusy = null; render();
+    }
+  });
+
   document.querySelectorAll('[data-open-detail-modal]').forEach(tile => {
     tile.onclick = () => {
       activeModal = { type: 'detail', uid: tile.dataset.openDetailModal };
@@ -8268,7 +8519,7 @@ function wire(){
       const emptiedBinders = (state.binders || []).map(b => b.pages
         ? Object.assign({}, b, { pages: b.pages.map(pg => pg.map(() => null)) })
         : b);
-      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[], favoriteUids:[], equippedBack: state.equippedBack || null, binders: emptiedBinders };
+      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[], favoriteUids:[], equippedBack: state.equippedBack || null, equipped: state.equipped || {}, binders: emptiedBinders };
       // reset_game_state already emptied both chart histories server-side;
       // drop any pre-reset points still waiting for the save timer
       clearTimeout(saveTimer);
