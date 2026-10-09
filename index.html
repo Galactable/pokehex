@@ -1220,8 +1220,11 @@ body {
    characters. Each column is its own SVG strip with the head glyph at the
    bottom fading upward into the tail; tile height = glyphs x size so it
    loops seamlessly. Columns are split across two layers running at
-   different durations and step counts so they never fall in unison. --- */
-.card-back.back-tidal{background:linear-gradient(#020604,#000);}
+   different durations and step counts so they never fall in unison.
+   Lengths are cqw/cqh of the card (the shop tile's 128x178 inside = the old
+   px), so the rain keeps its density at every size, down to the 23px
+   leaderboard card. */
+.card-back.back-tidal{background:linear-gradient(#020604,#000);container-type:size;}
 .card-back.back-tidal::before{
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 9 108%22 width%3D%229%22 height%3D%22108%22%3E%3Ctext x%3D%220%22 y%3D%22107%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%23e8ffe8%22 opacity%3D%221%22%3E%EF%BD%B1%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2298%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%239dff8a%22 opacity%3D%220.95%22%3E%EF%BD%B7%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2289%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.73%22%3E%EF%BD%B1%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2280%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.65%22%3E8%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2271%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.58%22%3E%EF%BD%B7%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2262%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.51%22%3E%EF%BD%B6%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2253%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.44%22%3E%EF%BD%BB%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2244%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.36%22%3E%EF%BE%81%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2235%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.29%22%3E%EF%BD%B4%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2226%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.22%22%3E%EF%BE%84%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2217%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.15%22%3E%EF%BD%BA%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%228%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.07%22%3E6%3C%2Ftext%3E%3C%2Fsvg%3E"),
@@ -1229,8 +1232,8 @@ body {
     url("data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 9 90%22 width%3D%229%22 height%3D%2290%22%3E%3Ctext x%3D%220%22 y%3D%2289%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%23e8ffe8%22 opacity%3D%221%22%3E4%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2280%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%239dff8a%22 opacity%3D%220.95%22%3E%EF%BE%8F%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2271%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.71%22%3E%EF%BE%93%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2262%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.62%22%3E%EF%BE%80%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2253%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.53%22%3E%EF%BD%B6%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2244%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.44%22%3E%EF%BE%82%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2235%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.36%22%3E%EF%BE%89%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2226%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.27%22%3E9%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2217%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.18%22%3E%EF%BD%B3%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%228%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.09%22%3E%EF%BE%83%3C%2Ftext%3E%3C%2Fsvg%3E"),
     url("data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 9 54%22 width%3D%229%22 height%3D%2254%22%3E%3Ctext x%3D%220%22 y%3D%2253%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%23e8ffe8%22 opacity%3D%221%22%3E%EF%BE%8A%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2244%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%239dff8a%22 opacity%3D%220.95%22%3E%EF%BE%82%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2235%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.64%22%3E%EF%BE%87%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2226%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.48%22%3E5%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2217%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.32%22%3E%EF%BD%BD%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%228%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.16%22%3E%EF%BE%91%3C%2Ftext%3E%3C%2Fsvg%3E"),
     url("data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 9 72%22 width%3D%229%22 height%3D%2272%22%3E%3Ctext x%3D%220%22 y%3D%2271%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%23e8ffe8%22 opacity%3D%221%22%3E%EF%BE%80%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2262%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%239dff8a%22 opacity%3D%220.95%22%3E%EF%BD%B6%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2253%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.69%22%3E2%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2244%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.57%22%3E1%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2235%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.46%22%3E0%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2226%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.34%22%3E%EF%BD%B4%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2217%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.23%22%3E%EF%BE%92%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%228%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.11%22%3E%EF%BE%93%3C%2Ftext%3E%3C%2Fsvg%3E");
-  background-size:9px 108px, 9px 108px, 9px 90px, 9px 54px, 9px 72px;
-  background-position:1px 0, 10px 0, 19px 0, 37px 0, 55px 0;
+  background-size:7.031cqw 60.674cqh, 7.031cqw 60.674cqh, 7.031cqw 50.562cqh, 7.031cqw 30.337cqh, 7.031cqw 40.449cqh;
+  background-position:0.781cqw 0, 7.812cqw 0, 14.844cqw 0, 28.906cqw 0, 42.969cqw 0;
   background-repeat:repeat-y;
   animation:cb-matrix-a 1.6s steps(9) infinite;
 }
@@ -1242,13 +1245,13 @@ body {
     url("data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 9 81%22 width%3D%229%22 height%3D%2281%22%3E%3Ctext x%3D%220%22 y%3D%2280%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%23e8ffe8%22 opacity%3D%221%22%3E%EF%BD%B9%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2271%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%239dff8a%22 opacity%3D%220.95%22%3E1%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2262%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.70%22%3E%EF%BD%BF%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2253%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.60%22%3E%EF%BE%92%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2244%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.50%22%3E%EF%BE%8B%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2235%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.40%22%3E%EF%BE%8C%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2226%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.30%22%3E%EF%BD%B8%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2217%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.20%22%3E%EF%BE%84%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%228%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.10%22%3E%EF%BD%B9%3C%2Ftext%3E%3C%2Fsvg%3E"),
     url("data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 9 54%22 width%3D%229%22 height%3D%2254%22%3E%3Ctext x%3D%220%22 y%3D%2253%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%23e8ffe8%22 opacity%3D%221%22%3E%EF%BE%93%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2244%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%239dff8a%22 opacity%3D%220.95%22%3E%EF%BD%B2%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2235%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.64%22%3E4%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2226%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.48%22%3E%EF%BD%B1%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2217%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.32%22%3E9%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%228%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.16%22%3E%EF%BE%8B%3C%2Ftext%3E%3C%2Fsvg%3E"),
     url("data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 9 99%22 width%3D%229%22 height%3D%2299%22%3E%3Ctext x%3D%220%22 y%3D%2298%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%23e8ffe8%22 opacity%3D%221%22%3E%EF%BD%B4%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2289%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%239dff8a%22 opacity%3D%220.95%22%3E4%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2280%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.72%22%3E%EF%BE%88%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2271%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.64%22%3E%EF%BE%89%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2262%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.56%22%3E2%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2253%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.48%22%3E%EF%BE%89%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2244%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.40%22%3E8%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2235%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.32%22%3E%EF%BE%93%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2226%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.24%22%3E8%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%2217%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.16%22%3E%EF%BD%B4%3C%2Ftext%3E%3Ctext x%3D%220%22 y%3D%228%22 font-family%3D%22monospace%22 font-size%3D%229%22 fill%3D%22%2339ff14%22 opacity%3D%220.08%22%3E%EF%BE%88%3C%2Ftext%3E%3C%2Fsvg%3E");
-  background-size:9px 63px, 9px 72px, 9px 63px, 9px 81px, 9px 54px, 9px 99px;
-  background-position:73px 0, 82px 0, 91px 0, 100px 0, 118px 0, 127px 0;
+  background-size:7.031cqw 35.393cqh, 7.031cqw 40.449cqh, 7.031cqw 35.393cqh, 7.031cqw 45.506cqh, 7.031cqw 30.337cqh, 7.031cqw 55.618cqh;
+  background-position:57.031cqw 0, 64.062cqw 0, 71.094cqw 0, 78.125cqw 0, 92.188cqw 0, 99.219cqw 0;
   background-repeat:repeat-y;
   animation:cb-matrix-b 2.5s steps(13) infinite;
 }
-@keyframes cb-matrix-a{ to{ background-position:1px 108px, 10px 108px, 19px 90px, 37px 54px, 55px 72px; } }
-@keyframes cb-matrix-b{ to{ background-position:73px 63px, 82px 72px, 91px 63px, 100px 81px, 118px 54px, 127px 99px; } }
+@keyframes cb-matrix-a{ to{ background-position:0.781cqw 60.674cqh, 7.812cqw 60.674cqh, 14.844cqw 50.562cqh, 28.906cqw 30.337cqh, 42.969cqw 40.449cqh; } }
+@keyframes cb-matrix-b{ to{ background-position:57.031cqw 35.393cqh, 64.062cqw 40.449cqh, 71.094cqw 35.393cqh, 78.125cqw 45.506cqh, 92.188cqw 30.337cqh, 99.219cqw 55.618cqh; } }
 
 /* --- 3.5M Regalia: crown jewels. Tufted royal velvet, a gold frame that runs
    to the card's edge, and the crowned HEX crest over crossed scepters. Drawn
@@ -1278,59 +1281,50 @@ body {
    off and the default position (0%) leaves the band off-card too. */
 @keyframes cb-regalia-glint{ 0%{background-position:100% 0;} 45%,100%{background-position:0% 0;} }
 
-/* --- 100k: BRICK. Static pixel brickwork, offset courses. --- */
+/* --- 100k: BRICK. Static pixel brickwork, offset courses. Sized against
+   the card (the shop tile's 128x178 inside = the old 16px courses, 32px
+   bricks), so it stays a wall of bricks at every size; mortar never goes
+   below 1px. --- */
 .card-back.back-bloom{
   background:#0e0a16;                                  /* mortar */
-  background-image:repeating-linear-gradient(to bottom,#3b1f5c 0 14px,#0e0a16 14px 16px);
+  /* courses: 14 of every 16px of the tile's 178px inside, as % of height */
+  background-image:repeating-linear-gradient(to bottom,#3b1f5c 0 calc(8.989% - max(1px, 1.124%)),#0e0a16 0 8.989%);
+  container-type:size;
 }
 /* vertical mortar on even courses only, via a stepped mask */
 .card-back.back-bloom::before{
-  background-image:repeating-linear-gradient(to right,#0e0a16 0 2px,transparent 2px 32px);
-  -webkit-mask-image:repeating-linear-gradient(to bottom,#000 0 16px,transparent 16px 32px);
-          mask-image:repeating-linear-gradient(to bottom,#000 0 16px,transparent 16px 32px);
+  background-image:repeating-linear-gradient(to right,#0e0a16 0 max(1px, 1.5625cqw),transparent 0 25cqw);
+  -webkit-mask-image:repeating-linear-gradient(to bottom,#000 0 8.989cqh,transparent 0 17.978cqh);
+          mask-image:repeating-linear-gradient(to bottom,#000 0 8.989cqh,transparent 0 17.978cqh);
 }
 /* odd courses, offset half a brick */
 .card-back.back-bloom::after{
-  background-image:repeating-linear-gradient(to right,#0e0a16 0 2px,transparent 2px 32px);
-  background-position:16px 0;
-  -webkit-mask-image:repeating-linear-gradient(to bottom,transparent 0 16px,#000 16px 32px);
-          mask-image:repeating-linear-gradient(to bottom,transparent 0 16px,#000 16px 32px);
-  box-shadow:inset 0 0 0 1px rgba(57,255,20,.10), inset 0 34px 30px -30px rgba(157,78,221,.55);
+  background-image:repeating-linear-gradient(to right,#0e0a16 0 max(1px, 1.5625cqw),transparent 0 25cqw);
+  background-position:12.5cqw 0;
+  -webkit-mask-image:repeating-linear-gradient(to bottom,transparent 0 8.989cqh,#000 0 17.978cqh);
+          mask-image:repeating-linear-gradient(to bottom,transparent 0 8.989cqh,#000 0 17.978cqh);
+  box-shadow:inset 0 0 0 1px rgba(57,255,20,.10), inset 0 19.101cqh 16.854cqh -16.854cqh rgba(157,78,221,.55);
 }
 
-/* --- 160k: FRAME. Gilt pixel frame around a moonlit landscape. Static. --- */
+/* --- 160k: FRAME. Gilt pixel frame around a moonlit landscape. Static.
+   Frame and ornaments are drawn on a 130x180 grid (the shop tile) and
+   stretched to the card, so they keep their share of it at every size; in
+   fixed px the 16px frame swallowed the 46x64 profile card and the 23x32
+   leaderboard card whole. --- */
 .card-back.back-circuit{
-  background:#07090a;
   /* bevelled gold: light top-left, deep shadow bottom-right, hard steps */
-  box-shadow:
-    inset 0 0 0 2px  #6b4a12,
-    inset 0 0 0 5px  #d9a441,
-    inset 0 0 0 8px  #f3d98a,
-    inset 0 0 0 11px #b8862b,
-    inset 0 0 0 14px #6b4a12,
-    inset 0 0 0 16px #f3d98a;
+  background:#07090a url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 180" preserveAspectRatio="none" shape-rendering="crispEdges"%3E%3Crect x="0" y="0" width="130" height="180" fill="%236b4a12"/%3E%3Crect x="2" y="2" width="126" height="176" fill="%23d9a441"/%3E%3Crect x="5" y="5" width="120" height="170" fill="%23f3d98a"/%3E%3Crect x="8" y="8" width="114" height="164" fill="%23b8862b"/%3E%3Crect x="11" y="11" width="108" height="158" fill="%236b4a12"/%3E%3Crect x="14" y="14" width="102" height="152" fill="%23f3d98a"/%3E%3Crect x="16" y="16" width="98" height="148" fill="%2307090a"/%3E%3C/svg%3E') 0 0/100% 100% no-repeat;
 }
-/* the picture: sky, moon, two ridgelines, ground */
+/* the picture: sky, moon, two ridgelines, ground (18px of 130x180 in) */
 .card-back.back-circuit::before{
-  inset:18px;
+  inset:10% 13.85%;
   background-image:url("data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 100 130%22 shape-rendering%3D%22crispEdges%22%3E%3Crect width%3D%22100%22 height%3D%22130%22 fill%3D%22%231b0f2e%22%2F%3E%3Crect y%3D%2255%22 width%3D%22100%22 height%3D%2275%22 fill%3D%22%232a1547%22%2F%3E%3Ccircle cx%3D%2272%22 cy%3D%2226%22 r%3D%2211%22 fill%3D%22%23f0d9ff%22%2F%3E%3Ccircle cx%3D%2266%22 cy%3D%2222%22 r%3D%2210%22 fill%3D%22%231b0f2e%22%2F%3E%3Cpolygon points%3D%220%2C92 26%2C44 52%2C92%22 fill%3D%22%2324123a%22%2F%3E%3Cpolygon points%3D%2234%2C92 62%2C38 90%2C92%22 fill%3D%22%231b3a23%22%2F%3E%3Cpolygon points%3D%2226%2C44 32%2C54 20%2C54%22 fill%3D%22%233d6b48%22%2F%3E%3Cpolygon points%3D%2262%2C38 69%2C50 55%2C50%22 fill%3D%22%234f8a5b%22%2F%3E%3Cpolygon points%3D%2270%2C92 100%2C58 100%2C92%22 fill%3D%22%2316301c%22%2F%3E%3Crect y%3D%2292%22 width%3D%22100%22 height%3D%2238%22 fill%3D%22%230a1a0e%22%2F%3E%3Crect y%3D%2292%22 width%3D%22100%22 height%3D%223%22 fill%3D%22%2316301c%22%2F%3E%3C%2Fsvg%3E");
   background-size:100% 100%;
   background-repeat:no-repeat;
-  box-shadow:inset 0 0 0 2px #6b4a12;
 }
-/* gilt corner ornaments */
+/* the dark edge round the picture and the gilt corner ornaments */
 .card-back.back-circuit::after{
-  inset:16px;
-  background-image:
-    linear-gradient(#f3d98a 0 0), linear-gradient(#f3d98a 0 0),
-    linear-gradient(#f3d98a 0 0), linear-gradient(#f3d98a 0 0),
-    linear-gradient(#f3d98a 0 0), linear-gradient(#f3d98a 0 0),
-    linear-gradient(#f3d98a 0 0), linear-gradient(#f3d98a 0 0);
-  background-size:10px 3px, 3px 10px, 10px 3px, 3px 10px,
-                  10px 3px, 3px 10px, 10px 3px, 3px 10px;
-  background-position:0 0, 0 0, 100% 0, 100% 0,
-                      0 100%, 0 100%, 100% 100%, 100% 100%;
-  background-repeat:no-repeat;
+  background:url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 180" preserveAspectRatio="none" shape-rendering="crispEdges"%3E%3Cpath d="M18 18h94v144h-94z M20 20v140h90v-140z" fill="%236b4a12" fill-rule="evenodd"/%3E%3Cg fill="%23f3d98a"%3E%3Crect x="16" y="16" width="10" height="3"/%3E%3Crect x="16" y="16" width="3" height="10"/%3E%3Crect x="104" y="16" width="10" height="3"/%3E%3Crect x="111" y="16" width="3" height="10"/%3E%3Crect x="16" y="161" width="10" height="3"/%3E%3Crect x="16" y="154" width="3" height="10"/%3E%3Crect x="104" y="161" width="10" height="3"/%3E%3Crect x="111" y="154" width="3" height="10"/%3E%3C/g%3E%3C/svg%3E') 0 0/100% 100% no-repeat;
 }
 
 /* --- 400k: DUNGEON. Stone courses with a stepped torch flicker. --- */
@@ -1372,55 +1366,61 @@ body {
 @keyframes cb-sparkle{ to{ background-position:50.8% 91.1%, 40.0% 90.0%, 39.2% 91.7%, 36.2% 89.4%, 76.2% 89.4%, 60.0% 95.6%, 26.2% 88.3%, 83.8% 92.2%; } }
 @keyframes cb-torch{ from{opacity:.55;} to{opacity:1;} }
 
-.card-back.back-starfield{background:radial-gradient(120% 80% at 30% 12%,#1a1030 0%,transparent 60%),linear-gradient(#05060e,#0a0716);}
-/* 24 star layers. Every tile is at least 61px wide and 97px tall, so no
+.card-back.back-starfield{background:radial-gradient(120% 80% at 30% 12%,#1a1030 0%,transparent 60%),linear-gradient(#05060e,#0a0716);container-type:size;}
+/* Lengths are cqw/cqh of the card (the shop tile's 128x178 inside = the old
+   px), so the field keeps its look at every size. Stars scale too, with no 1px
+   floor: on a tiny card the small ones fade out instead of crowding it.
+   24 star layers. Every tile is at least 61px wide and 97px tall, so no
    single layer can place more than two stars per row or column - that is what
    stops the field reading as a grid. Offsets were searched for the lowest
    row/column alignment score. Each layer falls exactly one tile per cycle. */
 .card-back.back-starfield::before{
   background-image:
-    radial-gradient(2.5px 2.5px at 50px 47px, rgba(200,245,204,0.50) 0 100%, transparent 100%),
-    radial-gradient(1px 1px at 31px 79px, rgba(200,245,204,0.30) 0 100%, transparent 100%),
-    radial-gradient(2.5px 2.5px at 68px 15px, rgba(200,245,204,0.75) 0 100%, transparent 100%),
-    radial-gradient(1px 1px at 64px 9px, rgba(240,217,255,0.60) 0 100%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 1px 13px, rgba(200,245,204,0.75) 0 100%, transparent 100%),
-    radial-gradient(1px 1px at 41px 70px, rgba(200,245,204,0.90) 0 100%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 12px 64px, rgba(240,217,255,0.40) 0 100%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 51px 123px, rgba(200,245,204,0.40) 0 100%, transparent 100%),
-    radial-gradient(1px 1px at 34px 33px, rgba(200,245,204,0.50) 0 100%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 64px 92px, rgba(200,245,204,0.60) 0 100%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 45px 37px, rgba(240,217,255,0.75) 0 100%, transparent 100%),
-    radial-gradient(2.5px 2.5px at 29px 8px, rgba(240,217,255,0.90) 0 100%, transparent 100%),
-    radial-gradient(1px 1px at 30px 130px, rgba(240,217,255,0.75) 0 100%, transparent 100%),
-    radial-gradient(2px 2px at 13px 119px, rgba(200,245,204,0.90) 0 100%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 3px 99px, rgba(200,245,204,0.30) 0 100%, transparent 100%),
-    radial-gradient(1px 1px at 77px 39px, rgba(240,217,255,0.90) 0 100%, transparent 100%),
-    radial-gradient(2px 2px at 18px 142px, rgba(200,245,204,0.90) 0 100%, transparent 100%),
-    radial-gradient(1px 1px at 61px 106px, rgba(200,245,204,0.90) 0 100%, transparent 100%),
-    radial-gradient(2.5px 2.5px at 19px 57px, rgba(200,245,204,0.75) 0 100%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 15px 42px, rgba(200,245,204,0.30) 0 100%, transparent 100%),
-    radial-gradient(1px 1px at 87px 56px, rgba(200,245,204,0.90) 0 100%, transparent 100%),
-    radial-gradient(1px 1px at 59px 84px, rgba(240,217,255,1.00) 0 100%, transparent 100%),
-    radial-gradient(1px 1px at 58px 24px, rgba(240,217,255,1.00) 0 100%, transparent 100%),
-    radial-gradient(1.5px 1.5px at 4px 86px, rgba(200,245,204,0.40) 0 100%, transparent 100%);
-  background-size:61px 101px, 67px 113px, 71px 127px, 73px 97px, 79px 149px, 83px 109px, 89px 163px, 97px 131px, 101px 103px, 103px 181px, 107px 139px, 109px 151px, 113px 191px, 127px 121px, 131px 167px, 137px 107px, 63px 199px, 69px 143px, 77px 111px, 87px 173px, 93px 157px, 99px 129px, 119px 145px, 123px 187px;
+    radial-gradient(1.953cqw 1.953cqw at 39.062cqw 26.404cqh, rgba(200,245,204,0.50) 0 100%, transparent 100%),
+    radial-gradient(0.781cqw 0.781cqw at 24.219cqw 44.382cqh, rgba(200,245,204,0.30) 0 100%, transparent 100%),
+    radial-gradient(1.953cqw 1.953cqw at 53.125cqw 8.427cqh, rgba(200,245,204,0.75) 0 100%, transparent 100%),
+    radial-gradient(0.781cqw 0.781cqw at 50cqw 5.056cqh, rgba(240,217,255,0.60) 0 100%, transparent 100%),
+    radial-gradient(1.172cqw 1.172cqw at 0.781cqw 7.303cqh, rgba(200,245,204,0.75) 0 100%, transparent 100%),
+    radial-gradient(0.781cqw 0.781cqw at 32.031cqw 39.326cqh, rgba(200,245,204,0.90) 0 100%, transparent 100%),
+    radial-gradient(1.172cqw 1.172cqw at 9.375cqw 35.955cqh, rgba(240,217,255,0.40) 0 100%, transparent 100%),
+    radial-gradient(1.172cqw 1.172cqw at 39.844cqw 69.101cqh, rgba(200,245,204,0.40) 0 100%, transparent 100%),
+    radial-gradient(0.781cqw 0.781cqw at 26.562cqw 18.539cqh, rgba(200,245,204,0.50) 0 100%, transparent 100%),
+    radial-gradient(1.172cqw 1.172cqw at 50cqw 51.685cqh, rgba(200,245,204,0.60) 0 100%, transparent 100%),
+    radial-gradient(1.172cqw 1.172cqw at 35.156cqw 20.787cqh, rgba(240,217,255,0.75) 0 100%, transparent 100%),
+    radial-gradient(1.953cqw 1.953cqw at 22.656cqw 4.494cqh, rgba(240,217,255,0.90) 0 100%, transparent 100%),
+    radial-gradient(0.781cqw 0.781cqw at 23.438cqw 73.034cqh, rgba(240,217,255,0.75) 0 100%, transparent 100%),
+    radial-gradient(1.562cqw 1.562cqw at 10.156cqw 66.854cqh, rgba(200,245,204,0.90) 0 100%, transparent 100%),
+    radial-gradient(1.172cqw 1.172cqw at 2.344cqw 55.618cqh, rgba(200,245,204,0.30) 0 100%, transparent 100%),
+    radial-gradient(0.781cqw 0.781cqw at 60.156cqw 21.91cqh, rgba(240,217,255,0.90) 0 100%, transparent 100%),
+    radial-gradient(1.562cqw 1.562cqw at 14.062cqw 79.775cqh, rgba(200,245,204,0.90) 0 100%, transparent 100%),
+    radial-gradient(0.781cqw 0.781cqw at 47.656cqw 59.551cqh, rgba(200,245,204,0.90) 0 100%, transparent 100%),
+    radial-gradient(1.953cqw 1.953cqw at 14.844cqw 32.022cqh, rgba(200,245,204,0.75) 0 100%, transparent 100%),
+    radial-gradient(1.172cqw 1.172cqw at 11.719cqw 23.596cqh, rgba(200,245,204,0.30) 0 100%, transparent 100%),
+    radial-gradient(0.781cqw 0.781cqw at 67.969cqw 31.461cqh, rgba(200,245,204,0.90) 0 100%, transparent 100%),
+    radial-gradient(0.781cqw 0.781cqw at 46.094cqw 47.191cqh, rgba(240,217,255,1.00) 0 100%, transparent 100%),
+    radial-gradient(0.781cqw 0.781cqw at 45.312cqw 13.483cqh, rgba(240,217,255,1.00) 0 100%, transparent 100%),
+    radial-gradient(1.172cqw 1.172cqw at 3.125cqw 48.315cqh, rgba(200,245,204,0.40) 0 100%, transparent 100%);
+  background-size:47.656cqw 56.742cqh, 52.344cqw 63.483cqh, 55.469cqw 71.348cqh, 57.031cqw 54.494cqh, 61.719cqw 83.708cqh, 64.844cqw 61.236cqh, 69.531cqw 91.573cqh, 75.781cqw 73.596cqh, 78.906cqw 57.865cqh, 80.469cqw 101.685cqh, 83.594cqw 78.09cqh, 85.156cqw 84.831cqh, 88.281cqw 107.303cqh, 99.219cqw 67.978cqh, 102.344cqw 93.82cqh, 107.031cqw 60.112cqh, 49.219cqw 111.798cqh, 53.906cqw 80.337cqh, 60.156cqw 62.36cqh, 67.969cqw 97.191cqh, 72.656cqw 88.202cqh, 77.344cqw 72.472cqh, 92.969cqw 81.461cqh, 96.094cqw 105.056cqh;
   background-position:0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
   animation:cb-star-drift 120s linear infinite;
 }
 /* two comets crossing on long diagonals, off-card most of the cycle */
 .card-back.back-starfield::after{
   background-image:url("data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 46 46%22%3E%3Cdefs%3E%3ClinearGradient id%3D%22t%22 x1%3D%220%22 y1%3D%220%22 x2%3D%221%22 y2%3D%221%22%3E%3Cstop offset%3D%220%22 stop-color%3D%22%23c8f5cc%22 stop-opacity%3D%220%22%2F%3E%3Cstop offset%3D%220.65%22 stop-color%3D%22%23c8f5cc%22 stop-opacity%3D%220.55%22%2F%3E%3Cstop offset%3D%221%22 stop-color%3D%22%23c8f5cc%22 stop-opacity%3D%221%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cpath d%3D%22M6 6 L41 39.4 L41 42.6 Z%22 fill%3D%22url(%23t)%22%2F%3E%3Ccircle cx%3D%2241%22 cy%3D%2241%22 r%3D%222.5%22 fill%3D%22%23ffffff%22%2F%3E%3Ccircle cx%3D%2241%22 cy%3D%2241%22 r%3D%221.2%22 fill%3D%22%23ffffff%22%2F%3E%3C%2Fsvg%3E"), url("data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 32 32%22%3E%3Cdefs%3E%3ClinearGradient id%3D%22t%22 x1%3D%220%22 y1%3D%220%22 x2%3D%221%22 y2%3D%221%22%3E%3Cstop offset%3D%220%22 stop-color%3D%22%23f0d9ff%22 stop-opacity%3D%220%22%2F%3E%3Cstop offset%3D%220.65%22 stop-color%3D%22%23f0d9ff%22 stop-opacity%3D%220.55%22%2F%3E%3Cstop offset%3D%221%22 stop-color%3D%22%23f0d9ff%22 stop-opacity%3D%221%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cpath d%3D%22M4 4 L28 26.4 L28 29.6 Z%22 fill%3D%22url(%23t)%22%2F%3E%3Ccircle cx%3D%2228%22 cy%3D%2228%22 r%3D%222.0%22 fill%3D%22%23ffffff%22%2F%3E%3Ccircle cx%3D%2228%22 cy%3D%2228%22 r%3D%221.0%22 fill%3D%22%23ffffff%22%2F%3E%3C%2Fsvg%3E");
-  background-size:46px 46px, 32px 32px;
+  background-size:35.938cqw 25.843cqh, 25cqw 17.978cqh;
   background-repeat:no-repeat;
-  background-position:-60px -50px, -150px -95px;
+  background-position:-46.875cqw -28.09cqh, -117.188cqw -53.371cqh;
   animation:cb-comet 7s steps(28) infinite;
 }
-@keyframes cb-star-drift{ to{ background-position:0 101px, 0 113px, 0 127px, 0 97px, 0 149px, 0 109px, 0 163px, 0 131px, 0 103px, 0 181px, 0 139px, 0 151px, 0 191px, 0 121px, 0 167px, 0 107px, 0 199px, 0 143px, 0 111px, 0 173px, 0 157px, 0 129px, 0 145px, 0 187px; } }
-@keyframes cb-comet{ to{ background-position:150px 190px, 225px 255px; } }
+@keyframes cb-star-drift{ to{ background-position:0 56.742cqh, 0 63.483cqh, 0 71.348cqh, 0 54.494cqh, 0 83.708cqh, 0 61.236cqh, 0 91.573cqh, 0 73.596cqh, 0 57.865cqh, 0 101.685cqh, 0 78.09cqh, 0 84.831cqh, 0 107.303cqh, 0 67.978cqh, 0 93.82cqh, 0 60.112cqh, 0 111.798cqh, 0 80.337cqh, 0 62.36cqh, 0 97.191cqh, 0 88.202cqh, 0 72.472cqh, 0 81.461cqh, 0 105.056cqh; } }
+@keyframes cb-comet{ to{ background-position:117.188cqw 106.742cqh, 175.781cqw 143.258cqh; } }
 
-/* --- 900k: drippy cave. Drops fall from the stalactite tips. --- */
+/* --- 900k: drippy cave. Drops fall from the stalactite tips. The drops are
+   sized in cqw/cqh of the card (the shop tile's 128x178 inside = the old px),
+   so they stay under the tips at every size; each drop is at least 1px. --- */
 .card-back.back-fracture{
   background-color:#070d10;
+  container-type:size;
   background-image:url("data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 130 180%22 shape-rendering%3D%22crispEdges%22%3E%3Crect width%3D%22130%22 height%3D%22180%22 fill%3D%22%23070d10%22%2F%3E%3Cpath d%3D%22M29 150 L29 86 Q29 58 66 58 Q103 58 103 86 L103 150 Z%22 fill%3D%22%230e2028%22%2F%3E%3Cpath d%3D%22M37 150 L37 88 Q37 66 66 66 Q95 66 95 88 L95 150 Z%22 fill%3D%22%23153742%22%2F%3E%3Cpath d%3D%22M44 150 L44 92 Q44 74 66 74 Q88 74 88 92 L88 150 Z%22 fill%3D%22%2322606d%22%2F%3E%3Cpath d%3D%22M51 150 L51 98 Q51 84 66 84 Q81 84 81 98 L81 150 Z%22 fill%3D%22%233f97a1%22%2F%3E%3Cpath d%3D%22M58 150 L58 103 Q58 94 66 94 Q74 94 74 103 L74 150 Z%22 fill%3D%22%238fd8dc%22%2F%3E%3Cpolygon points%3D%220%2C0 15%2C8 17%2C22 18%2C37 19%2C58 16%2C79 6%2C97 18%2C114 16%2C127 20%2C137 7%2C149 0%2C152%22 fill%3D%22%23101f26%22%2F%3E%3Cpolyline points%3D%2215%2C8 17%2C22 18%2C37 19%2C58 16%2C79 6%2C97 18%2C114 16%2C127 20%2C137 7%2C149%22 fill%3D%22none%22 stroke%3D%22%231c3540%22 stroke-width%3D%221.5%22%2F%3E%3Cpolygon points%3D%22130%2C0 117%2C8 114%2C22 114%2C40 122%2C55 124%2C71 117%2C86 114%2C100 117%2C122 111%2C143 130%2C152%22 fill%3D%22%23101f26%22%2F%3E%3Cpolyline points%3D%22117%2C8 114%2C22 114%2C40 122%2C55 124%2C71 117%2C86 114%2C100 117%2C122 111%2C143%22 fill%3D%22none%22 stroke%3D%22%231c3540%22 stroke-width%3D%221.5%22%2F%3E%3Cpath d%3D%22M5 152 Q5 139 16 139 Q27 139 27 152 Z%22 fill%3D%22%2312242b%22%2F%3E%3Cpath d%3D%22M110 152 Q110 141 120 141 Q130 141 130 152 Z%22 fill%3D%22%2312242b%22%2F%3E%3Cpath d%3D%22M96 152 Q96 144 104 144 Q112 144 112 152 Z%22 fill%3D%22%2312242b%22%2F%3E%3Crect x%3D%2258%22 y%3D%22140%22 width%3D%2216%22 height%3D%2210%22 fill%3D%22%238fd8dc%22 opacity%3D%220.30%22%2F%3E%3Crect y%3D%22150%22 width%3D%22130%22 height%3D%2230%22 fill%3D%22%230b2027%22%2F%3E%3Crect y%3D%22150%22 width%3D%22130%22 height%3D%222%22 fill%3D%22%232f6f7a%22%2F%3E%3Cellipse cx%3D%2210%22 cy%3D%22158%22 rx%3D%228%22 ry%3D%224%22 fill%3D%22%230f1c22%22%2F%3E%3Cellipse cx%3D%22122%22 cy%3D%22157%22 rx%3D%227%22 ry%3D%223%22 fill%3D%22%230f1c22%22%2F%3E%3Cpolygon points%3D%2214%2C130 17%2C137 14%2C143 11%2C137%22 fill%3D%22%233f97a1%22 opacity%3D%22.85%22%2F%3E%3Cpolygon points%3D%2219%2C135 22%2C142 19%2C148 16%2C142%22 fill%3D%22%238fd8dc%22 opacity%3D%22.85%22%2F%3E%3Cpolygon points%3D%22124%2C132 127%2C139 124%2C145 121%2C139%22 fill%3D%22%233f97a1%22 opacity%3D%22.85%22%2F%3E%3Cpath d%3D%22M104 143 Q126 146 128 132 Q129 121 119 120%22 stroke%3D%22%231b3038%22 stroke-width%3D%228%22 fill%3D%22none%22 stroke-linecap%3D%22round%22%2F%3E%3Cpolygon points%3D%22120%2C122 112%2C110 121%2C113 127%2C105 126%2C122%22 fill%3D%22%232c4a56%22%2F%3E%3Cellipse cx%3D%2293%22 cy%3D%22139%22 rx%3D%2227%22 ry%3D%2213%22 fill%3D%22%231b3038%22%2F%3E%3Cellipse cx%3D%2293%22 cy%3D%22134%22 rx%3D%2224%22 ry%3D%228%22 fill%3D%22%232c4a56%22%2F%3E%3Cellipse cx%3D%22107%22 cy%3D%22138%22 rx%3D%2212%22 ry%3D%2210%22 fill%3D%22%231b3038%22%2F%3E%3Cpath d%3D%22M86 130 Q92 104 104 110 Q114 115 112 128 Q100 122 88 132 Z%22 fill%3D%22%23101f26%22%2F%3E%3Cpath d%3D%22M90 126 Q97 111 105 114%22 stroke%3D%22%232c4a56%22 stroke-width%3D%221.2%22 fill%3D%22none%22%2F%3E%3Cpath d%3D%22M95 124 Q101 116 108 119%22 stroke%3D%22%232c4a56%22 stroke-width%3D%221%22 fill%3D%22none%22%2F%3E%3Cpolygon points%3D%2286%2C127 89%2C120 92%2C127%22 fill%3D%22%232c4a56%22%2F%3E%3Cpolygon points%3D%2294%2C125 97%2C118 100%2C125%22 fill%3D%22%232c4a56%22%2F%3E%3Cpolygon points%3D%22102%2C127 105%2C120 108%2C127%22 fill%3D%22%232c4a56%22%2F%3E%3Cpolygon points%3D%22109%2C131 112%2C124 115%2C131%22 fill%3D%22%232c4a56%22%2F%3E%3Cpath d%3D%22M84 133 Q78 135 73 140%22 stroke%3D%22%231b3038%22 stroke-width%3D%2212%22 fill%3D%22none%22 stroke-linecap%3D%22round%22%2F%3E%3Cpolygon points%3D%2248%2C145 60%2C139 66%2C134 73%2C139 73%2C147 56%2C149 48%2C147%22 fill%3D%22%231b3038%22%2F%3E%3Cpolygon points%3D%2260%2C139 66%2C134 70%2C138 63%2C141%22 fill%3D%22%232c4a56%22%2F%3E%3Cpolygon points%3D%2249%2C147 70%2C146 70%2C151 50%2C151%22 fill%3D%22%23101f26%22%2F%3E%3Cpath d%3D%22M60 142 Q62 141 64 142%22 stroke%3D%22%23f0d9ff%22 stroke-width%3D%221%22 fill%3D%22none%22 opacity%3D%22.65%22%2F%3E%3Crect x%3D%2250%22 y%3D%22143%22 width%3D%222%22 height%3D%222%22 fill%3D%22%23101f26%22%2F%3E%3Cpath d%3D%22M69 135 Q77 130 82 123%22 stroke%3D%22%232c4a56%22 stroke-width%3D%223.5%22 fill%3D%22none%22 stroke-linecap%3D%22round%22%2F%3E%3Cpath d%3D%22M65 134 Q71 129 74 124%22 stroke%3D%22%232c4a56%22 stroke-width%3D%222.5%22 fill%3D%22none%22 stroke-linecap%3D%22round%22%2F%3E%3Cpath d%3D%22M74 151 Q80 145 88 149 L88 152 L74 152 Z%22 fill%3D%22%23101f26%22%2F%3E%3Cpath d%3D%22M48 145 Q56 141 60 139 Q64 136 66 134%22 stroke%3D%22%23c77dff%22 stroke-width%3D%221.3%22 fill%3D%22none%22 opacity%3D%22.8%22%2F%3E%3Cpath d%3D%22M92 149 Q106 152 118 149%22 stroke%3D%22%23c77dff%22 stroke-width%3D%221%22 fill%3D%22none%22 opacity%3D%22.18%22%2F%3E%3Cellipse cx%3D%2228%22 cy%3D%22150%22 rx%3D%2218%22 ry%3D%225%22 fill%3D%22%232b1c12%22%2F%3E%3Cpath d%3D%22M27 108 Q31 124 38 130 Q34 136 40 149 L15 149 Q19 139 15 131 Q24 126 27 108 Z%22 fill%3D%22%237d2ab8%22%2F%3E%3Cpath d%3D%22M40 124 Q44 132 43 140 Q41 145 43 149 L34 149 Q36 141 34 134 Q38 131 40 124 Z%22 fill%3D%22%237d2ab8%22%2F%3E%3Cpath d%3D%22M15 128 Q18 135 17 149 L10 149 Q11 137 15 128 Z%22 fill%3D%22%239d4edd%22%2F%3E%3Cpath d%3D%22M27 120 Q30 132 35 138 Q32 143 34 149 L20 149 Q22 142 19 137 Q25 132 27 120 Z%22 fill%3D%22%239d4edd%22%2F%3E%3Cpath d%3D%22M27 129 Q29 138 31 142 Q29 145 30 149 L24 149 Q24 144 23 141 Q26 137 27 129 Z%22 fill%3D%22%23c77dff%22%2F%3E%3Cpath d%3D%22M27 136 Q29 143 28 149 L26 149 Q26 143 27 136 Z%22 fill%3D%22%23f0d9ff%22%2F%3E%3Crect x%3D%2213%22 y%3D%22147%22 width%3D%2230%22 height%3D%224%22 fill%3D%22%235a4322%22%2F%3E%3Crect x%3D%2217%22 y%3D%22144%22 width%3D%2221%22 height%3D%223%22 fill%3D%22%233d2d17%22%2F%3E%3Crect x%3D%2216%22 y%3D%22104%22 width%3D%222%22 height%3D%222%22 fill%3D%22%23f0d9ff%22 opacity%3D%22.85%22%2F%3E%3Crect x%3D%2238%22 y%3D%22112%22 width%3D%222%22 height%3D%222%22 fill%3D%22%23f0d9ff%22 opacity%3D%22.85%22%2F%3E%3Crect x%3D%2222%22 y%3D%2296%22 width%3D%222%22 height%3D%222%22 fill%3D%22%23f0d9ff%22 opacity%3D%22.85%22%2F%3E%3Crect x%3D%2234%22 y%3D%2298%22 width%3D%222%22 height%3D%222%22 fill%3D%22%23f0d9ff%22 opacity%3D%22.85%22%2F%3E%3Crect x%3D%2245%22 y%3D%22122%22 width%3D%222%22 height%3D%222%22 fill%3D%22%23f0d9ff%22 opacity%3D%22.85%22%2F%3E%3Crect x%3D%2211%22 y%3D%22118%22 width%3D%222%22 height%3D%222%22 fill%3D%22%23f0d9ff%22 opacity%3D%22.85%22%2F%3E%3Cpolygon points%3D%2210%2C0 18%2C0 14%2C50%22 fill%3D%22%231a2a33%22%2F%3E%3Cpolygon points%3D%2213%2C0 15%2C0 14%2C43%22 fill%3D%22%2324404d%22%2F%3E%3Cpolygon points%3D%2226%2C0 34%2C0 30%2C45%22 fill%3D%22%231a2a33%22%2F%3E%3Cpolygon points%3D%2228%2C0 32%2C0 30%2C38%22 fill%3D%22%2324404d%22%2F%3E%3Cpolygon points%3D%2241%2C0 51%2C0 46%2C22%22 fill%3D%22%231a2a33%22%2F%3E%3Cpolygon points%3D%2244%2C0 48%2C0 46%2C15%22 fill%3D%22%2324404d%22%2F%3E%3Cpolygon points%3D%2257%2C0 67%2C0 62%2C27%22 fill%3D%22%231a2a33%22%2F%3E%3Cpolygon points%3D%2260%2C0 64%2C0 62%2C20%22 fill%3D%22%2324404d%22%2F%3E%3Cpolygon points%3D%2274%2C0 86%2C0 80%2C28%22 fill%3D%22%231a2a33%22%2F%3E%3Cpolygon points%3D%2278%2C0 82%2C0 80%2C21%22 fill%3D%22%2324404d%22%2F%3E%3Cpolygon points%3D%2291%2C0 101%2C0 96%2C22%22 fill%3D%22%231a2a33%22%2F%3E%3Cpolygon points%3D%2294%2C0 98%2C0 96%2C15%22 fill%3D%22%2324404d%22%2F%3E%3Cpolygon points%3D%22108%2C0 116%2C0 112%2C28%22 fill%3D%22%231a2a33%22%2F%3E%3Cpolygon points%3D%22111%2C0 113%2C0 112%2C21%22 fill%3D%22%2324404d%22%2F%3E%3Cpolygon points%3D%22116%2C0 128%2C0 122%2C54%22 fill%3D%22%231a2a33%22%2F%3E%3Cpolygon points%3D%22120%2C0 124%2C0 122%2C47%22 fill%3D%22%2324404d%22%2F%3E%3Cpolygon points%3D%220%2C180 16%2C180 8%2C162%22 fill%3D%22%2316242b%22%2F%3E%3Cpolygon points%3D%22115%2C180 125%2C180 120%2C168%22 fill%3D%22%2316242b%22%2F%3E%3C%2Fsvg%3E");
   background-size:100% 100%;
   background-repeat:no-repeat;
@@ -1428,12 +1428,12 @@ body {
 /* four drop columns, aligned to tip x positions, each on its own cycle */
 .card-back.back-fracture::before{
   background-image:
-    radial-gradient(1.5px 5px at 18px 4px, rgba(148,214,228,.85) 0 100%, transparent 100%),
-    radial-gradient(1.5px 5px at 37px 4px, rgba(148,214,228,.70) 0 100%, transparent 100%),
-    radial-gradient(1.5px 5px at 58px 4px, rgba(148,214,228,.80) 0 100%, transparent 100%),
-    radial-gradient(1.5px 5px at 79px 4px, rgba(148,214,228,.65) 0 100%, transparent 100%);
-  background-size:130px 97px, 130px 131px, 130px 113px, 130px 149px;
-  background-position:0 30px, 0 46px, 0 22px, 0 38px;
+    radial-gradient(max(1px, 1.172cqw) max(1px, 2.809cqh) at 14.062cqw 2.247cqh, rgba(148,214,228,.85) 0 100%, transparent 100%),
+    radial-gradient(max(1px, 1.172cqw) max(1px, 2.809cqh) at 28.906cqw 2.247cqh, rgba(148,214,228,.70) 0 100%, transparent 100%),
+    radial-gradient(max(1px, 1.172cqw) max(1px, 2.809cqh) at 45.312cqw 2.247cqh, rgba(148,214,228,.80) 0 100%, transparent 100%),
+    radial-gradient(max(1px, 1.172cqw) max(1px, 2.809cqh) at 61.719cqw 2.247cqh, rgba(148,214,228,.65) 0 100%, transparent 100%);
+  background-size:101.562cqw 54.494cqh, 101.562cqw 73.596cqh, 101.562cqw 63.483cqh, 101.562cqw 83.708cqh;
+  background-position:0 16.854cqh, 0 25.843cqh, 0 12.36cqh, 0 21.348cqh;
   background-repeat:no-repeat;
   animation:cb-drip-fall 2.3s steps(14) infinite;
 }
@@ -1445,7 +1445,7 @@ body {
   animation:cb-pool 3.1s steps(4) infinite alternate;
   mix-blend-mode:screen;
 }
-@keyframes cb-drip-fall{ to{ background-position:0 127px, 0 177px, 0 135px, 0 187px; } }
+@keyframes cb-drip-fall{ to{ background-position:0 71.348cqh, 0 99.438cqh, 0 75.843cqh, 0 105.056cqh; } }
 @keyframes cb-pool{ from{opacity:.45;} to{opacity:1;} }
 
 /* --- 1.4M: spiral, turning in hard steps. --- */
@@ -5411,7 +5411,7 @@ function renderShopBar(){
   if(kind === 'back'){
     r = (cardBackShelf || []).find(x => x.id === id);
     if(!r || !cardBackById(id) || !(r.owned || collectibleOnOffer(r))) return '';
-    a = backTileAction(r); name = r.name;
+    a = backTileAction(r); name = null;   // card backs go unnamed, as everywhere else
     stage = avatarStage(id, cosmeticLayers(state.equipped), 2);
   } else {
     r = (cosmeticShelf || []).find(x => x.id === id);
@@ -5425,7 +5425,7 @@ function renderShopBar(){
     ${stage}
     <div class="shopbar-info">
       ${r.season && a.onOffer ? `<div class="coll-season">${esc(r.season)}</div>` : ''}
-      <div class="shopbar-name">${esc(name)}</div>
+      ${name ? `<div class="shopbar-name">${esc(name)}</div>` : ''}
       <div class="cb-price">${a.label}</div>
       ${seasonLeftHtml(r, a.onOffer)}
       ${a.btn}
