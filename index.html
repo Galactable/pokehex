@@ -1126,10 +1126,11 @@ body {
 .shop-note{color:var(--muted);font-size:11.5px;margin:6px 0 12px;font-style:italic;}
 .cos-preview{width:130px;height:180px;display:flex;align-items:center;justify-content:center;}
 .cos-name{font-size:12px;color:var(--text);text-align:center;}
-/* seasonal items: the season's name over the item name, time left under the price */
-.cos-season{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);text-align:center;margin-bottom:-4px;}
-.cos-left{font-size:10.5px;color:var(--gold);font-family:'JetBrains Mono',monospace;}
-.cos-tile > .cb-btn{margin-top:auto;}  /* buttons line up across a row, seasonal or not */
+/* seasonal items (cosmetics and card backs): the season's name above, time left under the price */
+.coll-season{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);text-align:center;margin-bottom:-4px;}
+.coll-left{font-size:10.5px;color:var(--gold);font-family:'JetBrains Mono',monospace;}
+.coll-tile > .cb-btn{margin-top:auto;}  /* buttons line up across a row, seasonal or not */
+.cbtile > .coll-season{margin-bottom:0;}  /* card backs have no name line under it */
 /* Shop tiles draw each cosmetic on a plain neutral card so its colors read
    clearly, and skip the equipped outline (it ran into the art); the
    Equipped button carries that state. */
@@ -3410,8 +3411,9 @@ async function loadCosmetics(){
   }
 }
 
-// Shop shelf payload from get_card_backs: [{id,name,price,owned}]. Null until
-// loaded; the shelf renders a loading line rather than an empty shop.
+// Shop shelf payload from get_card_backs: [{id,name,price,owned,on_offer,season,
+// available_from,available_until}]: backs on offer plus hidden or past-season
+// ones the player owns. Null until loaded; the shelf shows a loading line.
 let cardBackShelf = null;
 let cardBackBusy  = null;   // id mid-request, so the button can disable itself
 
@@ -5190,8 +5192,9 @@ function renderCardBackShelf(){
     return `<div class="shop-note">Loading card backs…</div>`;
   }
   // server rows the client has no art for are skipped, so a DB seed can land
-  // before the CSS ships without rendering a blank tile.
-  const rows = cardBackShelf.filter(r => cardBackById(r.id));
+  // before the CSS ships without rendering a blank tile. A back whose season
+  // ended while the page was open stays only if owned.
+  const rows = cardBackShelf.filter(r => cardBackById(r.id) && (r.owned || collectibleOnOffer(r)));
   if(rows.length === 0){
     return `<div class="shop-note">No card backs available yet.</div>`;
   }
@@ -5203,7 +5206,8 @@ function renderCardBackShelf(){
       const isEquip   = state.equippedBack === r.id;
       const busy      = cardBackBusy === r.id;
       const tooPoor   = state.hex < r.price;
-      const cls       = `cbtile ${r.owned?'owned':'locked'} ${isEquip?'equipped':''}`;
+      const onOffer   = collectibleOnOffer(r);
+      const cls       = `cbtile coll-tile ${r.owned?'owned':'locked'} ${isEquip?'equipped':''}`;
       let btn;
       if(!r.owned){
         btn = `<button class="cb-btn buy" data-buyback="${esc(r.id)}" ${(busy||tooPoor)?'disabled':''}>${busy?'…':(tooPoor?'Locked':'Purchase')}</button>`;
@@ -5215,7 +5219,9 @@ function renderCardBackShelf(){
       return `
       <div class="${cls}">
         <div class="cb-swatch card-face card-back back-${esc(r.id)}">${meta.wordmark===false?'':`<span class="back-hex" aria-hidden="true"></span>`}</div>
-        <div class="cb-price">${r.owned ? 'Owned' : `<i class="hex-icon" style="width:10px;height:12px;"></i>${fmtHex(r.price)}`}</div>
+        ${r.season && onOffer ? `<div class="coll-season">${esc(r.season)}</div>` : ''}
+        <div class="cb-price">${r.owned ? (onOffer || !ownedSeasonOf(r) ? 'Owned' : `Owned - ${esc(ownedSeasonOf(r))}`) : `<i class="hex-icon" style="width:10px;height:12px;"></i>${fmtHex(r.price)}`}</div>
+        ${onOffer && !r.owned && r.available_until ? `<div class="coll-left" title="${esc(new Date(r.available_until).toLocaleString())}">Leaves in ${seasonTimeLeft(Date.parse(r.available_until) - Date.now())}</div>` : ''}
         ${btn}
       </div>`;
     }).join('')}
@@ -5228,13 +5234,18 @@ function seasonTimeLeft(ms){
   return d ? `${d}d ${h % 24}h` : (h ? `${h}h ${m % 60}m` : `${m}m`);
 }
 
-// Is the item still on offer? The server decided when the shelf loaded; a
-// season that ends while the page is open ends here too, so the tile stops
-// offering what buy_cosmetic would now refuse.
-function cosmeticOnOffer(r){
+// Is the item (cosmetic or card back) still on offer? The server decided when
+// the shelf loaded; a season that ends while the page is open ends here too,
+// so the tile stops offering what buy_cosmetic / buy_card_back would refuse.
+function collectibleOnOffer(r){
   if(r.on_offer === false || r.active === false) return false;
   return !(r.available_until && Date.parse(r.available_until) <= Date.now());
 }
+
+// The season label on an owned item that's off sale: the season the player
+// got it in (owned_season, stored with the purchase), so relabeling the item
+// later doesn't change it. Older servers without owned_season: the item's own.
+function ownedSeasonOf(r){ return 'owned_season' in r ? r.owned_season : r.season; }
 
 // One tile per cosmetic: the item alone on a plain dark card. Your Avacard
 // panel beside the tabs shows how your whole outfit looks.
@@ -5245,10 +5256,12 @@ function cosmeticTile(r){
   const busy    = cosmeticBusy === r.id;
   const level   = r.criteria && r.criteria.trainer_level;
   let label, btn;
-  const onOffer = cosmeticOnOffer(r);
+  const onOffer = collectibleOnOffer(r);
   if(r.owned){
-    // off sale now: past its season, or retired
-    label = onOffer ? 'Owned' : (r.season ? `Owned - ${esc(r.season)}` : 'Owned - retired');
+    // off sale now (season over, or hidden): owners keep it and can wear it;
+    // it shows the season they got it in, if it had one then
+    const got = ownedSeasonOf(r);
+    label = onOffer || !got ? 'Owned' : `Owned - ${esc(got)}`;
     btn = isEquip
       ? `<button class="cb-btn equip on" data-equipcos="" data-slot="${slot}" ${busy?'disabled':''}>${busy?'…':'Equipped'}</button>`
       : `<button class="cb-btn equip" data-equipcos="${esc(r.id)}" data-slot="${slot}" ${busy?'disabled':''}>${busy?'…':'Equip'}</button>`;
@@ -5261,12 +5274,12 @@ function cosmeticTile(r){
     btn = `<button class="cb-btn" disabled>Locked</button>`;
   }
   return `
-      <div class="cbtile cos-tile ${r.owned?'owned':'locked'} ${isEquip?'equipped':''}">
+      <div class="cbtile coll-tile ${r.owned?'owned':'locked'} ${isEquip?'equipped':''}">
         <div class="cos-preview">${avatarStage('blank', art.svg, 3)}</div>
-        ${r.season && onOffer ? `<div class="cos-season">${esc(r.season)}</div>` : ''}
+        ${r.season && onOffer ? `<div class="coll-season">${esc(r.season)}</div>` : ''}
         <div class="cos-name">${esc(r.name)}</div>
         <div class="cb-price">${label}</div>
-        ${onOffer && !r.owned && r.available_until ? `<div class="cos-left" title="${esc(new Date(r.available_until).toLocaleString())}">Leaves in ${seasonTimeLeft(Date.parse(r.available_until) - Date.now())}</div>` : ''}
+        ${onOffer && !r.owned && r.available_until ? `<div class="coll-left" title="${esc(new Date(r.available_until).toLocaleString())}">Leaves in ${seasonTimeLeft(Date.parse(r.available_until) - Date.now())}</div>` : ''}
         ${btn}
       </div>`;
 }
@@ -5279,7 +5292,7 @@ function renderCosmeticShelf(unlockables){
   const order = { hat: 0, body: 1, legs: 2 };
   const rows = cosmeticShelf
     // an item whose season ended while the page was open stays only if owned
-    .filter(r => COSMETICS_BY_ID.has(r.id) && (r.price == null) === unlockables && (r.owned || cosmeticOnOffer(r)))
+    .filter(r => COSMETICS_BY_ID.has(r.id) && (r.price == null) === unlockables && (r.owned || collectibleOnOffer(r)))
     .sort((a, b) => order[COSMETICS_BY_ID.get(a.id).slot] - order[COSMETICS_BY_ID.get(b.id).slot]);
   if(rows.length === 0){
     return `<div class="shop-note">${unlockables ? 'Nothing to unlock yet. Milestone rewards are on the way.' : 'No cosmetics in the shop yet.'}</div>`;
