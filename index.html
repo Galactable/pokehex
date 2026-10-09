@@ -1119,9 +1119,42 @@ body {
 .coll-shop .cbshelf{justify-content:start;}
 @media (max-width:720px){
   .coll-shop{grid-template-columns:minmax(0,1fr);}
-  .coll-panel{position:static;order:-1;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:14px;}
+  .coll-panel{position:static;order:-1;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:14px;padding:10px 14px;gap:6px 14px;}
   .coll-panel-title{grid-column:1 / -1;justify-self:center;}
-  .coll-shop .cbshelf{justify-content:center;}
+  .coll-panel .avatar-stage{zoom:.5;}                 /* 4px/cell -> 2px: 78x96 */
+}
+/* Phones: a compact grid, 4 per row, no button on each tile. Tapping a tile
+   selects it; the shop bar fixed to the bottom of the screen shows it on your
+   Avacard with its one Purchase / Equip button. Same markup as desktop, so
+   the bar's buttons are the tiles' own (backTileAction / cosTileAction). */
+.coll-eq{display:none;}
+.shopbar{display:none;}
+@media (max-width:720px){
+  .coll-shop .cbshelf{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 8px;justify-content:stretch;margin-bottom:18px;}
+  .coll-shop .cbtile{width:auto;gap:3px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .coll-shop .cbtile > .cb-swatch{width:100%;height:auto;aspect-ratio:13 / 18;border-radius:8px;}
+  .coll-shop .cos-preview{width:100%;height:auto;aspect-ratio:13 / 18;}
+  .coll-shop .cos-preview .avatar-stage{zoom:.6;}    /* 3px/cell -> 1.8 */
+  .coll-shop .coll-tile > .cb-btn{display:none;}
+  .coll-shop .cbtile .cb-price,.coll-shop .coll-left,.coll-shop .coll-eq{font-size:9.5px;text-align:center;}
+  .coll-shop .cos-name{font-size:10px;line-height:1.2;}
+  .coll-shop .coll-season{font-size:8.5px;letter-spacing:.04em;}
+  .coll-shop .coll-eq{display:block;color:var(--foil1);}
+  .coll-shop .cbtile.equipped .cb-price{display:none;}
+  .coll-shop .cbtile.picked{outline:2px solid var(--foil2);outline-offset:3px;border-radius:9px;}
+  .shopbar{
+    position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));
+    display:flex;align-items:center;gap:12px;max-width:396px;margin:0 auto;
+    background:var(--surface2);border:1px solid var(--line);border-radius:12px;
+    padding:8px 10px;box-shadow:0 8px 20px rgba(0,0,0,0.5);z-index:45;
+  }
+  .shopbar-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
+  .shopbar-name{font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .shopbar .coll-season{text-align:left;margin:0;}
+  .shopbar .cb-btn{width:auto;min-width:100px;margin-top:4px;align-self:flex-start;}
+  .shopbar-x{position:absolute;top:4px;right:6px;background:none;border:none;color:var(--muted);font-size:18px;line-height:1;padding:4px 6px;cursor:pointer;}
+  .shopbar-spacer{height:128px;}
+  body:has(.shopbar) .toast{bottom:calc(140px + env(safe-area-inset-bottom,0px));}
 }
 .shop-note{color:var(--muted);font-size:11.5px;margin:6px 0 12px;font-style:italic;}
 .cos-preview{width:130px;height:180px;display:flex;align-items:center;justify-content:center;}
@@ -2776,7 +2809,7 @@ sb.auth.onAuthStateChange(async (event, session)=>{
     state = { hex:0, dex:{}, instances:[], collectibles:{}, lastSpinAt:null, valueHistory:[], longHistory:[] };
     profileStats = null; profileUsername = null; profileSkills = null; profileLoading = false;
     // shelves carry the old account's ownership; reload them for the next one
-    cardBackShelf = null; cosmeticShelf = null;
+    cardBackShelf = null; cosmeticShelf = null; shopPick = null;
     view = 'open';
     render();
   }
@@ -3421,6 +3454,8 @@ let cosmeticShelf = null;
 let cosmeticBusy  = null;   // id mid-request
 // Collectibles shop tab: 'backs' | 'cosmetics' | 'unlockables'
 let collTab = 'backs';
+// Phones: the tile tapped in the shop, 'back:<id>' or 'cos:<id>' (null = none)
+let shopPick = null;
 
 async function loadCosmetics(){
   if(!authUser) return;
@@ -5228,30 +5263,64 @@ function renderCardBackShelf(){
   return `
   <div class="cbshelf">
     ${rows.map(r=>{
-      const meta      = cardBackById(r.id);
-      const isEquip   = state.equippedBack === r.id;
-      const busy      = cardBackBusy === r.id;
-      const tooPoor   = state.hex < r.price;
-      const onOffer   = collectibleOnOffer(r);
-      const cls       = `cbtile coll-tile ${r.owned?'owned':'locked'} ${isEquip?'equipped':''}`;
-      let btn;
-      if(!r.owned){
-        btn = `<button class="cb-btn buy" data-buyback="${esc(r.id)}" ${(busy||tooPoor)?'disabled':''}>${busy?'…':(tooPoor?'Locked':'Purchase')}</button>`;
-      } else if(isEquip){
-        btn = `<button class="cb-btn equip on" data-equipback="" ${busy?'disabled':''}>${busy?'…':'Equipped'}</button>`;
-      } else {
-        btn = `<button class="cb-btn equip" data-equipback="${esc(r.id)}" ${busy?'disabled':''}>${busy?'…':'Equip'}</button>`;
-      }
+      const meta = cardBackById(r.id);
+      const a    = backTileAction(r);
+      const pick = 'back:' + r.id;
       return `
-      <div class="${cls}">
+      <div class="cbtile coll-tile ${r.owned?'owned':'locked'} ${a.isEquip?'equipped':''} ${shopPick===pick?'picked':''}" data-pick="${esc(pick)}">
         <div class="cb-swatch card-face card-back back-${esc(r.id)}">${meta.wordmark===false?'':`<span class="back-hex" aria-hidden="true"></span>`}</div>
-        ${r.season && onOffer ? `<div class="coll-season">${esc(r.season)}</div>` : ''}
-        <div class="cb-price">${r.owned ? (onOffer || !ownedSeasonOf(r) ? 'Owned' : `Owned - ${esc(ownedSeasonOf(r))}`) : `<i class="hex-icon" style="width:10px;height:12px;"></i>${fmtHex(r.price)}`}</div>
-        ${onOffer && !r.owned && r.available_until ? `<div class="coll-left" title="${esc(new Date(r.available_until).toLocaleString())}">Leaves in ${seasonTimeLeft(Date.parse(r.available_until) - Date.now())}</div>` : ''}
-        ${btn}
+        ${r.season && a.onOffer ? `<div class="coll-season">${esc(r.season)}</div>` : ''}
+        <div class="cb-price">${a.label}</div>
+        ${a.isEquip ? '<div class="coll-eq">Equipped</div>' : ''}
+        ${seasonLeftHtml(r, a.onOffer)}
+        ${a.btn}
       </div>`;
     }).join('')}
   </div>`;
+}
+
+// What a shop tile says and offers: its status line and its one button. Used
+// by the tile (desktop) and by the phone shop bar, so the two can't disagree.
+function backTileAction(r){
+  const isEquip = state.equippedBack === r.id, busy = cardBackBusy === r.id, onOffer = collectibleOnOffer(r);
+  let btn;
+  if(!r.owned){
+    const tooPoor = state.hex < r.price;
+    btn = `<button class="cb-btn buy" data-buyback="${esc(r.id)}" ${(busy||tooPoor)?'disabled':''}>${busy?'…':(tooPoor?'Locked':'Purchase')}</button>`;
+  } else if(isEquip){
+    btn = `<button class="cb-btn equip on" data-equipback="" ${busy?'disabled':''}>${busy?'…':'Equipped'}</button>`;
+  } else {
+    btn = `<button class="cb-btn equip" data-equipback="${esc(r.id)}" ${busy?'disabled':''}>${busy?'…':'Equip'}</button>`;
+  }
+  const label = r.owned ? (onOffer || !ownedSeasonOf(r) ? 'Owned' : `Owned - ${esc(ownedSeasonOf(r))}`) : `<i class="hex-icon" style="width:10px;height:12px;"></i>${fmtHex(r.price)}`;
+  return { label, btn, isEquip, onOffer };
+}
+function cosTileAction(r){
+  const slot = COSMETICS_BY_ID.get(r.id).slot;
+  const isEquip = !!(state.equipped && state.equipped[slot] === r.id), busy = cosmeticBusy === r.id, onOffer = collectibleOnOffer(r);
+  const level = r.criteria && r.criteria.trainer_level;
+  let label, btn;
+  if(r.owned){
+    // off sale now (season over, or hidden): owners keep it and can wear it;
+    // it shows the season they got it in, if it had one then
+    const got = ownedSeasonOf(r);
+    label = onOffer || !got ? 'Owned' : `Owned - ${esc(got)}`;
+    btn = isEquip
+      ? `<button class="cb-btn equip on" data-equipcos="" data-slot="${slot}" ${busy?'disabled':''}>${busy?'…':'Equipped'}</button>`
+      : `<button class="cb-btn equip" data-equipcos="${esc(r.id)}" data-slot="${slot}" ${busy?'disabled':''}>${busy?'…':'Equip'}</button>`;
+  } else if(r.price != null){
+    const tooPoor = state.hex < r.price;
+    label = `<i class="hex-icon" style="width:10px;height:12px;"></i>${fmtHex(r.price)}`;
+    btn = `<button class="cb-btn buy" data-buycos="${esc(r.id)}" ${(busy||tooPoor)?'disabled':''}>${busy?'…':(tooPoor?'Locked':'Purchase')}</button>`;
+  } else {
+    label = level ? `Trainer level ${fmtHex(level)}` : 'Locked';
+    btn = `<button class="cb-btn" disabled>Locked</button>`;
+  }
+  return { label, btn, isEquip, onOffer, slot };
+}
+// "Leaves in 3d 4h" under an unowned seasonal item, or nothing
+function seasonLeftHtml(r, onOffer){
+  return onOffer && !r.owned && r.available_until ? `<div class="coll-left" title="${esc(new Date(r.available_until).toLocaleString())}">Leaves in ${seasonTimeLeft(Date.parse(r.available_until) - Date.now())}</div>` : '';
 }
 
 // Time left in a season, coarse: "3d 4h", "4h 12m", "12m".
@@ -5276,37 +5345,18 @@ function ownedSeasonOf(r){ return 'owned_season' in r ? r.owned_season : r.seaso
 // One tile per cosmetic: the item alone on a plain dark card. Your Avacard
 // panel beside the tabs shows how your whole outfit looks.
 function cosmeticTile(r){
-  const art     = COSMETICS_BY_ID.get(r.id);
-  const slot    = art.slot;
-  const isEquip = !!(state.equipped && state.equipped[slot] === r.id);
-  const busy    = cosmeticBusy === r.id;
-  const level   = r.criteria && r.criteria.trainer_level;
-  let label, btn;
-  const onOffer = collectibleOnOffer(r);
-  if(r.owned){
-    // off sale now (season over, or hidden): owners keep it and can wear it;
-    // it shows the season they got it in, if it had one then
-    const got = ownedSeasonOf(r);
-    label = onOffer || !got ? 'Owned' : `Owned - ${esc(got)}`;
-    btn = isEquip
-      ? `<button class="cb-btn equip on" data-equipcos="" data-slot="${slot}" ${busy?'disabled':''}>${busy?'…':'Equipped'}</button>`
-      : `<button class="cb-btn equip" data-equipcos="${esc(r.id)}" data-slot="${slot}" ${busy?'disabled':''}>${busy?'…':'Equip'}</button>`;
-  } else if(r.price != null){
-    const tooPoor = state.hex < r.price;
-    label = `<i class="hex-icon" style="width:10px;height:12px;"></i>${fmtHex(r.price)}`;
-    btn = `<button class="cb-btn buy" data-buycos="${esc(r.id)}" ${(busy||tooPoor)?'disabled':''}>${busy?'…':(tooPoor?'Locked':'Purchase')}</button>`;
-  } else {
-    label = level ? `Trainer level ${fmtHex(level)}` : 'Locked';
-    btn = `<button class="cb-btn" disabled>Locked</button>`;
-  }
+  const art  = COSMETICS_BY_ID.get(r.id);
+  const a    = cosTileAction(r);
+  const pick = 'cos:' + r.id;
   return `
-      <div class="cbtile coll-tile ${r.owned?'owned':'locked'} ${isEquip?'equipped':''}">
+      <div class="cbtile coll-tile ${r.owned?'owned':'locked'} ${a.isEquip?'equipped':''} ${shopPick===pick?'picked':''}" data-pick="${esc(pick)}">
         <div class="cos-preview">${avatarStage('blank', art.svg, 3)}</div>
-        ${r.season && onOffer ? `<div class="coll-season">${esc(r.season)}</div>` : ''}
+        ${r.season && a.onOffer ? `<div class="coll-season">${esc(r.season)}</div>` : ''}
         <div class="cos-name">${esc(r.name)}</div>
-        <div class="cb-price">${label}</div>
-        ${onOffer && !r.owned && r.available_until ? `<div class="coll-left" title="${esc(new Date(r.available_until).toLocaleString())}">Leaves in ${seasonTimeLeft(Date.parse(r.available_until) - Date.now())}</div>` : ''}
-        ${btn}
+        <div class="cb-price">${a.label}</div>
+        ${a.isEquip ? '<div class="coll-eq">Equipped</div>' : ''}
+        ${seasonLeftHtml(r, a.onOffer)}
+        ${a.btn}
       </div>`;
 }
 
@@ -5350,6 +5400,40 @@ function renderCollectiblesPanel(){
   </aside>`;
 }
 
+// Phones only (CSS hides it on desktop): the tile you tapped, tried on your
+// Avacard, with its status and its one button. A back swaps your card; a
+// cosmetic swaps its slot. Nothing picked, or the pick isn't on this tab's
+// shelf any more (season ended, tab changed): no bar.
+function renderShopBar(){
+  if(!shopPick) return '';
+  const [kind, id] = shopPick.split(':');
+  let r, stage, name, a;
+  if(kind === 'back'){
+    r = (cardBackShelf || []).find(x => x.id === id);
+    if(!r || !cardBackById(id) || !(r.owned || collectibleOnOffer(r))) return '';
+    a = backTileAction(r); name = r.name;
+    stage = avatarStage(id, cosmeticLayers(state.equipped), 2);
+  } else {
+    r = (cosmeticShelf || []).find(x => x.id === id);
+    if(!r || !COSMETICS_BY_ID.has(id) || !(r.owned || collectibleOnOffer(r))) return '';
+    a = cosTileAction(r); name = r.name;
+    stage = avatarStage(state.equippedBack, cosmeticLayers(Object.assign({}, state.equipped, { [a.slot]: id })), 2);
+  }
+  return `
+  <div class="shopbar-spacer"></div>
+  <div class="shopbar" role="region" aria-label="Selected item">
+    ${stage}
+    <div class="shopbar-info">
+      ${r.season && a.onOffer ? `<div class="coll-season">${esc(r.season)}</div>` : ''}
+      <div class="shopbar-name">${esc(name)}</div>
+      <div class="cb-price">${a.label}</div>
+      ${seasonLeftHtml(r, a.onOffer)}
+      ${a.btn}
+    </div>
+    <button class="shopbar-x" data-shoppick-close aria-label="Close">&times;</button>
+  </div>`;
+}
+
 function renderCollectiblesShop(){
   const tabs = [['backs', 'Card Backs'], ['cosmetics', 'Cosmetics'], ['unlockables', 'Unlockables']];
   const tab = tabs.some(t => t[0] === collTab) ? collTab : 'backs';
@@ -5369,7 +5453,8 @@ function renderCollectiblesShop(){
       ${body}
     </div>
     ${authUser ? renderCollectiblesPanel() : ''}
-  </div>`;
+  </div>
+  ${authUser ? renderShopBar() : ''}`;
 }
 
 function renderShopBonus(){
@@ -8184,8 +8269,16 @@ function wire(){
   });
 
   document.querySelectorAll('[data-colltab]').forEach(b=>b.onclick=()=>{
-    collTab = b.dataset.colltab; render();
+    collTab = b.dataset.colltab; shopPick = null; render();
   });
+  // phones: tap a tile to show it in the shop bar (tap again to close). On
+  // desktop the tile's own button does the work, so a tap does nothing.
+  document.querySelectorAll('[data-pick]').forEach(t=>t.onclick=e=>{
+    if(e.target.closest('button') || !window.matchMedia('(max-width:720px)').matches) return;
+    shopPick = shopPick === t.dataset.pick ? null : t.dataset.pick; render();
+  });
+  const shopX = document.querySelector('[data-shoppick-close]');
+  if(shopX) shopX.onclick = () => { shopPick = null; render(); };
 
   document.querySelectorAll('[data-buycos]').forEach(b=>b.onclick=async ()=>{
     const id = b.dataset.buycos;
