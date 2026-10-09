@@ -1126,6 +1126,10 @@ body {
 .shop-note{color:var(--muted);font-size:11.5px;margin:6px 0 12px;font-style:italic;}
 .cos-preview{width:130px;height:180px;display:flex;align-items:center;justify-content:center;}
 .cos-name{font-size:12px;color:var(--text);text-align:center;}
+/* seasonal items: the season's name over the item name, time left under the price */
+.cos-season{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);text-align:center;margin-bottom:-4px;}
+.cos-left{font-size:10.5px;color:var(--gold);font-family:'JetBrains Mono',monospace;}
+.cos-tile > .cb-btn{margin-top:auto;}  /* buttons line up across a row, seasonal or not */
 /* Shop tiles draw each cosmetic on a plain neutral card so its colors read
    clearly, and skip the equipped outline (it ran into the art); the
    Equipped button carries that state. */
@@ -3382,7 +3386,8 @@ function profileAvatar(backId, equipped){
 }
 
 // Shop payload from get_cosmetics: items [{id,name,kind,price,criteria,active,
-// owned}], active items plus retired ones the player owns. Null until loaded.
+// on_offer,season,available_from,available_until,owned}]: items on offer, plus
+// retired or past-season ones the player owns. Null until loaded.
 // owned is already true for a level item the player qualifies for; equipping
 // it records the unlock server-side.
 let cosmeticShelf = null;
@@ -5217,6 +5222,20 @@ function renderCardBackShelf(){
   </div>`;
 }
 
+// Time left in a season, coarse: "3d 4h", "4h 12m", "12m".
+function seasonTimeLeft(ms){
+  const m = Math.max(1, Math.floor(ms / 60000)), h = Math.floor(m / 60), d = Math.floor(h / 24);
+  return d ? `${d}d ${h % 24}h` : (h ? `${h}h ${m % 60}m` : `${m}m`);
+}
+
+// Is the item still on offer? The server decided when the shelf loaded; a
+// season that ends while the page is open ends here too, so the tile stops
+// offering what buy_cosmetic would now refuse.
+function cosmeticOnOffer(r){
+  if(r.on_offer === false || r.active === false) return false;
+  return !(r.available_until && Date.parse(r.available_until) <= Date.now());
+}
+
 // One tile per cosmetic: the item alone on a plain dark card. Your Avacard
 // panel beside the tabs shows how your whole outfit looks.
 function cosmeticTile(r){
@@ -5226,8 +5245,10 @@ function cosmeticTile(r){
   const busy    = cosmeticBusy === r.id;
   const level   = r.criteria && r.criteria.trainer_level;
   let label, btn;
+  const onOffer = cosmeticOnOffer(r);
   if(r.owned){
-    label = r.active === false ? 'Owned - retired' : 'Owned';
+    // off sale now: past its season, or retired
+    label = onOffer ? 'Owned' : (r.season ? `Owned - ${esc(r.season)}` : 'Owned - retired');
     btn = isEquip
       ? `<button class="cb-btn equip on" data-equipcos="" data-slot="${slot}" ${busy?'disabled':''}>${busy?'…':'Equipped'}</button>`
       : `<button class="cb-btn equip" data-equipcos="${esc(r.id)}" data-slot="${slot}" ${busy?'disabled':''}>${busy?'…':'Equip'}</button>`;
@@ -5240,10 +5261,12 @@ function cosmeticTile(r){
     btn = `<button class="cb-btn" disabled>Locked</button>`;
   }
   return `
-      <div class="cbtile ${r.owned?'owned':'locked'} ${isEquip?'equipped':''}">
+      <div class="cbtile cos-tile ${r.owned?'owned':'locked'} ${isEquip?'equipped':''}">
         <div class="cos-preview">${avatarStage('blank', art.svg, 3)}</div>
+        ${r.season && onOffer ? `<div class="cos-season">${esc(r.season)}</div>` : ''}
         <div class="cos-name">${esc(r.name)}</div>
         <div class="cb-price">${label}</div>
+        ${onOffer && !r.owned && r.available_until ? `<div class="cos-left" title="${esc(new Date(r.available_until).toLocaleString())}">Leaves in ${seasonTimeLeft(Date.parse(r.available_until) - Date.now())}</div>` : ''}
         ${btn}
       </div>`;
 }
@@ -5255,7 +5278,8 @@ function renderCosmeticShelf(unlockables){
   if(cosmeticShelf === null) return `<div class="shop-note">Loading…</div>`;
   const order = { hat: 0, body: 1, legs: 2 };
   const rows = cosmeticShelf
-    .filter(r => COSMETICS_BY_ID.has(r.id) && (r.price == null) === unlockables)
+    // an item whose season ended while the page was open stays only if owned
+    .filter(r => COSMETICS_BY_ID.has(r.id) && (r.price == null) === unlockables && (r.owned || cosmeticOnOffer(r)))
     .sort((a, b) => order[COSMETICS_BY_ID.get(a.id).slot] - order[COSMETICS_BY_ID.get(b.id).slot]);
   if(rows.length === 0){
     return `<div class="shop-note">${unlockables ? 'Nothing to unlock yet. Milestone rewards are on the way.' : 'No cosmetics in the shop yet.'}</div>`;
@@ -8149,7 +8173,13 @@ function wire(){
     }
   });
 
-  // equip_hat / equip_body / equip_legs by the tile's slot; empty id = take it off
+  // equip_hat / equip_body / equip_legs by the tile's slot; empty id = take it
+  // off. Each name is written out in full so a search for it finds this call.
+  const EQUIP_COSMETIC = {
+    hat:  id => sb.rpc('equip_hat',  { p_id: id }),
+    body: id => sb.rpc('equip_body', { p_id: id }),
+    legs: id => sb.rpc('equip_legs', { p_id: id }),
+  };
   document.querySelectorAll('[data-equipcos]').forEach(b=>b.onclick=async ()=>{
     const slot = b.dataset.slot;
     if(!['hat', 'body', 'legs'].includes(slot)) return;
@@ -8157,7 +8187,7 @@ function wire(){
     if(cosmeticBusy) return;
     cosmeticBusy = id || (state.equipped && state.equipped[slot]); render();
     try{
-      const { data, error } = await sb.rpc('equip_' + slot, { p_id: id });
+      const { data, error } = await EQUIP_COSMETIC[slot](id);
       if(error) throw error;
       state.equipped = state.equipped || {};
       if(data.status === 'equipped')        state.equipped[slot] = data.id;
