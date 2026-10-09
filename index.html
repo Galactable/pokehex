@@ -1148,10 +1148,19 @@ body {
     background:var(--surface2);border:1px solid var(--line);border-radius:12px;
     padding:8px 10px;box-shadow:0 8px 20px rgba(0,0,0,0.5);z-index:45;
   }
-  .shopbar-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
-  .shopbar-name{font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .shopbar-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:6px;padding-right:14px;}
+  .shopbar-name{font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:16px;}
   .shopbar .coll-season{text-align:left;margin:0;}
-  .shopbar .cb-btn{width:auto;min-width:100px;margin-top:4px;align-self:flex-start;}
+  /* price on the left, the button on the right, across the bar's width */
+  .shopbar-row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .shopbar-price{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  /* the price scales with the screen; 7-digit prices a step smaller, so
+     3,500,000 still fits beside the button on a 360px phone */
+  .shopbar .shopbar-price .cb-price{font-size:clamp(15px, 4.9vw, 19px);font-weight:700;color:var(--text);text-align:left;white-space:nowrap;}
+  .shopbar .shopbar-price.long .cb-price{font-size:clamp(13px, 4vw, 17px);}
+  .shopbar .shopbar-price .cb-price .hex-icon{width:1em !important;height:1.1em !important;margin-right:5px;}
+  .shopbar .shopbar-price .coll-left{font-size:10.5px;text-align:left;white-space:nowrap;}
+  .shopbar .cb-btn{width:auto;min-width:96px;min-height:40px;font-size:13px;padding:8px 12px;flex:0 0 auto;}
   .shopbar-x{position:absolute;top:4px;right:6px;background:none;border:none;color:var(--muted);font-size:18px;line-height:1;padding:4px 6px;cursor:pointer;}
   .shopbar-spacer{height:128px;}
   body:has(.shopbar) .toast{bottom:calc(140px + env(safe-area-inset-bottom,0px));}
@@ -5426,9 +5435,13 @@ function renderShopBar(){
     <div class="shopbar-info">
       ${r.season && a.onOffer ? `<div class="coll-season">${esc(r.season)}</div>` : ''}
       ${name ? `<div class="shopbar-name">${esc(name)}</div>` : ''}
-      <div class="cb-price">${a.label}</div>
-      ${seasonLeftHtml(r, a.onOffer)}
-      ${a.btn}
+      <div class="shopbar-row">
+        <div class="shopbar-price ${!r.owned && r.price >= 1000000 ? 'long' : ''}">
+          <div class="cb-price">${a.label}</div>
+          ${seasonLeftHtml(r, a.onOffer)}
+        </div>
+        ${a.btn}
+      </div>
     </div>
     <button class="shopbar-x" data-shoppick-close aria-label="Close">&times;</button>
   </div>`;
