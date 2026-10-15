@@ -3996,6 +3996,12 @@ async function doSave(){
   if(!newValue.length && !newLong.length) return;
   try{
     let { error } = await sb.rpc('append_vault_history', { p_value: newValue, p_long: newLong });
+    // an idle connection can be dropped under us (VPNs, a laptop waking up) and the first
+    // request on it fails without reaching the server; one retry gets a fresh connection.
+    // safe to repeat: the server ignores points no newer than what it holds
+    if(error && /NetworkError|Failed to fetch|Load failed/i.test(error.message || '')){
+      ({ error } = await sb.rpc('append_vault_history', { p_value: newValue, p_long: newLong }));
+    }
     if(error && (error.code === 'PGRST202' || error.code === '42883')){
       // append_vault_history isn't on the server (rolled back): full save instead
       ({ error } = await sb.rpc('save_vault_history', {
