@@ -6865,10 +6865,11 @@ function renderProfile(){
 
   const profitLossColor = s.totalProfitLoss >= 0 ? '#39ff14' : '#ff4444';
 
-  // Split client-side from state.dex rather than from s.collectionPercent.
-  // get_player_stats divides ALL dex keys by 151, so with gens 2-5 seeded
-  // server-side that value far exceeds 100%. state.dex is the same
-  // authoritative data, so splitting here avoids depending on the RPC.
+  // Counted client-side from state.dex rather than from s.collectionPercent.
+  // get_player_stats now divides by the pokemon table's row count (it once
+  // divided by 151 and went far over 100%), but it only gives the overall
+  // number; the per-gen rows need the split here anyway, and state.dex is
+  // the same authoritative data.
   const dexIds = Object.keys(state.dex || {}).map(Number);
 
   return `
