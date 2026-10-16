@@ -4142,6 +4142,28 @@ async function openPack(pack){
     packBusy = false;
   }
 }
+// Stream bridge: opt-in, off by default. For streaming HexDex: sends each finished pack to a
+// stream overlay and desktop pet running on the player's own computer (127.0.0.1). It's only
+// on in a browser that opted in by visiting ?stream=on (?stream=off turns it back off), so no
+// one else ever sends anything. Fire-and-forget: it can't slow down or break a pack.
+let streamBridge = false;
+try{
+  const q = new URLSearchParams(location.search).get('stream');
+  if(q === 'on') localStorage.setItem('hexdex_stream_bridge', '1');
+  if(q === 'off') localStorage.removeItem('hexdex_stream_bridge');
+  streamBridge = localStorage.getItem('hexdex_stream_bridge') === '1';
+}catch(e){}
+function streamBridgePack(cards, keep){
+  if(!streamBridge) return;
+  const post = (url, ev) => { try{ fetch(url, { method:'POST', mode:'no-cors', body:JSON.stringify(ev) }).catch(()=>{}); }catch(e){} };
+  const pk = Date.now();
+  post('http://127.0.0.1:8765/event', { type:'pack' });
+  cards.forEach((c, i) => post('http://127.0.0.1:8770/event', {
+    type:'pull', u:authUser && authUser.id, i:c.id, r:c.rarity, s:!!c.shiny, h:!!c.holo, o:!!c.shadow,
+    k:!!keep[i], n:!!keep[i] && !(state.dex && state.dex[c.id]), pk
+  }));
+}
+
 let finalizeBusy = false;
 async function finalizeOpening(){
   if(finalizeBusy) return;
@@ -4157,6 +4179,9 @@ async function finalizeOpening(){
       toast("Couldn't finalize that opening - try again.");
       return;
     }
+    // finalized: tell a stream overlay, if this browser opted in (before state.dex takes the
+    // new cards, so "new to the dex" still reads right)
+    streamBridgePack(opening.cards, keepSnapshot);
     if(data && Array.isArray(data.kept) && data.dex && typeof data.hex === 'number'){
       // the server returns exactly what it committed - the cards it added, the
       // dex entries they touched and the balance after - so apply that instead
