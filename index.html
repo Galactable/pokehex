@@ -573,6 +573,14 @@ body {
   padding:8px 2px;border-bottom:1px solid var(--line);font-size:13px;
 }
 .stat-row:last-child{border-bottom:none;}
+/* "% of Full Dex" folds the per-gen rows away beneath it. */
+.dex-toggle{width:100%;background:none;border:none;border-bottom:1px solid var(--line);color:inherit;font:inherit;font-size:13px;cursor:pointer;text-align:left;}
+.dex-chev{display:inline-block;width:12px;color:var(--muted);transition:transform 0.15s ease;}
+.dex-completion.open .dex-chev{transform:rotate(90deg);}
+.dex-gens{display:none;}
+.dex-completion.open .dex-gens{display:block;}
+.dex-gens .stat-row{padding-left:14px;color:var(--muted);}
+.dex-gens .stat-row:last-child{border-bottom:1px solid var(--line);}
 .dexslot.owned{border-color:var(--slot-color,var(--rare));background:var(--surface2);color:var(--text);}
 .dexslot .num{position:absolute;top:4px;left:6px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);}
 .dexslot .glyph{
@@ -3859,6 +3867,29 @@ const GENS = [
 ];
 const DEX_TOTAL = GENS[GENS.length - 1].hi;
 const genOf = id => GENS.find(g => id >= g.lo && id <= g.hi);
+// Whether the Collection section shows the per-gen rows under "% of Full
+// Dex". One per-browser preference for your own profile and other players';
+// defaults to folded so the section leads with the overall number.
+let dexGensOpen = false;
+try{ dexGensOpen = localStorage.getItem('pokehex_dexgens_open') === '1'; }catch(e){}
+// The "% of Full Dex" row and its per-gen breakdown, from a list of owned dex
+// numbers. Rows come from GENS, so a new generation needs no edit here.
+function dexCompletionRows(dexIds){
+  const genRows = GENS.map(g => {
+    const total = g.hi - g.lo + 1;
+    const owned = dexIds.filter(n => n >= g.lo && n <= g.hi).length;
+    const pct   = ((owned / total) * 100).toFixed(1);
+    return `<div class="stat-row"><span>% of ${g.label}</span><span class="mono">${pct}% (${owned}/${total})</span></div>`;
+  }).join('');
+  const dexOwned = dexIds.filter(n => n >= 1 && n <= DEX_TOTAL).length;
+  const dexPct   = ((dexOwned / DEX_TOTAL) * 100).toFixed(1);
+  return `<div class="dex-completion${dexGensOpen ? ' open' : ''}">
+    <button class="stat-row dex-toggle" data-dexgens-toggle aria-expanded="${dexGensOpen}">
+      <span><span class="dex-chev" aria-hidden="true">&rsaquo;</span>% of Full Dex</span><span class="mono">${dexPct}% (${dexOwned}/${DEX_TOTAL})</span>
+    </button>
+    <div class="dex-gens">${genRows}</div>
+  </div>`;
+}
 let activeModal = null; // Confirmation modal state
 let tierProtectHolo = false; // Liquidate Tier modal's holo-protect checkbox; reset whenever that modal opens
 // How to Play sections the player has opened. render() rebuilds the page
@@ -6489,16 +6520,7 @@ function renderPublicProfile(){
     } : null;
   });
 
-  const dex = d.dex || {};
-  const dexIds = Object.keys(dex).map(Number);
-  const genRows = GENS.map(g => {
-    const total = g.hi - g.lo + 1;
-    const owned = dexIds.filter(n => n >= g.lo && n <= g.hi).length;
-    const pct   = ((owned / total) * 100).toFixed(1);
-    return `<div class="stat-row"><span>% of ${g.label}</span><span class="mono">${pct}% (${owned}/${total})</span></div>`;
-  }).join('');
-  const dexOwned = dexIds.filter(n => n >= 1 && n <= DEX_TOTAL).length;
-  const dexPct   = ((dexOwned / DEX_TOTAL) * 100).toFixed(1);
+  const dexIds = Object.keys(d.dex || {}).map(Number);
 
   const packRows = PACKS.map(p=>{
     const count = (d.packsOpened && d.packsOpened[p.id]) || 0;
@@ -6521,8 +6543,7 @@ function renderPublicProfile(){
   ${renderSkillMap(d.skills)}` : ''}
 
   <div class="section-label">Collection</div>
-  <div class="stat-row"><span>% of Full Dex</span><span class="mono">${dexPct}% (${dexOwned}/${DEX_TOTAL})</span></div>
-  ${genRows}
+  ${dexCompletionRows(dexIds)}
   <div class="stat-row"><span># of Secret Rares Pulled</span><span class="mono">${d.secretPullsCount}</span></div>
   <div class="stat-row"><span># of Shinies Found</span><span class="mono">${d.shinyPullsCount}</span></div>
   <div class="stat-row"><span># of Shadows Found</span><span class="mono">${d.shadowPullsCount ?? 0}</span></div>
@@ -6848,16 +6869,7 @@ function renderProfile(){
   // get_player_stats divides ALL dex keys by 151, so with gens 2-5 seeded
   // server-side that value far exceeds 100%. state.dex is the same
   // authoritative data, so splitting here avoids depending on the RPC.
-  // Rows come from GENS, so a new generation needs no edit here.
   const dexIds = Object.keys(state.dex || {}).map(Number);
-  const genRows = GENS.map(g => {
-    const total = g.hi - g.lo + 1;
-    const owned = dexIds.filter(n => n >= g.lo && n <= g.hi).length;
-    const pct   = ((owned / total) * 100).toFixed(1);
-    return `<div class="stat-row"><span>% of ${g.label}</span><span class="mono">${pct}% (${owned}/${total})</span></div>`;
-  }).join('');
-  const dexOwned = dexIds.filter(n => n >= 1 && n <= DEX_TOTAL).length;
-  const dexPct   = ((dexOwned / DEX_TOTAL) * 100).toFixed(1);
 
   return `
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
@@ -6879,8 +6891,7 @@ function renderProfile(){
   ${renderSkillsSection()}
 
   <div class="section-label">Collection</div>
-  <div class="stat-row"><span>% of Full Dex</span><span class="mono">${dexPct}% (${dexOwned}/${DEX_TOTAL})</span></div>
-  ${genRows}
+  ${dexCompletionRows(dexIds)}
   <div class="stat-row"><span># of Secret Rares Pulled</span><span class="mono">${s.secretPullsCount}</span></div>
   <div class="stat-row"><span># of Shinies Found</span><span class="mono">${s.shinyPullsCount}</span></div>
   <div class="stat-row"><span># of Shadows Found</span><span class="mono">${s.shadowPullsCount ?? 0}</span></div>
@@ -8176,6 +8187,14 @@ function wire(){
     if(view==='profile' && authUser) loadProfileStats();
     if(view==='market' && authUser && !pnlSeries && !pnlLoading) loadPnlSeries();
     render();
+  });
+
+  // Folds in place rather than calling render(), so the page keeps its scroll.
+  document.querySelectorAll('[data-dexgens-toggle]').forEach(b=>b.onclick=()=>{
+    dexGensOpen = !dexGensOpen;
+    try{ localStorage.setItem('pokehex_dexgens_open', dexGensOpen ? '1' : '0'); }catch(e){}
+    b.closest('.dex-completion').classList.toggle('open', dexGensOpen);
+    b.setAttribute('aria-expanded', dexGensOpen);
   });
 
   const shelfToggle = document.querySelector('[data-shelf-toggle]');
