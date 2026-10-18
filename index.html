@@ -6520,7 +6520,8 @@ function renderPublicProfile(){
     } : null;
   });
 
-  const dexIds = Object.keys(d.dex || {}).map(Number);
+  const dex = d.dex || {};
+  const dexIds = Object.keys(dex).map(Number);
 
   const packRows = PACKS.map(p=>{
     const count = (d.packsOpened && d.packsOpened[p.id]) || 0;
