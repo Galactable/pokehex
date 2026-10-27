@@ -4261,11 +4261,10 @@ function streamBridgePack(cards, keep){
   }));
 }
 
-// Controller navigation, step 1: the keyboard. Opt-in like the stream bridge: ?pad=on turns it
-// on for this browser, ?pad=off turns it back off. Arrow keys move a highlight to the nearest
-// clickable thing in that direction, Enter presses it, Escape backs out of the top popup. The
-// gamepad layer will drive these same three moves. Nothing here changes what a click does; it
-// only picks what gets clicked.
+// Controller navigation. Opt-in like the stream bridge: ?pad=on turns it on for this browser,
+// ?pad=off turns it back off. Arrow keys move a highlight to the nearest clickable thing in that
+// direction, Enter presses it, Escape backs out of the top popup. A gamepad drives the same moves
+// (see padPoll below). Nothing here changes what a click does; it only picks what gets clicked.
 let padMode = false;
 try{
   const q = new URLSearchParams(location.search).get('pad');
