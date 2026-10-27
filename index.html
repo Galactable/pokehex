@@ -3994,11 +3994,15 @@ async function loadState(){
 
     const { data, error } = await sb
       .from('game_states_v2')
-      .select('hex, dex, instances, collectibles, last_spin_at, value_history, long_history, favorite_uids, equipped_back, equipped_hat, equipped_body, equipped_legs, status')
+      .select('hex, dex, instances, collectibles, last_spin_at, value_history, favorite_uids, equipped_back, equipped_hat, equipped_body, equipped_legs, status')
       .eq('user_id', authUser.id)
       .maybeSingle();
     if(error) throw error;
 
+    // long_history (up to 5,000 points) isn't read here: only the Market's
+    // charts draw it, so loadLongHistory() fetches it on the first visit.
+    // A re-read for the same player keeps what it already fetched.
+    const keepLong = state.longHistoryLoaded ? state.longHistory : null;
     if(data){
       state = {
         hex: data.hex,
@@ -4007,7 +4011,8 @@ async function loadState(){
         collectibles: data.collectibles || {},
         lastSpinAt: data.last_spin_at ? new Date(data.last_spin_at).getTime() : null,
         valueHistory: data.value_history || [],
-        longHistory: data.long_history || [],
+        longHistory: keepLong || [],
+        longHistoryLoaded: !!keepLong,
         // slots may point at cards that have since been liquidated - deliberate.
         // a favorite is not protected from selling, so every reader must
         // treat a uid that no longer resolves as an empty slot. order is
@@ -4100,7 +4105,10 @@ async function doSave(){
       ({ error } = await sb.rpc('append_vault_history', { p_value: newValue, p_long: newLong }));
     }
     if(error && (error.code === 'PGRST202' || error.code === '42883')){
-      // append_vault_history isn't on the server (rolled back): full save instead
+      // append_vault_history isn't on the server (rolled back): full save instead.
+      // That replaces the server's long history, so it must hold all of it first
+      if(!state.longHistoryLoaded) await loadLongHistory();
+      if(!state.longHistoryLoaded) throw new Error('long history not loaded, full save skipped');
       ({ error } = await sb.rpc('save_vault_history', {
         p_value_history: state.valueHistory,
         p_long_history: state.longHistory
@@ -4112,6 +4120,37 @@ async function doSave(){
   }catch(e){
     console.error('save failed', e);
     toast('Save failed - check your connection.');
+  }
+}
+
+// The long chart history, fetched on the first Market visit (see loadState).
+// Points recorded on this page before it arrives are kept if they're newer
+// than anything the server holds; older ones are already there.
+let longHistoryLoading = false;
+async function loadLongHistory(){
+  if(longHistoryLoading || !authUser || state.longHistoryLoaded) return;
+  longHistoryLoading = true;
+  const uid = authUser.id;
+  try{
+    const { data, error } = await sb
+      .from('game_states_v2')
+      .select('long_history')
+      .eq('user_id', uid)
+      .maybeSingle();
+    if(error) throw error;
+    // signed out meanwhile, or a reset already emptied it
+    if(!authUser || authUser.id !== uid || state.longHistoryLoaded) return;
+    const server = (data && data.long_history) || [];
+    const serverNewest = server.reduce((t, p) => Math.max(t, p.time || 0), 0);
+    state.longHistory = server.concat(state.longHistory.filter(p => p.time > serverNewest)).slice(-5000);
+    state.longHistoryLoaded = true;
+    vhSyncedLongT = Math.max(vhSyncedLongT, serverNewest);
+  }catch(e){
+    // the charts draw this page's points; the next Market visit tries again
+    console.error('long history load failed', e);
+  }finally{
+    longHistoryLoading = false;
+    if(view === 'market') render();
   }
 }
 
@@ -5024,7 +5063,7 @@ function renderVaultChart(){
       ? Number(pnlSeries.points[pnlSeries.points.length-1].baseline) : null;
     const ahead = baseNow === null ? null : currentTotal - baseNow;
 
-    const body = pnlLoading
+    const body = (pnlLoading || longHistoryLoading)
       ? `<div style="color:var(--muted);font-size:12px;padding:24px 0;text-align:center;">Loading P&amp;L history...</div>`
       : pnlError
         ? `<div style="color:#ff4444;font-size:12px;padding:24px 0;text-align:center;">${esc(pnlError)}</div>`
@@ -5065,7 +5104,8 @@ function renderVaultChart(){
   const history = vaultChartHistoryForMode();
   const { svgInner, width, height } = vaultChartInner(history);
 
-  const rangeLabel = (state.longHistory && state.longHistory.length > 1)
+  const rangeLabel = longHistoryLoading ? 'loading...'
+    : (state.longHistory && state.longHistory.length > 1)
     ? `since ${new Date(state.longHistory[0].time).toLocaleDateString(undefined,{month:'short',day:'numeric'})}`
     : 'not enough history yet';
 
@@ -8598,6 +8638,7 @@ function wire(){
     view=b.dataset.nav;
     if(view==='profile' && authUser) loadProfileStats();
     if(view==='market' && authUser && !pnlSeries && !pnlLoading) loadPnlSeries();
+    if(view==='market' && authUser && !state.longHistoryLoaded) loadLongHistory();
     render();
   });
 
@@ -9281,7 +9322,7 @@ function wire(){
       const emptiedBinders = (state.binders || []).map(b => b.pages
         ? Object.assign({}, b, { pages: b.pages.map(pg => pg.map(() => null)) })
         : b);
-      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[], favoriteUids:[], equippedBack: state.equippedBack || null, equipped: state.equipped || {}, binders: emptiedBinders };
+      state = { hex:2500, dex:{}, instances:[], collectibles:{}, lastSpinAt:preservedLastSpinAt, valueHistory:[], longHistory:[], longHistoryLoaded:true, favoriteUids:[], equippedBack: state.equippedBack || null, equipped: state.equipped || {}, binders: emptiedBinders };
       // reset_game_state already emptied both chart histories server-side;
       // drop any pre-reset points still waiting for the save timer
       clearTimeout(saveTimer);
