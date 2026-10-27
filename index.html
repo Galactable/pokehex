@@ -2526,6 +2526,64 @@ html,body{ max-width:100%; overflow-x:hidden; }
 }
 .chooserow-filed-badge{position:absolute;left:-6px;bottom:-6px;width:20px;height:20px;}
 .dexslot-filed-badge{position:absolute;right:3px;bottom:3px;width:24px;height:24px;}
+/* controller navigation (?pad=on): the highlighted target, a see-through purple that pulses.
+   It replaces the target's own animation and shadow while highlighted (only .search-hit has one). */
+/* the highlight color, one place; on :root so a row's box (below) gets it too */
+:root{--pad-hl:var(--gold);}
+.pad-focus{
+  outline:3px solid color-mix(in srgb, var(--pad-hl) 55%, transparent) !important;outline-offset:3px;
+  animation:pad-pulse 1.2s ease-in-out infinite !important;
+}
+@keyframes pad-pulse{
+  0%,100%{outline-color:color-mix(in srgb, var(--pad-hl) 25%, transparent);
+          box-shadow:0 0 4px color-mix(in srgb, var(--pad-hl) 15%, transparent);}
+  50%{outline-color:color-mix(in srgb, var(--pad-hl) 75%, transparent);
+      box-shadow:0 0 16px color-mix(in srgb, var(--pad-hl) 45%, transparent);}
+}
+/* a revealed card's slot is square but its face is rounded (.card-face), so match it; the
+   Market popup's card display is the same square holder around a rounded face */
+.card-slot.pad-focus,.detail-card-display.pad-focus{border-radius:12px;}
+/* A row you open and close (a Market tier or species stack, a How to Play section) is a bare,
+   square <summary> inside the rounded box you see, its <details>. The box is outlined instead:
+   that's the shape on screen, and what A opens or closes. */
+summary.pad-focus{outline:none !important;animation:none !important;}
+details:has(> summary.pad-focus){
+  outline:3px solid color-mix(in srgb, var(--pad-hl) 55%, transparent);outline-offset:3px;
+  animation:pad-pulse 1.2s ease-in-out infinite;
+}
+/* The large card view is about the card, so the card itself isn't outlined (A flips it, B closes,
+   the right stick tilts it). The close X still lights up if the D-pad moves there. */
+.inspect-card-wrap.pad-focus{outline:none !important;animation:none !important;box-shadow:none !important;}
+/* A binder pocket fills its grid cell, and the sheet clips at its rounded edge, so an outline on
+   the pocket got cut off on the outer pockets. The card inside is outlined instead (it sits
+   inside the pocket's padding), and an empty pocket gets a card-shaped outline where a card
+   would go: .sleeve is 88% of the content height, bottom-aligned, holding a 3:4 card. */
+.pocket.pad-focus{outline:none !important;animation:none !important;}
+.pocket.pad-focus .sleeve .dexslot,
+.pocket-empty.pad-focus::after{
+  outline:3px solid color-mix(in srgb, var(--pad-hl) 55%, transparent);outline-offset:2px;
+  animation:pad-pulse 1.2s ease-in-out infinite;
+}
+.pocket-empty.pad-focus::after{
+  content:'';position:absolute;pointer-events:none;border-radius:10px;
+  bottom:8px;left:50%;transform:translateX(-50%);
+  height:calc((100% - 14px) * 0.88);aspect-ratio:3/4;
+}
+/* The pack is a crimped foil shape with its own edge lines, so a box around it reads as a second
+   frame. It glows along its own outline instead, on top of its usual drop shadow. */
+.pack-visual.pad-focus{outline:none !important;animation-name:pad-pulse-pack !important;}
+@keyframes pad-pulse-pack{
+  0%,100%{filter:drop-shadow(0 18px 34px rgba(0,0,0,0.75))
+                 drop-shadow(0 0 6px color-mix(in srgb, var(--pad-hl) 25%, transparent));}
+  50%{filter:drop-shadow(0 18px 34px rgba(0,0,0,0.75))
+             drop-shadow(0 0 22px color-mix(in srgb, var(--pad-hl) 65%, transparent));}
+}
+@media (prefers-reduced-motion:reduce){
+  .pad-focus,details:has(> summary.pad-focus),
+  .pocket.pad-focus .sleeve .dexslot,.pocket-empty.pad-focus::after{animation:none !important;}
+  .pack-visual.pad-focus{filter:drop-shadow(0 18px 34px rgba(0,0,0,0.75))
+                                drop-shadow(0 0 14px color-mix(in srgb, var(--pad-hl) 45%, transparent));}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -4201,6 +4259,347 @@ function streamBridgePack(cards, keep){
     type:'pull', u:authUser && authUser.id, i:c.id, r:c.rarity, s:!!c.shiny, h:!!c.holo, o:!!c.shadow,
     k:!!keep[i], n:!!keep[i] && !(state.dex && state.dex[c.id]), pk
   }));
+}
+
+// Controller navigation, step 1: the keyboard. Opt-in like the stream bridge: ?pad=on turns it
+// on for this browser, ?pad=off turns it back off. Arrow keys move a highlight to the nearest
+// clickable thing in that direction, Enter presses it, Escape backs out of the top popup. The
+// gamepad layer will drive these same three moves. Nothing here changes what a click does; it
+// only picks what gets clicked.
+let padMode = false;
+try{
+  const q = new URLSearchParams(location.search).get('pad');
+  if(q === 'on') localStorage.setItem('hexdex_pad', '1');
+  if(q === 'off') localStorage.removeItem('hexdex_pad');
+  padMode = localStorage.getItem('hexdex_pad') === '1';
+}catch(e){}
+let padEl = null;    // the highlighted element; null until the first arrow press
+let padKey = null;   // how to find it again after render() rebuilds #app
+let padStack = [];   // padStack[d] = the key to return to when the popups close back down to depth d
+const PAD_TYPING = 'input:not([type=checkbox]):not([type=radio]):not([type=button]), textarea, select';
+const PAD_CLICKABLE = 'button, a[href], summary, input, select, textarea, [data-rip], [data-inspectcard], [data-pocket]';
+// Popups all render as .overlay; only the last one takes input, and its backdrop is not a target.
+function padOverlays(){
+  const app = document.getElementById('app');
+  return app ? [...app.querySelectorAll('.overlay')] : [];
+}
+function padScope(){
+  const o = padOverlays();
+  return o.length ? o[o.length-1] : (document.getElementById('app') || document.body);
+}
+// wire() assigns on* properties, so el.onclick finds the clickable divs (dex tiles, card faces)
+// without a list of their data attributes.
+function padTargets(scope){
+  const out = [];
+  scope.querySelectorAll('*').forEach(el=>{
+    if(el.classList.contains('overlay')) return;
+    if(!el.matches(PAD_CLICKABLE) && typeof el.onclick !== 'function') return;
+    if(el.disabled) return;
+    if(padInClosedDetails(el)) return;
+    const r = el.getBoundingClientRect();
+    if(r.width < 2 || r.height < 2) return; // display:none
+    if(getComputedStyle(el).visibility === 'hidden') return;
+    out.push(el);
+  });
+  return out;
+}
+// What a closed <details> hides still measures full size in Firefox (zero in Chromium), so a
+// collapsed Market tier that was opened once would hide targets between the tiers. Only a
+// closed <details>'s own summary row counts, checked at every closed level (tier, then stack).
+function padInClosedDetails(el){
+  for(let d = el.closest('details:not([open])'); d; d = d.parentElement && d.parentElement.closest('details:not([open])'))
+    if(!(el.tagName === 'SUMMARY' && el.parentElement === d)) return true;
+  return false;
+}
+function padCenter(el){
+  const r = el.getBoundingClientRect();
+  return { x:r.left + r.width/2, y:r.top + r.height/2, r };
+}
+// A tag plus every data-* attribute is enough to pick an element out of a fresh render; idx
+// covers repeats like the five [data-flip] cards, and the page position is the fallback.
+function padDataSel(el){
+  let sel = el.tagName.toLowerCase();
+  for(const a of el.attributes) if(a.name.startsWith('data-')) sel += `[${a.name}="${CSS.escape(a.value)}"]`;
+  return sel;
+}
+function padKeyOf(el){
+  let sel = padDataSel(el);
+  // A Market tier or species row is a bare <summary>; its <details> carries data-tier /
+  // data-species. Counting bare summaries breaks as soon as a stack above is sold off.
+  if(sel === el.tagName.toLowerCase() && el.parentElement){
+    const up = padDataSel(el.parentElement);
+    if(up !== el.parentElement.tagName.toLowerCase()) sel = up + ' > ' + sel;
+  }
+  const c = padCenter(el);
+  return { sel, idx:[...padScope().querySelectorAll(sel)].indexOf(el),
+           x:c.x + scrollX, y:c.y + scrollY, depth:padOverlays().length };
+}
+function padSet(el, scroll){
+  if(padEl) padEl.classList.remove('pad-focus');
+  padEl = el;
+  if(!el){ padKey = null; return; }
+  el.classList.add('pad-focus');
+  if(scroll) el.scrollIntoView({ block:'nearest', inline:'nearest' });
+  padKey = padKeyOf(el);
+}
+// Where a fresh popup (or the first press) starts: the active nav tab, else the first target on
+// screen. Never the close X: on the pack overlay one press there cancels the pack.
+function padStart(list){
+  const onScreen = list.filter(el=>{ const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; });
+  const pool = onScreen.filter(el => !el.matches('.closex'));
+  return pool.find(el => el.matches('.navbtn.active')) || pool[0] || onScreen[0] || list[0];
+}
+function padFind(key, list){
+  const same = [...padScope().querySelectorAll(key.sel)].filter(el => list.includes(el));
+  if(same.length) return same[Math.min(Math.max(key.idx, 0), same.length-1)];
+  // The pack walks itself: once the torn pack is gone the next press is Flip All, and once Flip
+  // All is gone it's Confirm (every card starts as keep). Open, tear, Flip All, Confirm: four presses.
+  const next = list.find(el => el.matches('[data-flipall], [data-confirm]'));
+  if(next) return next;
+  // Still there but disabled now (Next on a binder's last page): stay in its row, on what the row
+  // still offers (Prev), never the nearest thing elsewhere (Remove from Binder sits just below).
+  const was = padScope().querySelector(key.sel);
+  const row = was && was.parentElement ? list.filter(el => was.parentElement.contains(el)) : [];
+  let best = null, bestD = Infinity;
+  for(const el of (row.length ? row : list)){
+    const c = padCenter(el);
+    const d = Math.hypot(c.x + scrollX - key.x, c.y + scrollY - key.y);
+    if(d < bestD){ bestD = d; best = el; }
+  }
+  return best;
+}
+// Called at the end of render(). Opening a popup saves the spot underneath it; closing one goes back there.
+function padRestore(){
+  if(!padMode || !padKey) return;
+  const depth = padOverlays().length;
+  const list = padTargets(padScope());
+  if(!list.length){ padEl = null; return; } // keep padKey: the targets may come back next render
+  let key = padKey;
+  if(depth > key.depth){ padStack[key.depth] = key; key = null; }
+  else if(depth < key.depth){ key = padStack[depth] || null; }
+  padStack.length = Math.min(padStack.length, depth);
+  // scroll too: a redraw can push the same row off screen (a stack opening above it, a sale),
+  // and a highlight you can't see is lost. 'nearest' leaves the page alone when it's in view.
+  padSet(key ? padFind(key, list) : padStart(list), true);
+}
+function padMove(dx, dy){
+  if(padEl && !padEl.isConnected) padRestore(); // a fill in place (no render) replaced it
+  const list = padTargets(padScope());
+  if(!list.length) return;
+  if(!padEl || !list.includes(padEl)){ padSet(padStart(list), true); return; }
+  // Scrolled off screen with the right stick: pick up at the screen edge it left by, so the move
+  // lands among what's in view instead of jumping the page back to it.
+  const ar = padEl.getBoundingClientRect();
+  if(ar.bottom < 0 || ar.top > innerHeight){
+    const ty = ar.bottom < 0 ? 0 : innerHeight, tx = ar.left + ar.width/2;
+    let near = null, nearD = Infinity;
+    for(const el of list){
+      const c = padCenter(el);
+      if(c.r.bottom <= 0 || c.r.top >= innerHeight) continue;
+      const d = Math.hypot(c.x - tx, c.y - ty);
+      if(d < nearD){ nearD = d; near = el; }
+    }
+    if(near){ padSet(near, true); return; }
+  }
+  const a = padCenter(padEl);
+  // best[0]: within about 27 degrees of straight (or sharing the row/column); best[1]: anything ahead.
+  // Up/down fall back to best[1] so a lone button can't trap the highlight; left/right stay in the row.
+  const best = [null, null], bestScore = [Infinity, Infinity];
+  for(const el of list){
+    if(el === padEl) continue;
+    const b = padCenter(el);
+    const ahead = dx ? (b.x - a.x) * dx : (b.y - a.y) * dy;
+    if(ahead < 1) continue;
+    // the gap between facing edges, not centers, so a wide neighbor in the row isn't "far"
+    const gap = Math.max(0, dx > 0 ? b.r.left - a.r.right : dx < 0 ? a.r.left - b.r.right
+                          : dy > 0 ? b.r.top - a.r.bottom : a.r.top - b.r.bottom);
+    const off = dx ? Math.abs(b.y - a.y) : Math.abs(b.x - a.x);
+    const overlap = dx ? (b.r.top < a.r.bottom && b.r.bottom > a.r.top) : (b.r.left < a.r.right && b.r.right > a.r.left);
+    const score = gap + (overlap ? 0 : off * 2) + off * 0.1; // off * 0.1 breaks ties toward the straight line
+    const k = (overlap || off * 2 <= ahead) ? 0 : 1;
+    if(score < bestScore[k]){ bestScore[k] = score; best[k] = el; }
+  }
+  const pick = best[0] || (dy ? best[1] : null);
+  if(pick) padSet(pick, true);
+}
+function padPress(){
+  if(padEl && !padEl.isConnected) padRestore();
+  const el = padEl;
+  if(!el) return false;
+  if(el.matches(PAD_TYPING)){ el.focus(); return true; } // type with the keyboard; Escape comes back
+  if(el.matches('[data-inspectcard]')){ toggleInspectFlip(); return true; } // it flips on press/release, not click
+  // A binder pocket has press/release handlers, not a click: a press that ends without the hold is
+  // a tap, so this is pocketPressEnd with nothing held (open the card, or drop the carried one).
+  if(el.matches('[data-pocket]')){
+    pocketPressEnd(Number(el.dataset.page), Number(el.dataset.slot), el.dataset.uid || null, null);
+    return true;
+  }
+  el.click();
+  // Back to top scrolls the page but would leave the highlight on the button, which is fixed in
+  // the corner. The highlight goes up with the page instead, to the active tab where the smooth
+  // scroll ends; no scroll of its own, which would cut that scroll short.
+  if(el.matches('[data-scrolltop]')){
+    const list = padTargets(padScope());
+    padSet(list.find(t => t.matches('.navbtn.active')) || list[0] || null, false);
+  }
+  return true;
+}
+// X or Y (the x key on a keyboard) picks up the highlighted binder card, as pressing and holding
+// it does (pocketPressStart); A on another pocket then drops it there.
+function padPickUp(){
+  if(padEl && !padEl.isConnected) padRestore();
+  const el = padEl;
+  if(!el || !el.matches('[data-pocket]') || carrying || !el.dataset.uid) return false;
+  carrying = { source:'reorder', fromPage:Number(el.dataset.page), fromSlot:Number(el.dataset.slot), uid:el.dataset.uid };
+  render();
+  return true;
+}
+// Backs out of the top popup the way the player could by tapping: its backdrop close first.
+// The pack and binder-form popups have no backdrop close on purpose (a stray tap there costs
+// something), but a back press is deliberate, so they get their own close: the pack's X refunds
+// before the tear and keeps every card after it; the binder form's Cancel drops what was typed.
+function padBack(){
+  const scope = padScope();
+  // No popup: on a binder page, B puts a carried card back (Cancel), else goes back to the Dex.
+  if(!scope.classList.contains('overlay')){
+    const back = scope.querySelector('[data-cancel-carry]') || scope.querySelector('[data-closepage]');
+    if(!back) return false;
+    back.click();
+    return true;
+  }
+  if(typeof scope.onclick === 'function'){
+    scope.click(); // the handlers check e.target === backdrop, which click() satisfies
+    return true;
+  }
+  const close = scope.querySelector('[data-close], [data-binder-cancel]');
+  if(!close) return false;
+  close.click();
+  return true;
+}
+if(padMode) document.addEventListener('keydown', e=>{
+  if(e.altKey || e.ctrlKey || e.metaKey) return;
+  const ae = document.activeElement;
+  if(ae && ae.matches && ae.matches(PAD_TYPING)){
+    if(e.key === 'Escape'){ ae.blur(); e.preventDefault(); }
+    return;
+  }
+  const dir = { ArrowUp:[0,-1], ArrowDown:[0,1], ArrowLeft:[-1,0], ArrowRight:[1,0] }[e.key];
+  if(dir){ e.preventDefault(); padMove(dir[0], dir[1]); return; }
+  if(e.key === 'Enter' && padPress()) e.preventDefault();
+  if(e.key === 'Escape' && padBack()) e.preventDefault();
+  if((e.key === 'x' || e.key === 'X') && padPickUp()) e.preventDefault();
+});
+
+// Controller navigation, step 2: the gamepad. The Xbox and the Stadia controller (Bluetooth,
+// Firefox on Linux) both report the "standard" mapping: A is button 0, B is button 1, the D-pad
+// is buttons 12-15 (up, down, left, right) and the left stick is axes 0/1 (A, B, D-pad up and
+// the stick checked on the Stadia in gamepadtester). Its right stick lands on buttons 6/7 (0.5
+// at rest), so navigation reads only these buttons and X/Y, by their pressed flag. A does what
+// Enter does, B what Escape does, the D-pad and left stick what the arrows do. Holding a
+// direction repeats. X or Y picks up a binder card: buttons 2 and 3 both, since which label is
+// which varies (the Stadia's Y reads as 2, an Xbox pad's X does). The right stick scrolls
+// (padRightStick), or tilts the card in the large view.
+const PAD_HOLD_MS = 350, PAD_REPEAT_MS = 120, PAD_STICK_DEAD = 0.5;
+const PAD_SCROLL_DEAD = 0.25, PAD_SCROLL_MAX = 1600; // px per second at full tilt
+let padLoop = 0, padLastPoll = 0, padScrollCarry = 0;
+const padHeld = {}; // per control while it is down: { since, last } in ms
+function padFire(k){
+  const ae = document.activeElement;
+  if(ae && ae.matches && ae.matches(PAD_TYPING)){ if(k === 'b') ae.blur(); return; } // typing: only B, to leave the field
+  if(k === 'a') padPress();
+  else if(k === 'b') padBack();
+  else if(k === 'x') padPickUp();
+  else padMove(k === 'left' ? -1 : k === 'right' ? 1 : 0, k === 'up' ? -1 : k === 'down' ? 1 : 0);
+}
+// The right stick as [x, y], each -1 to 1 (left/up negative). The Stadia (Bluetooth, Firefox on
+// Linux) reports that stick as buttons 6/7 instead of axes 2/3: 0.5 at rest, button 7 up/down
+// (0 up, 1 down) and button 6 left/right (1 right), both checked in gamepadtester. Anything else
+// uses axes 2/3.
+function padRightStick(gp){
+  if(/18d1-9400|stadia/i.test(gp.id)){
+    const v = i => gp.buttons[i] ? (gp.buttons[i].value - 0.5) * 2 : 0;
+    return [v(6), v(7)];
+  }
+  return [gp.axes[2] || 0, gp.axes[3] || 0];
+}
+// In the large card view the right stick tilts the card the way dragging it with the mouse does
+// (inspectMove): full push is full tilt, letting go settles it back. Returns true while that
+// view is open, so the stick doesn't also scroll.
+let padTilting = false;
+function padTilt(x, y){
+  const el = document.querySelector('[data-inspectcard]');
+  if(!el){ padTilting = false; return false; }
+  if(inspectPressed) return true; // the mouse has it
+  if(Math.max(Math.abs(x), Math.abs(y)) >= PAD_SCROLL_DEAD){
+    el.style.transform = `perspective(700px) rotateX(${-y * INSPECT_TILT_MAX_DEG}deg) rotateY(${x * INSPECT_TILT_MAX_DEG}deg) scale(1.05)`;
+    padTilting = true;
+  } else if(padTilting){
+    el.style.transform = '';
+    padTilting = false;
+  }
+  return true;
+}
+// What the right stick scrolls: the nearest scrollable box around the highlight (a popup's list),
+// else inside the top popup, else the page (null). Never the page behind an open popup.
+function padScroller(){
+  const scope = padScope();
+  const scrolls = el => /auto|scroll/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight + 1;
+  for(let p = padEl; p && scope.contains(p); p = p.parentElement) if(scrolls(p)) return p;
+  if(!scope.classList.contains('overlay')) return null;
+  return [...scope.querySelectorAll('*')].find(scrolls) || scope;
+}
+function padScroll(ry, dt){
+  if(Math.abs(ry) < PAD_SCROLL_DEAD){ padScrollCarry = 0; return; }
+  // squared, so a light push reads text and a full push flies
+  const t = (Math.abs(ry) - PAD_SCROLL_DEAD) / (1 - PAD_SCROLL_DEAD);
+  padScrollCarry += Math.sign(ry) * t * t * PAD_SCROLL_MAX * dt / 1000;
+  const px = Math.trunc(padScrollCarry); // whole pixels; the rest carries to the next frame
+  if(!px) return;
+  padScrollCarry -= px;
+  const box = padScroller();
+  if(box) box.scrollTop += px; else window.scrollBy(0, px);
+}
+function padPoll(now){
+  padLoop = 0;
+  const dt = Math.min(50, padLastPoll ? now - padLastPoll : 0); // capped, so a stalled frame can't leap
+  padLastPoll = now;
+  const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+  if(!pads.length){ padLastPoll = 0; return; } // gamepadconnected starts it again
+  const down = { a:false, b:false, x:false, up:false, down:false, left:false, right:false };
+  let rs = [0, 0];
+  for(const gp of pads){
+    const r = padRightStick(gp);
+    if(Math.hypot(r[0], r[1]) > Math.hypot(rs[0], rs[1])) rs = r;
+    const btn = i => !!(gp.buttons[i] && gp.buttons[i].pressed);
+    if(btn(0)) down.a = true;
+    if(btn(1)) down.b = true;
+    if(btn(2) || btn(3)) down.x = true; // pick up: X or Y
+    if(btn(12)) down.up = true;
+    if(btn(13)) down.down = true;
+    if(btn(14)) down.left = true;
+    if(btn(15)) down.right = true;
+    // the stick moves along whichever axis it leans on most, so a slightly off-center push isn't a diagonal
+    const sx = gp.axes[0] || 0, sy = gp.axes[1] || 0;
+    if(Math.max(Math.abs(sx), Math.abs(sy)) >= PAD_STICK_DEAD)
+      down[Math.abs(sx) > Math.abs(sy) ? (sx < 0 ? 'left' : 'right') : (sy < 0 ? 'up' : 'down')] = true;
+  }
+  for(const k in down){
+    const h = padHeld[k];
+    if(!down[k]){ delete padHeld[k]; continue; }
+    if(!h){ padHeld[k] = { since:now, last:now }; padFire(k); continue; }
+    if(k !== 'a' && k !== 'b' && k !== 'x' && now - h.since >= PAD_HOLD_MS && now - h.last >= PAD_REPEAT_MS){
+      h.last = now; padFire(k);
+    }
+  }
+  if(!padTilt(rs[0], rs[1])) padScroll(rs[1], dt);
+  padLoop = requestAnimationFrame(padPoll);
+}
+// Firefox hides a pad until a button is pressed on the page, then fires gamepadconnected; the
+// loop stops on its own once no pad is left.
+if(padMode){
+  const padStartLoop = ()=>{ if(!padLoop) padLoop = requestAnimationFrame(padPoll); };
+  window.addEventListener('gamepadconnected', padStartLoop);
+  padStartLoop();
 }
 
 let finalizeBusy = false;
@@ -7977,6 +8376,7 @@ function render(){
     ${renderMailbox()}
   `;
   wire();
+  padRestore();
 }
 
 // Drag-to-tear. The pack no longer plays a canned animation: --p is tear
@@ -8022,7 +8422,10 @@ function wireTear(){
     let n=0; for(let k=fired+1;k<TEAR_GRAINS.length;k++) tearGrain(k,(n++)*0.022);
     pack.classList.add('settling'); setP(1);
     setTimeout(()=>pack.classList.add('gone'), 90);
-    setTimeout(()=>{ opening.stage='revealing'; render(); }, 470);
+    setTimeout(()=>{
+      if(!opening) return; // closed during the tear (the X, or a pad back press)
+      opening.stage='revealing'; render();
+    }, 470);
   }
   zone.addEventListener('pointerdown', e=>{
     if(done || opening.stage!=='closed') return;
